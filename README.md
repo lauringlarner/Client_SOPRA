@@ -14,7 +14,7 @@ installation, therefore, save and close all your other work and programs
 
 1. Download the following [powershell script](./windows.ps1)\
    ![downloadWindowsScript](https://github.com/user-attachments/assets/7372e029-8bed-41e4-80b7-b7079b0856be)
-
+afasf
 
 ---
 2. Open a new powershell terminal **with admin privileges** and run the following command and follow the instructions. Make sure that you open the powershell terminal at the path where you have downloaded the powershell script, otherwise the command will not work because it can not find the script. You can list currently accessible files in the powershell terminal with ```dir``` and you can use ```cd``` to navigate between directories
