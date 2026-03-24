@@ -548,3 +548,99 @@ textarea {
 .login-button {
   width: 100%;
 }
+
+
+.bingo-screen-card-container{
+display: flex;
+width: 402px;
+height: 619px;
+padding: 0 20px;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+gap: 30px;
+flex-shrink: 0;
+background-color: var(--vq-aquamarine);
+}
+
+.bingo-frame-layout {
+  padding: clamp(44px, 18vh, 188px) 20px max(20px, env(safe-area-inset-bottom));
+  gap: 14px;
+}
+
+
+.bingo-panel {
+  background: var(--vq-aquamarine);
+  border-radius: var(--vq-radius);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 6vh, 41px);
+}
+
+.bingo-card{
+display: flex;
+padding: 5px 0;
+flex-direction: column;
+align-items: center;
+border-radius: 8px;
+background: var(--vq-aquamarine);
+}
+
+.bingo-row-frame{
+  display: flex;
+  padding: 3px 6px;
+  align-items: center;
+  gap: 3px;
+  align-self: stretch;
+}
+
+.bingo-field-button {
+  flex: 1;
+  /* 1. Force a square shape regardless of content */
+  aspect-ratio: 1 / 1; 
+  /* 2. Prevent the button from expanding horizontally */
+  min-width: 0; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px; /* Room for the text */
+  
+  background: #ffffff;
+  border: 1px solid var(--vq-border);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden; /* Safety net */
+  transition: all 0.2s ease;
+}
+
+/* 1. Added Hover State (Desktop/Mouse) */
+.bingo-field-button:hover {
+  background-color: #f0fdfa; /* Subtle tint */
+  border-color: var(--vq-teal);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* 2. Added Active State (Mobile Tap feedback) */
+.bingo-field-button:active {
+  background-color: #f0fdfa; 
+  transform: scale(0.95); /* Shrinks slightly when pressed */
+  transition: all 0.05s;  /* Snappy response */
+}
+
+
+
+.tile-text {
+  /* 3. Typography settings for wrapping */
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  text-align: center;
+  
+  /* 4. The "Paragraph" logic */
+  display: block;
+  width: 100%;
+  word-wrap: break-word;   /* Breaks long words if they literally won't fit */
+  overflow-wrap: break-word;
+  white-space: normal;     /* Allows text to wrap to new lines like a paragraph */
+}
