@@ -628,6 +628,23 @@ background: var(--vq-aquamarine);
   transition: all 0.05s;  /* Snappy response */
 }
 
+/* THE CLAIMED STATE: Non-clickable and Green */
+.bingo-field-button:disabled,
+.bingo-field-button.is-claimed {
+  background-color: var(--vq-teal) !important;
+  border-color: var(--vq-teal) !important;
+  cursor: default !important;
+  pointer-events: none; /* Disables all mouse/touch interactions */
+  box-shadow: none;
+  transform: none !important;
+}
+
+/* White text for better contrast on the green background */
+.bingo-field-button.is-claimed .tile-text {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
 
 
 .tile-text {

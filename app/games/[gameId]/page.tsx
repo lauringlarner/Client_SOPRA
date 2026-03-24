@@ -17,9 +17,9 @@ export default function GameBoardPage() {
   const { loaded, isAuthenticated } = useAuthSession();
   const { gameId } = useParams<{ gameId: string }>();
 
-  // This state tracks which tiles have been successfully claimed (green)
-  // In a real app, you'd initialize this from your API /games/{gameId}
-  const [claimedTiles, setClaimedTiles] = useState<number[]>([]);
+// In reality, this array would come from your GET /games/{gameId} API call
+  // For now, let's assume these indices (0-15) are already claimed
+  const [claimedTileIds, setClaimedTileIds] = useState<number[]>([0, 3, 7]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -33,36 +33,39 @@ export default function GameBoardPage() {
   }
 
   return (
-    <div className="app-shell">
+ <div className="app-shell">
       <main className="phone-frame screen-gradient bingo-frame-layout">
-        
         <section className="bingo-panel">
           <div className="bingo-card">
             
-            {/* Logic for 4x4 Grid (4 rows of 4) */}
             {[0, 1, 2, 3].map((rowIndex) => (
-              <div key={`row-${rowIndex}`} className="bingo-row-frame">
-                
+              <div key={rowIndex} className="bingo-row-frame">
                 {[0, 1, 2, 3].map((colIndex) => {
                   const tileIndex = rowIndex * 4 + colIndex;
                   const word = MOCK_WORDS[tileIndex];
-                  const isClaimed = claimedTiles.includes(tileIndex);
+                  
+                  // Check if this specific tile is claimed
+                  const isClaimed = claimedTileIds.includes(tileIndex);
 
                   return (
                     <button
-                      key={`tile-${tileIndex}`}
+                      key={tileIndex}
                       type="button"
+                      // 1. Apply the 'is-claimed' class for styling
                       className={`bingo-field-button ${isClaimed ? "is-claimed" : ""}`}
+                      // 2. Use 'disabled' to prevent navigation to the camera
+                      disabled={isClaimed}
                       onClick={() => {
-                        // Navigate to the camera submission page with the specific tile ID
                         router.push(`/games/${gameId}/submission?tileId=${tileIndex}`);
                       }}
                     >
-                      <span className="tile-text">{word}</span>
+                      <span className="tile-text">
+                        {/* 3. Show a X or the word based on state */}
+                        {isClaimed ? "X" : word}
+                      </span>
                     </button>
                   );
                 })}
-
               </div>
             ))}
 
