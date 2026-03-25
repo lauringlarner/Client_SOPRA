@@ -45,7 +45,7 @@ export default function GameBoardPage() {
       <main className="phone-frame screen-gradient bingo-frame-layout">
         
         <section className="bingo-team-points-container" aria-label="Team Scores">
-          {teamScores.map((score, index) => (
+          {teamScores.map((score) => (
             <div key={score.teamName} className="bingo-team-points-card">
               <span className="bingo-team-points-card-text">{score.teamName}<br />Points:</span>
               <span className="bingo-team-points-card-points">{score.totalPoints}</span>
