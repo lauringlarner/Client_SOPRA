@@ -548,3 +548,197 @@ textarea {
 .login-button {
   width: 100%;
 }
+
+
+.bingo-screen-card-container{
+display: flex;
+width: 402px;
+height: 619px;
+padding: 0 20px;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+gap: 30px;
+flex-shrink: 0;
+background-color: var(--vq-aquamarine);
+}
+
+.bingo-frame-layout {
+  padding: clamp(44px, 18vh, 188px) 20px max(20px, env(safe-area-inset-bottom));
+  gap: 14px;
+}
+
+
+.bingo-panel {
+  background: var(--vq-aquamarine);
+  border-radius: var(--vq-radius);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 6vh, 41px);
+}
+
+.bingo-card{
+display: flex;
+padding: 5px 0;
+flex-direction: column;
+align-items: center;
+border-radius: 8px;
+background: var(--vq-aquamarine);
+}
+
+.bingo-row-frame{
+  display: flex;
+  padding: 3px 6px;
+  align-items: center;
+  gap: 3px;
+  align-self: stretch;
+}
+
+.bingo-field-button {
+  flex: 1;
+  /* 1. Force a square shape regardless of content */
+  aspect-ratio: 1 / 1; 
+  /* 2. Prevent the button from expanding horizontally */
+  min-width: 0; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px; /* Room for the text */
+  
+  background: #ffffff;
+  border: 1px solid var(--vq-border);
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden; /* Safety net */
+  transition: all 0.2s ease;
+}
+
+/* 1. Added Hover State (Desktop/Mouse) */
+.bingo-field-button:hover {
+  background-color: #f0fdfa; /* Subtle tint */
+  border-color: var(--vq-teal);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* 2. Added Active State (Mobile Tap feedback) */
+.bingo-field-button:active {
+  background-color: #f0fdfa; 
+  transform: scale(0.95); /* Shrinks slightly when pressed */
+  transition: all 0.05s;  /* Snappy response */
+}
+
+/* THE CLAIMED STATE: Non-clickable and Green */
+.bingo-field-button:disabled,
+.bingo-field-button.is-claimed {
+  background-color: var(--vq-teal) !important;
+  border-color: var(--vq-teal) !important;
+  cursor: default !important;
+  pointer-events: none; /* Disables all mouse/touch interactions */
+  box-shadow: none;
+  transform: none !important;
+}
+
+/* White text for better contrast on the green background */
+.bingo-field-button.is-claimed .tile-text {
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.tile-text {
+  /* 3. Typography settings for wrapping */
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  text-align: center;
+  
+  /* 4. The "Paragraph" logic */
+  display: block;
+  width: 100%;
+  word-wrap: break-word;   /* Breaks long words if they literally won't fit */
+  overflow-wrap: break-word;
+  white-space: normal;     /* Allows text to wrap to new lines like a paragraph */
+}
+
+.bingo-team-points-container {
+  display: flex;
+  padding: 10px 20px;
+  gap: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bingo-team-points-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 12px 12px 12px;
+  flex: 1;
+  background: var(--vq-aquamarine);
+  border-radius: 12px;
+  height: 140px;
+  box-sizing: border-box;
+}
+
+.bingo-team-points-card-text {
+  color: var(--vq-deep);
+  font-family: var(--font-geist-sans);
+  font-size: 20px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.1;
+  width: 100%;
+}
+
+.bingo-team-points-card-points {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  width: 100%;
+  background-color: var(--vq-text-light);
+  color: var(--vq-deep);
+  border-radius: 10px;
+  border: 1px solid var(--vq-border);
+  font-size: 48px;
+  font-weight: 500;
+  line-height: 1;
+  margin-top: auto;
+}
+
+.bingo-time-bar-container {
+  width: 100%;
+  padding: 0 20px;
+  margin-top: 15px; /* Added a bit more space from the cards */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centers the label and track horizontally */
+}
+
+.bingo-time-bar-label {
+  color: var(--vq-text-light);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-family: var(--font-geist-sans);
+  text-align: center;
+  width: 100%;
+}
+
+.bingo-time-bar-track {
+  width: 100%;
+  height: 12px;
+  background-color: var(--vq-charcoal);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--vq-border);
+}
+
+.bingo-time-bar-fill {
+  height: 100%;
+  background-color: var(--vq-aquamarine);
+  border-radius: 6px;
+  transition: width 1s linear;
+}
