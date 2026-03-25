@@ -30,12 +30,12 @@ reason).
 
 ---
 
-## Contributions Week 1 - [Begin Date] to [End Date]
+## Contributions Week 1 - [23.03.2026] to [29.03.2026]
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **[@githubUser1]** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **[@AleMarti0]** | [24.03.2026]   | [https://github.com/lauringlarner/Client_SOPRA/commit/105e4c3661e9a3615e7952afd5d02f0d572abf6f],[https://github.com/lauringlarner/Client_SOPRA/commit/acd1d35a39c5a7d0e019c5b18858f6bd8b04c9a7], [https://github.com/lauringlarner/Client_SOPRA/commit/ca743074ce70cc2fba5ca80a02c704a167fbbac7] | [Implemented Bingo card UI and state logic for captured vs. not captured fields.] | [Provides the central gameplay interface, allowing players to click and choose items to capture; backend not integrated yet.] |
+|                    | [25.03.2026]   | [https://github.com/lauringlarner/Client_SOPRA/commit/d76c7052ba76be075a72a5fd961eb6915dd09f2c] | [Camera & Image Preview: Full UI and capture logic.] | [Enables the core Bingo "Proof of Completion" workflow; provides the image input for Vertex AI validation; backend not integrated yet.] |
 | **[@githubUser2]** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **[@githubUser3]** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
