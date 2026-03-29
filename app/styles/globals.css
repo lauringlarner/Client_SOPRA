@@ -1001,3 +1001,128 @@ background: var(--vq-aquamarine);
   font-size: 14px;
   white-space: nowrap;
 }
+
+
+
+/* Layout & Title */
+.user-profile-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.user-profile-title {
+  color: #a3e0f3;
+  font-size: 3.2rem;
+  font-weight: 600;
+  margin-top: 5rem;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+/* The Cyan Cards */
+.user-profile-card, 
+.user-profile-nav-card {
+  background-color: #6bcce2; 
+  border-radius: 12px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.user-profile-card {
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.user-profile-nav-card {
+  padding: 1.2rem;
+}
+
+/* White Input Lookalikes */
+.info-group {
+  background-color: #ffffff;
+  border-radius: 10px;
+  padding: 0.7rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.info-label {
+  color: #7a7a7a;
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+
+.info-value {
+  color: #1e1e1e;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Buttons */
+.profile-actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 0.5rem;
+}
+
+.btn-profile-dark {
+  background-color: #22313a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.9rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex: 1;
+  transition: opacity 0.2s;
+}
+
+.btn-profile-full {
+  width: 100%;
+  padding: 1.1rem;
+}
+
+/* Form & Stats Specifics */
+.edit-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.edit-input-field {
+  border: none;
+  outline: none;
+  width: 100%;
+  background: transparent;
+  color: #1e1e1e;
+  font-size: 1rem;
+  padding: 0;
+  margin-top: 4px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
