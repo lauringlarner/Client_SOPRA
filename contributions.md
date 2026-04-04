@@ -54,7 +54,7 @@ reason).
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
 | **[@githubUser1]** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **[@githubUser2]** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **[@lauringlarner]** | [04.04.26]   | [https://github.com/lauringlarner/Server_SOPRA/commit/939973af82c38739504c39c9457246a0f4f7bf02] | [I further developed the picture analysis, i adjusted the input and output format to match our expections, then i added it as a Rest endpoint, i also further developed the game entity, to be more complete. ] | [Before our pictue ananlysis was only a proof of concepts, now i concentratet all fucntionalities. Now, a single rest endpoint is possible, there we can connect all logic.] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **[@githubUser3]** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
