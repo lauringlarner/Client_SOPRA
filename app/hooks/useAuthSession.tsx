@@ -5,14 +5,13 @@ import useLocalStorage from "@/hooks/useLocalStorage";
 
 const TOKEN_KEY = "token";
 const USER_ID_KEY = "userId";
-const MOCK_TOKEN = "mock-token";
 
 interface AuthSession {
   token: string;
   userId: string;
   loaded: boolean;
   isAuthenticated: boolean;
-  loginAsMock: (userId?: string) => void;
+  setSession: (token: string, userId: string) => void;
   logout: () => void;
 }
 
@@ -22,9 +21,9 @@ export function useAuthSession(): AuthSession {
 
   const loaded = tokenStorage.loaded && userIdStorage.loaded;
   const isAuthenticated = tokenStorage.value.trim() !== "";
-
-  const loginAsMock = useCallback((userId = "1"): void => {
-    tokenStorage.set(MOCK_TOKEN);
+  
+  const setSession = useCallback((token: string, userId: string): void => {
+    tokenStorage.set(token);
     userIdStorage.set(userId);
   }, [tokenStorage.set, userIdStorage.set]);
 
@@ -38,7 +37,7 @@ export function useAuthSession(): AuthSession {
     userId: userIdStorage.value,
     loaded,
     isAuthenticated,
-    loginAsMock,
+    setSession,
     logout,
   };
 }

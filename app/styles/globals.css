@@ -1126,3 +1126,50 @@ background: var(--vq-aquamarine);
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
+
+
+
+
+ .error-template {
+background-color: #ffffff;
+  color: #e53935; /* Professional Red */
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #ffcdd2;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  width: 100%;
+ }
+
+ /* Green text, white background, rounded corners */
+.success-template {
+  background-color: #ffffff;
+  color: #2e7d32; /* Professional Green */
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #c8e6c9;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  width: 100%;
+  animation: slideDown 0.2s ease-out;
+}
+
+/* Reusing your slide animation */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Helper for stats text in the card */
+.stat-value {
+  font-size: 1.5rem; 
+  font-weight: 700; 
+  color: #22313a;
+  display: block;
+}
