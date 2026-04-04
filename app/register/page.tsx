@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
-import { Color } from "antd/es/color-picker";
 
 const api = new ApiService();
 
@@ -21,23 +20,26 @@ export default function RegisterPage() {
 
     const formData = new FormData(event.currentTarget);
     const userData = Object.fromEntries(formData.entries());
+    const inputUsername = userData.username as string;
 
     try {
       // 1. Create the user (POST /users)
       await api.post("/users", userData);
 
       // 2. Immediately login to get the token (POST /users/login)
-      const loginData = await api.post<{ id: string; token: string }>(
+      const loginData = await api.post<{ id: string; token: string, username: string}>(
         "/users/login",
         {
-          username: userData.username,
+          username: inputUsername,
           password: userData.password,
         }
       );
 
-      // 3. Save session and redirect
-      setSession(loginData.token, loginData.id);
+
+      // 4. Save session and redirect
+      setSession(loginData.token, loginData.id, loginData.username);
       router.push("/menu");
+      
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -96,10 +98,10 @@ export default function RegisterPage() {
           <button 
             type="submit" 
             className="vq-button auth-submit" 
-            disabled={isSubmitting} // This makes the button not clickable
+            disabled={isSubmitting}
             style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
           >
-            Register
+            {isSubmitting ? "Registering..." : "Register"}
           </button>
         </form>
 

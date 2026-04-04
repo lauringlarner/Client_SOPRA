@@ -11,7 +11,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, setSession } = useAuthSession();
   
-  // State for error handling and submission status
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,23 +19,22 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setError("");
 
-    // Capture the username and password from the form
     const formData = new FormData(event.currentTarget);
     const credentials = Object.fromEntries(formData.entries());
+    const inputUsername = credentials.username as string;
 
     try {
-      // Calls your Spring Boot @PostMapping("/users/login")
-      // Expects UserLoginResponseDTO { id, token }
-      const loginData = await api.post<{ id: string; token: string }>(
+      // POST /users/login
+      const loginData = await api.post<{ id: string; token: string, username: string}>(
         "/users/login",
         credentials
       );
 
-      // Save real session data to localStorage via the hook
-      setSession(loginData.token, loginData.id);
+      // 2. Save real session data to localStorage via the hook
+      setSession(loginData.token, loginData.id, loginData.username);
+      
       router.push("/menu");
     } catch (err: unknown) {
-      // General error handling using our new CSS class
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -64,36 +62,38 @@ export default function LoginPage() {
         <h1 className="auth-title">Login &amp; Play</h1>
 
         <form className="auth-form-card" onSubmit={handleLogin}>
-          {/* Displaying error using the white-background/red-font template */}
           {error && <div className="error-template">{error}</div>}
 
           <label className="field-group">
             <span className="field-label">Username</span>
             <input
-              name="username" // Added name attribute for API call
+              name="username"
               className="field-input"
               placeholder="Enter username"
               required
+              disabled={isSubmitting}
             />
           </label>
 
           <label className="field-group">
             <span className="field-label">Password</span>
             <input
-              name="password" // Added name attribute for API call
+              name="password"
               className="field-input"
               type="password"
               placeholder="Enter password"
               required
+              disabled={isSubmitting}
             />
           </label>
 
           <button 
             type="submit" 
             className="vq-button auth-submit" 
-            disabled={isSubmitting} // Locks the button while submitting
+            disabled={isSubmitting}
+            style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
           >
-            Sign In
+            {isSubmitting ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
@@ -101,6 +101,7 @@ export default function LoginPage() {
           className="auth-link-button"
           type="button"
           onClick={() => router.push("/register")}
+          disabled={isSubmitting}
         >
           Don&apos;t have an account? Sign up!
         </button>
