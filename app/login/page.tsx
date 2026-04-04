@@ -1,17 +1,50 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { ApiService } from "@/api/apiService";
+
+const api = new ApiService();
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loaded, isAuthenticated, loginAsMock } = useAuthSession();
+  const { loaded, isAuthenticated, setSession } = useAuthSession();
+  
+  // State for error handling and submission status
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (event: React.FormEvent<HTMLFormElement>): void => {
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    loginAsMock();
-    router.push("/menu");
+    setIsSubmitting(true);
+    setError("");
+
+    // Capture the username and password from the form
+    const formData = new FormData(event.currentTarget);
+    const credentials = Object.fromEntries(formData.entries());
+
+    try {
+      // Calls your Spring Boot @PostMapping("/users/login")
+      // Expects UserLoginResponseDTO { id, token }
+      const loginData = await api.post<{ id: string; token: string }>(
+        "/users/login",
+        credentials
+      );
+
+      // Save real session data to localStorage via the hook
+      setSession(loginData.token, loginData.id);
+      router.push("/menu");
+    } catch (err: unknown) {
+      // General error handling using our new CSS class
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -31,9 +64,13 @@ export default function LoginPage() {
         <h1 className="auth-title">Login &amp; Play</h1>
 
         <form className="auth-form-card" onSubmit={handleLogin}>
+          {/* Displaying error using the white-background/red-font template */}
+          {error && <div className="error-template">{error}</div>}
+
           <label className="field-group">
             <span className="field-label">Username</span>
             <input
+              name="username" // Added name attribute for API call
               className="field-input"
               placeholder="Enter username"
               required
@@ -43,6 +80,7 @@ export default function LoginPage() {
           <label className="field-group">
             <span className="field-label">Password</span>
             <input
+              name="password" // Added name attribute for API call
               className="field-input"
               type="password"
               placeholder="Enter password"
@@ -50,7 +88,11 @@ export default function LoginPage() {
             />
           </label>
 
-          <button type="submit" className="vq-button auth-submit">
+          <button 
+            type="submit" 
+            className="vq-button auth-submit" 
+            disabled={isSubmitting} // Locks the button while submitting
+          >
             Sign In
           </button>
         </form>

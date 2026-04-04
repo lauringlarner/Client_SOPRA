@@ -12,6 +12,7 @@ interface AuthSession {
   userId: string;
   loaded: boolean;
   isAuthenticated: boolean;
+  setSession: (token: string, userId: string) => void;
   loginAsMock: (userId?: string) => void;
   logout: () => void;
 }
@@ -27,6 +28,12 @@ export function useAuthSession(): AuthSession {
     tokenStorage.set(MOCK_TOKEN);
     userIdStorage.set(userId);
   }, [tokenStorage.set, userIdStorage.set]);
+  
+  
+  const setSession = useCallback((token: string, userId: string): void => {
+    tokenStorage.set(token);
+    userIdStorage.set(userId);
+  }, [tokenStorage.set, userIdStorage.set]);
 
   const logout = useCallback((): void => {
     tokenStorage.clear();
@@ -38,6 +45,7 @@ export function useAuthSession(): AuthSession {
     userId: userIdStorage.value,
     loaded,
     isAuthenticated,
+    setSession,
     loginAsMock,
     logout,
   };

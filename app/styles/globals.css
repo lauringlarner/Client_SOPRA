@@ -1126,3 +1126,20 @@ background: var(--vq-aquamarine);
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
+
+
+
+
+ .error-template {
+background-color: #ffffff;
+  color: #e53935; /* Professional Red */
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #ffcdd2;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  width: 100%;
+ }
