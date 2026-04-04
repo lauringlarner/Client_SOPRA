@@ -1,57 +1,95 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { ApiService } from "@/api/apiService";
+
+const api = new ApiService();
+
+// Simplified: Only include what we actually use in the UI
+interface User {
+  id: string;
+  username: string;
+  status: string;
+  gamesPlayed: number;
+  gamesWon: number;
+}
 
 export default function UserProfilePage() {
   const router = useRouter();
-  // Destructure logout from your hook
-  const { loaded, isAuthenticated, logout } = useAuthSession();
+  const { loaded, isAuthenticated, logout, userId, token } = useAuthSession();
+  
   const [activeOverlay, setActiveOverlay] = useState<"edit" | "stats" | null>(null);
+  const [userData, setUserData] = useState<User | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [userData] = useState({
-    username: "exampleusername",
-    email: "example@email.com",
-  });
+  const fetchUserData = useCallback(async () => {
+    if (!userId || !token) return;
+    try {
+      const data = await api.get<User>(`/users/${userId}`, token);
+      setUserData(data);
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+    }
+  }, [userId, token]);
 
   useEffect(() => {
     if (loaded && !isAuthenticated) {
       router.replace("/login");
+    } else if (isAuthenticated) {
+      fetchUserData();
     }
-  }, [isAuthenticated, loaded, router]);
+  }, [isAuthenticated, loaded, router, fetchUserData]);
 
-  const handleSaveProfile = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSavePassword = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    setSuccess("");
     
     const formData = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(formData.entries());
+    const oldPassword = formData.get("oldPassword") as string;
+    const newPassword = formData.get("newPassword") as string;
 
-    // Basic logic check
-    if (payload.newPassword && !payload.oldPassword) {
-      alert("Please enter your current password to confirm changes.");
+    // 1. Instant check: Are they the same?
+    if (oldPassword === newPassword) {
+      setError("New password cannot be the same as the current one.");
+      setIsSubmitting(false);
       return;
     }
 
-    console.log("Sending Profile Package:", payload);
-
     try {
-      // 1. In a real app, you'd await your API call here
-      // await updateProfile(payload);
+      // 2. Call PUT /users/{id}/password
+      await api.put(`/users/${userId}/password`, {
+        oldPassword,
+        newPassword
+      }, token);
 
-      // 2. Use the hook's logout method (clears token & userId)
-      logout();
+      setSuccess("Password updated successfully! Logging out...");
 
-      // 3. Redirect to login
-      router.replace("/login");
+      setTimeout(() => {
+        logout();
+        router.replace("/login");
+      }, 2000);
       
-    } catch (error) {
-      console.error("Update failed:", error);
-      alert("Error saving profile. Please try again.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Error updating password. Please try again.");
+      }
+      setIsSubmitting(false);
     }
   };
 
-  if (!loaded || !isAuthenticated) return <div className="app-shell" />;
+  const winRate = userData && userData.gamesPlayed > 0 
+    ? Math.round((userData.gamesWon / userData.gamesPlayed) * 100) 
+    : 0;
+
+  if (!loaded || !isAuthenticated || !userData) return <div className="app-shell" />;
 
   return (
     <div className="app-shell">
@@ -63,15 +101,15 @@ export default function UserProfilePage() {
             <label className="info-label">Username</label>
             <div className="info-value">{userData.username}</div>
           </div>
-
           <div className="info-group">
-            <label className="info-label">E-Mail</label>
-            <div className="info-value">{userData.email}</div>
+            <label className="info-label">Status</label>
+            <div className="info-value" style={{ textTransform: 'capitalize' }}>
+              {userData.status.toLowerCase()}
+            </div>
           </div>
-
           <div className="profile-actions-row">
-            <button className="btn-profile-dark" onClick={() => setActiveOverlay("edit")}>
-              Edit profile
+            <button className="btn-profile-dark" onClick={() => { setError(""); setSuccess(""); setActiveOverlay("edit"); }}>
+              Change Password
             </button>
             <button className="btn-profile-dark" onClick={() => setActiveOverlay("stats")}>
               Show Stats
@@ -81,62 +119,39 @@ export default function UserProfilePage() {
 
         <section className="user-profile-nav-card">
           <button className="btn-profile-dark btn-profile-full" onClick={() => router.push("/menu")}>
-            Back to Main Menue
+            Back to Main Menu
+          </button>
+          <button className="btn-profile-dark btn-profile-full" style={{ marginTop: '10px', color: '#ff6b6b' }} onClick={logout}>
+            Logout
           </button>
         </section>
       </main>
 
       {activeOverlay === "edit" && (
-        <div className="overlay-backdrop" onClick={() => setActiveOverlay(null)}>
-          <form 
-            className="overlay-card" 
-            onClick={(e) => e.stopPropagation()} 
-            onSubmit={handleSaveProfile}
-          >
-            <h2 className="overlay-title">Edit Profile</h2>
+        <div className="overlay-backdrop" onClick={() => !isSubmitting && setActiveOverlay(null)}>
+          <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSavePassword}>
+            <h2 className="overlay-title">Update Password</h2>
             
+            {error && <div className="error-template">{error}</div>}
+            {success && <div className="success-template">{success}</div>}
+
             <div className="edit-form-stack">
               <div className="info-group">
-                <label className="info-label" htmlFor="username">Change Username</label>
-                <input 
-                  id="username"
-                  name="username" 
-                  className="edit-input-field" 
-                  defaultValue={userData.username}
-                  required 
-                />
-              </div>
-
-              <div className="info-group">
                 <label className="info-label" htmlFor="oldPassword">Current Password</label>
-                <input 
-                  id="oldPassword"
-                  name="oldPassword" 
-                  type="password"
-                  className="edit-input-field" 
-                  placeholder="••••••••" 
-                  required
-                />
+                <input id="oldPassword" name="oldPassword" type="password" className="edit-input-field" placeholder="••••••••" required disabled={isSubmitting || !!success} />
               </div>
-
               <div className="info-group">
                 <label className="info-label" htmlFor="newPassword">New Password</label>
-                <input 
-                  id="newPassword"
-                  name="newPassword" 
-                  type="password"
-                  className="edit-input-field" 
-                  placeholder="••••••••" 
-                />
+                <input id="newPassword" name="newPassword" type="password" className="edit-input-field" placeholder="••••••••" required disabled={isSubmitting || !!success} />
               </div>
             </div>
 
             <div className="overlay-actions">
-              <button type="button" className="vq-button" onClick={() => setActiveOverlay(null)}>
+              <button type="button" className="vq-button" onClick={() => setActiveOverlay(null)} disabled={isSubmitting}>
                 Cancel
               </button>
-              <button type="submit" className="vq-button" style={{ background: '#22313a' }}>
-                Save
+              <button type="submit" className="vq-button" style={{ background: '#22313a' }} disabled={isSubmitting || !!success}>
+                {isSubmitting ? "Updating..." : "Update"}
               </button>
             </div>
           </form>
@@ -147,14 +162,18 @@ export default function UserProfilePage() {
         <div className="overlay-backdrop" onClick={() => setActiveOverlay(null)}>
           <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
             <h2 className="overlay-title">Your Statistics</h2>
-            <div className="stats-grid">
+            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
               <div className="stat-card">
-                <span style={{ fontSize: '1.8rem', fontWeight: 700, color: '#22313a' }}>42</span>
-                <span className="info-label" style={{ fontWeight: 600 }}>Games</span>
+                <span className="stat-value">{userData.gamesPlayed}</span>
+                <span className="info-label">Games</span>
               </div>
               <div className="stat-card">
-                <span style={{ fontSize: '1.8rem', fontWeight: 700, color: '#22313a' }}>12</span>
-                <span className="info-label" style={{ fontWeight: 600 }}>Wins</span>
+                <span className="stat-value">{userData.gamesWon}</span>
+                <span className="info-label">Wins</span>
+              </div>
+              <div className="stat-card">
+                <span className="stat-value">{winRate}%</span>
+                <span className="info-label">Rate</span>
               </div>
             </div>
             <div className="overlay-actions overlay-actions-single">
