@@ -35,7 +35,7 @@ export default function GameBoardPage() {
 
   useEffect(() => {
     if (!loaded) return;
-    if (!isAuthenticated) router.replace("/login");
+    if (!isAuthenticated) router.replace("/");
   }, [isAuthenticated, loaded, router]);
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;

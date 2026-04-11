@@ -38,7 +38,7 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     if (loaded && !isAuthenticated) {
-      router.replace("/login");
+      router.replace("/");
     } else if (isAuthenticated) {
       fetchUserData();
     }
@@ -72,7 +72,7 @@ export default function UserProfilePage() {
 
       setTimeout(() => {
         logout();
-        router.replace("/login");
+        router.replace("/");
       }, 2000);
       
     } catch (err: unknown) {
@@ -121,7 +121,14 @@ export default function UserProfilePage() {
           <button className="btn-profile-dark btn-profile-full" onClick={() => router.push("/menu")}>
             Back to Main Menu
           </button>
-          <button className="btn-profile-dark btn-profile-full" style={{ marginTop: '10px', color: '#ff6b6b' }} onClick={logout}>
+          <button
+            className="btn-profile-dark btn-profile-full"
+            style={{ marginTop: '10px', color: '#ff6b6b' }}
+            onClick={() => {
+              logout();
+              router.replace("/");
+            }}
+          >
             Logout
           </button>
         </section>

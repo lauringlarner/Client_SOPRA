@@ -19,7 +19,7 @@ function CameraContent() {
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) {
-      router.replace("/login");
+      router.replace("/");
       return;
     }
 

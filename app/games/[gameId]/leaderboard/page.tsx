@@ -144,7 +144,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) {
-      router.replace("/login");
+      router.replace("/");
     }
   }, [isAuthenticated, loaded, router]);
 
