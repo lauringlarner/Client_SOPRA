@@ -1194,3 +1194,61 @@ background-color: #ffffff;
   cursor: wait;
   opacity: 0.8;
 }
+
+
+.rules-visual-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 20px 10px;
+  margin-top: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.preview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #ccc;
+}
+
+
+.preview-item .bingo-field-button {
+  width: 60px;
+  height: 60px;
+  cursor: default;
+  pointer-events: none;
+  font-size: 0.8rem;
+}
+
+
+.preview-item .loader {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.rules-bullet-list{
+
+  color: black;
+}
+
+.overlay-title{
+  text-align: center;
+  width: 100%;
+
+}
