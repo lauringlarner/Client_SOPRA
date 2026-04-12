@@ -13,7 +13,7 @@ const MOCK_WORDS = [
   "House", "Pen", "Red Umbrella", "Coffee Mug",
   "Blue Chair", "Laptop", "Bicycle", "Green Leaf",
   "Spectacles", "Wall Clock", "Running Shoe", "Cactus",
-  "Metal Key", "Book", "Water Bottle", "Desk Lamp"
+  "Metal Key", "Book", "Bottle", "Desk Lamp"
 ];
 
 const MOCK_SCORES: TeamScore[] = [
@@ -31,12 +31,29 @@ export default function GameBoardPage() {
 
   const [claimedTileIds] = useState<number[]>(MOCK_CLAIMED_TILES);
   const [teamScores] = useState<TeamScore[]>(MOCK_SCORES);
-  const [timeLeft] = useState(70); 
+
+  // State für das Wort, das im Hintergrund analysiert wird
+  const [pendingWord, setPendingWord] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loaded) return;
-    if (!isAuthenticated) router.replace("/");
-  }, [isAuthenticated, loaded, router]);
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+
+    // Prüft, ob ein Wort im LocalStorage als "in Prüfung" markiert ist
+    const checkPendingStatus = () => {
+      const storedWord = localStorage.getItem("pendingCheck");
+      if (storedWord !== pendingWord) {
+        setPendingWord(storedWord);
+      }
+    };
+
+    checkPendingStatus();
+    const interval = setInterval(checkPendingStatus, 500);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, loaded, router, pendingWord]);
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
@@ -71,21 +88,24 @@ export default function GameBoardPage() {
                   const tileIndex = rowIndex * 4 + colIndex;
                   const word = MOCK_WORDS[tileIndex];
                   const isClaimed = claimedTileIds.includes(tileIndex);
+                  const isAnalyzing = pendingWord === word;
 
                   return (
                     <button
                       key={`tile-${tileIndex}`}
                       type="button"
-                      className={`bingo-field-button ${isClaimed ? "is-claimed" : ""}`}
-                      disabled={isClaimed}
+                      className={`bingo-field-button ${isClaimed ? "is-claimed" : ""} ${isAnalyzing ? "is-analyzing" : ""}`}
+                      disabled={isClaimed || isAnalyzing}
                       onClick={() => {
                         if (gameId) {
-                          router.push(`/games/${gameId}/submission?tileId=${tileIndex}`);
+                          router.push(`/games/${gameId}/submission?tileWord=${encodeURIComponent(word)}`);
                         }
                       }}
                     >
-                      {isClaimed ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" className="claimed-icon-svg">
+                      {isAnalyzing ? (
+                        <div className="loader"></div>
+                      ) : isClaimed ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
                           <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                       ) : (

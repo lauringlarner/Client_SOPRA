@@ -441,7 +441,7 @@ textarea {
   font-size: 24px;
   font-weight: 600;
   line-height: 1.2;
-  text-align: left;
+  text-align: center;
   letter-spacing: -0.48px;
   margin: 0;
 }
@@ -1403,4 +1403,25 @@ background-color: #ffffff;
   font-weight: 700; 
   color: #22313a;
   display: block;
+}
+
+
+.loader {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #ffffff; /* Weißer Spinner auf dem Bingo-Feld */
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.is-analyzing {
+  cursor: wait;
+  opacity: 0.8;
 }
