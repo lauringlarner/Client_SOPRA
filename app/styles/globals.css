@@ -1014,15 +1014,33 @@ background: var(--vq-aquamarine);
   transition: all 0.05s;  /* Snappy response */
 }
 
-/* THE CLAIMED STATE: Non-clickable and Green */
+/* THE CLAIMED STATE */
 .bingo-field-button:disabled,
-.bingo-field-button.is-claimed {
-  background-color: var(--vq-teal) !important;
-  border-color: var(--vq-teal) !important;
+.bingo-field-button.is-claimed,
+.bingo-field-button.is-analyzing {
   cursor: default !important;
   pointer-events: none; /* Disables all mouse/touch interactions */
   box-shadow: none;
   transform: none !important;
+}
+
+.bingo-field-button.is-claimed {
+  color: #ffffff;
+}
+
+.bingo-field-button.is-claimed-friendly {
+  background-color: #95D6A2 !important;
+  border-color: #95D6A2 !important;
+}
+
+.bingo-field-button.is-claimed-enemy {
+  background-color: #FFCB88 !important;
+  border-color: #FFCB88 !important;
+}
+
+.bingo-field-button.is-analyzing {
+  background-color: var(--vq-teal) !important;
+  border-color: var(--vq-teal) !important;
 }
 
 /* White text for better contrast on the green background */
@@ -1065,6 +1083,14 @@ background: var(--vq-aquamarine);
   border-radius: 12px;
   height: 140px;
   box-sizing: border-box;
+}
+
+.bingo-team-points-card.is-friendly {
+  background: #95D6A2;
+}
+
+.bingo-team-points-card.is-enemy {
+  background: #FFCB88;
 }
 
 .bingo-team-points-card-text {

@@ -9,6 +9,8 @@ interface TeamScore {
   totalPoints: number;
 }
 
+type TeamName = "Team 1" | "Team 2";
+
 const MOCK_WORDS = [
   "House", "Pen", "Red Umbrella", "Coffee Mug",
   "Blue Chair", "Laptop", "Bicycle", "Green Leaf",
@@ -21,7 +23,21 @@ const MOCK_SCORES: TeamScore[] = [
   { teamName: "Team 2", totalPoints: 2 }
 ];
 
-const MOCK_CLAIMED_TILES = [0, 3, 7, 10];
+const MOCK_CLAIMED_TILES: Record<number, TeamName> = {
+  0: "Team 1",
+  3: "Team 2",
+  7: "Team 1",
+  10: "Team 2",
+};
+
+const MOCK_TIME_LEFT = 64;
+
+function normalizeTeamName(value: string | null): TeamName {
+  if (value === "Team 2" || value === "Team2") {
+    return "Team 2";
+  }
+  return "Team 1";
+}
 
 export default function GameBoardPage() {
   const router = useRouter();
@@ -29,8 +45,8 @@ export default function GameBoardPage() {
   const params = useParams();
   const gameId = params?.gameId as string;
 
-  const [claimedTileIds] = useState<number[]>(MOCK_CLAIMED_TILES);
   const [teamScores] = useState<TeamScore[]>(MOCK_SCORES);
+  const [myTeamName, setMyTeamName] = useState<TeamName>("Team 1");
 
   // State für das Wort, das im Hintergrund analysiert wird
   const [pendingWord, setPendingWord] = useState<string | null>(null);
@@ -51,6 +67,7 @@ export default function GameBoardPage() {
     };
 
     checkPendingStatus();
+    setMyTeamName(normalizeTeamName(localStorage.getItem("teamName")));
     const interval = setInterval(checkPendingStatus, 500);
     return () => clearInterval(interval);
   }, [isAuthenticated, loaded, router, pendingWord]);
@@ -63,7 +80,10 @@ export default function GameBoardPage() {
         
         <section className="bingo-team-points-container" aria-label="Team Scores">
           {teamScores.map((score) => (
-            <div key={score.teamName} className="bingo-team-points-card">
+            <div
+              key={score.teamName}
+              className={`bingo-team-points-card ${score.teamName === myTeamName ? "is-friendly" : "is-enemy"}`}
+            >
               <span className="bingo-team-points-card-text">{score.teamName}<br />Points:</span>
               <span className="bingo-team-points-card-points">{score.totalPoints}</span>
             </div>
@@ -75,7 +95,7 @@ export default function GameBoardPage() {
           <div className="bingo-time-bar-track">
             <div 
               className="bingo-time-bar-fill" 
-              style={{ width: `${timeLeft}%` }} 
+              style={{ width: `${MOCK_TIME_LEFT}%` }} 
             />
           </div>
         </div>
@@ -87,14 +107,20 @@ export default function GameBoardPage() {
                 {[0, 1, 2, 3].map((colIndex) => {
                   const tileIndex = rowIndex * 4 + colIndex;
                   const word = MOCK_WORDS[tileIndex];
-                  const isClaimed = claimedTileIds.includes(tileIndex);
+                  const claimedByTeam = MOCK_CLAIMED_TILES[tileIndex];
+                  const isClaimed = claimedByTeam !== undefined;
                   const isAnalyzing = pendingWord === word;
+                  const claimedClass = !isClaimed
+                    ? ""
+                    : claimedByTeam === myTeamName
+                      ? "is-claimed-friendly"
+                      : "is-claimed-enemy";
 
                   return (
                     <button
                       key={`tile-${tileIndex}`}
                       type="button"
-                      className={`bingo-field-button ${isClaimed ? "is-claimed" : ""} ${isAnalyzing ? "is-analyzing" : ""}`}
+                      className={`bingo-field-button ${isClaimed ? `is-claimed ${claimedClass}` : ""} ${isAnalyzing ? "is-analyzing" : ""}`}
                       disabled={isClaimed || isAnalyzing}
                       onClick={() => {
                         if (gameId) {
