@@ -337,21 +337,22 @@ function getLobbyErrorMessage(
 }
 
 function getStoredLobbyId(userId: string): string {
-  if (typeof window === "undefined" || userId.trim() === "") {
+  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "") {
     return "";
   }
 
-  return window.localStorage.getItem(`vq.activeLobbyId.${userId}`) ?? "";
+  return globalThis.localStorage.getItem(`vq.activeLobbyId.${userId}`) ?? "";
 }
 
 function setStoredLobbyId(userId: string, lobbyId: string): void {
   if (
-    typeof window === "undefined" ||
+    typeof globalThis === "undefined" ||
+    !("localStorage" in globalThis) ||
     userId.trim() === "" ||
     lobbyId.trim() === ""
   ) {
     return;
   }
 
-  window.localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
+  globalThis.localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
 }

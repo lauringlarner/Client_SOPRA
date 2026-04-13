@@ -541,25 +541,26 @@ function getLobbyErrorMessage(
 
 function setStoredLobbyId(userId: string, lobbyId: string): void {
   if (
-    typeof window === "undefined" ||
+    typeof globalThis === "undefined" ||
+    !("localStorage" in globalThis) ||
     userId.trim() === "" ||
     lobbyId.trim() === ""
   ) {
     return;
   }
 
-  window.localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
+  globalThis.localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
 }
 
 function clearStoredLobbyId(userId: string, lobbyId: string): void {
-  if (typeof window === "undefined" || userId.trim() === "") {
+  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "") {
     return;
   }
 
   const key = `vq.activeLobbyId.${userId}`;
-  if (window.localStorage.getItem(key) !== lobbyId) {
+  if (globalThis.localStorage.getItem(key) !== lobbyId) {
     return;
   }
 
-  window.localStorage.removeItem(key);
+  globalThis.localStorage.removeItem(key);
 }
