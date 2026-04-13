@@ -21,7 +21,6 @@ export default function LoginPage() {
 
     const formData = new FormData(event.currentTarget);
     const credentials = Object.fromEntries(formData.entries());
-    const inputUsername = credentials.username as string;
 
     try {
       // POST /users/login
