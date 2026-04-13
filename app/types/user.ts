@@ -1,7 +1,13 @@
 export interface User {
-  id: string | null;
-  name: string | null;
-  username: string | null;
-  token: string | null;
-  status: string | null;
+  id: number | string;
+  username: string;
+  status: string;
+  creation_date: string;
+  bio: string;
+  // Optional legacy field from milestone template.
+  name?: string;
+}
+
+export interface AuthUser extends User {
+  token: string;
 }

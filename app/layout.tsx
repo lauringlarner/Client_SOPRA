@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Student XX-XXX-XXX",
-  description: "sopra-fs26-template-client",
+  title: "VisionQuest",
+  description: "sopra-fs26-group18-client",
 };
 
 export default function RootLayout({
@@ -25,8 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable}`}
+      >
         <ConfigProvider
           theme={{
             algorithm: theme.defaultAlgorithm,
@@ -44,17 +47,14 @@ export default function RootLayout({
             components: {
               Button: {
                 colorPrimary: "#75bd9d", // this will color all buttons in #75bd9d, overriding the default primaryColor #22426b set in token line 35
-                algorithm: true, // enable algorithm (redundant with line 33 but here for demo purposes)
                 controlHeight: 38,
               },
               Input: {
                 colorBorder: "gray", // color boarder selected is not overridden but instead is set by primary color in line 35
                 colorTextPlaceholder: "#888888",
-                algorithm: false, // disable algorithm (line 32)
               },
               Form: {
                 labelColor: "#fff",
-                algorithm: theme.defaultAlgorithm, // specify a specifc algorithm instead of true/false
               },
               Card: {},
             },

@@ -3,14 +3,21 @@ import { ApplicationError } from "@/types/error";
 
 export class ApiService {
   private baseURL: string;
-  private defaultHeaders: HeadersInit;
+  private defaultHeaders: Record<string, string>;
 
   constructor() {
     this.baseURL = getApiDomain();
     this.defaultHeaders = {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     };
+  }
+
+  private createHeaders(token?: string): HeadersInit {
+    const headers: Record<string, string> = { ...this.defaultHeaders };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    return headers;
   }
 
   /**
@@ -30,7 +37,9 @@ export class ApiService {
       let errorDetail = res.statusText;
       try {
         const errorInfo = await res.json();
-        if (errorInfo?.message) {
+        if (errorInfo?.reason) {
+          errorDetail = errorInfo.reason;
+        } else if (errorInfo?.message) {
           errorDetail = errorInfo.message;
         } else {
           errorDetail = JSON.stringify(errorInfo);
@@ -50,6 +59,11 @@ export class ApiService {
       error.status = res.status;
       throw error;
     }
+
+    if (res.status === 204 || res.status === 205) {
+      return undefined as T;
+    }
+
     return res.headers.get("Content-Type")?.includes("application/json")
       ? (res.json() as Promise<T>)
       : Promise.resolve(res as T);
@@ -58,13 +72,14 @@ export class ApiService {
   /**
    * GET request.
    * @param endpoint - The API endpoint (e.g. "/users").
+   * @param token - Optional bearer token.
    * @returns JSON data of type T.
    */
-  public async get<T>(endpoint: string): Promise<T> {
+  public async get<T>(endpoint: string, token?: string): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "GET",
-      headers: this.defaultHeaders,
+      headers: this.createHeaders(token),
     });
     return this.processResponse<T>(
       res,
@@ -76,15 +91,23 @@ export class ApiService {
    * POST request.
    * @param endpoint - The API endpoint (e.g. "/users").
    * @param data - The payload to post.
+   * @param token - Optional bearer token.
    * @returns JSON data of type T.
    */
-  public async post<T>(endpoint: string, data: unknown): Promise<T> {
+  public async post<T>(
+    endpoint: string,
+    data?: unknown,
+    token?: string,
+  ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const res = await fetch(url, {
+    const request: RequestInit = {
       method: "POST",
-      headers: this.defaultHeaders,
-      body: JSON.stringify(data),
-    });
+      headers: this.createHeaders(token),
+    };
+    if (data !== undefined) {
+      request.body = JSON.stringify(data);
+    }
+    const res = await fetch(url, request);
     return this.processResponse<T>(
       res,
       "An error occurred while posting the data.\n",
@@ -95,13 +118,18 @@ export class ApiService {
    * PUT request.
    * @param endpoint - The API endpoint (e.g. "/users/123").
    * @param data - The payload to update.
+   * @param token - Optional bearer token.
    * @returns JSON data of type T.
    */
-  public async put<T>(endpoint: string, data: unknown): Promise<T> {
+  public async put<T>(
+    endpoint: string,
+    data: unknown,
+    token?: string,
+  ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "PUT",
-      headers: this.defaultHeaders,
+      headers: this.createHeaders(token),
       body: JSON.stringify(data),
     });
     return this.processResponse<T>(
@@ -113,13 +141,14 @@ export class ApiService {
   /**
    * DELETE request.
    * @param endpoint - The API endpoint (e.g. "/users/123").
+   * @param token - Optional bearer token.
    * @returns JSON data of type T.
    */
-  public async delete<T>(endpoint: string): Promise<T> {
+  public async delete<T>(endpoint: string, token?: string): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "DELETE",
-      headers: this.defaultHeaders,
+      headers: this.createHeaders(token),
     });
     return this.processResponse<T>(
       res,

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface LocalStorage<T> {
   value: T;
+  loaded: boolean;
   set: (newVal: T) => void;
   clear: () => void;
 }
@@ -26,35 +27,41 @@ export default function useLocalStorage<T>(
   defaultValue: T,
 ): LocalStorage<T> {
   const [value, setValue] = useState<T>(defaultValue);
+  const [loaded, setLoaded] = useState<boolean>(false);
 
   // On mount, try to read the stored value
   useEffect(() => {
-    if (typeof window === "undefined") return; // SSR safeguard
+    if (typeof window === "undefined") {
+      setLoaded(true);
+      return;
+    }
     try {
       const stored = globalThis.localStorage.getItem(key);
-      if (stored) {
+      if (stored !== null) {
         setValue(JSON.parse(stored) as T);
       }
     } catch (error) {
       console.error(`Error reading localStorage key "${key}":`, error);
+    } finally {
+      setLoaded(true);
     }
   }, [key]);
 
   // Simple setter that updates both state and localStorage
-  const set = (newVal: T) => {
+  const set = useCallback((newVal: T) => {
     setValue(newVal);
     if (typeof window !== "undefined") {
       globalThis.localStorage.setItem(key, JSON.stringify(newVal));
     }
-  };
+  }, [key]);
 
   // Removes the key from localStorage and resets the state
-  const clear = () => {
+  const clear = useCallback(() => {
     setValue(defaultValue);
     if (typeof window !== "undefined") {
       globalThis.localStorage.removeItem(key);
     }
-  };
+  }, [defaultValue, key]);
 
-  return { value, set, clear };
+  return { value, loaded, set, clear };
 }
