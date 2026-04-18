@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
@@ -13,8 +13,9 @@ export default function LobbyPage() {
   const api = useApi();
   const router = useRouter();
   const { token, userId, isAuthenticated, loaded } = useAuthSession();
-  const params = useParams<{ lobbyId: string }>();
-  const lobbyId = params?.lobbyId;
+  
+  const params = useParams();
+  const lobbyId = typeof params?.lobbyId === "string" ? params.lobbyId : null;
 
   const [lobby, setLobby] = useState<LobbyDetails | null>(null);
   const [connection, setConnection] = useState<"connecting" | "live" | "error">("connecting");
@@ -30,49 +31,46 @@ export default function LobbyPage() {
   const isHost = me?.isHost ?? false;
   const allReady = (lobby?.lobbyPlayers.length ?? 0) >= 2 && lobby?.lobbyPlayers.every((p: LobbyPlayer) => p.isReady);
 
-  // 1. SSE Stream
+  // 1. SSE Stream: Manages the real-time connection
   useEffect(() => {
     if (!loaded || !isAuthenticated || !lobbyId) return;
     
-    return client.subscribeToLobby(lobbyId, (data) => {
-      setLobby(data);
-      setConnection("live");
-    }, () => setConnection("error"));
+    const unsubscribe = client.subscribeToLobby(
+      lobbyId, 
+      (data) => {
+        setLobby(data);
+        setConnection("live");
+      }, 
+      () => setConnection("error")
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [client, lobbyId, loaded, isAuthenticated]);
 
-  // 2. Automatischer Start-Flow (Init & Redirect)
+  // 2. Automated Redirect: Move to game screen once gameId is assigned
   useEffect(() => {
     if (lobby?.gameId && lobbyId) {
-      const finalize = async () => {
-        try {
-          if (isHost) {
-            // Leaderboard Initialisierung mit leerem Objekt statt undefined (Vermeidung 400er)
-            await api.post(`/lobbies/${lobbyId}/games/${lobby.gameId}/leaderboard`, {}, token);
-          }
-        } catch (e) {
-          console.error("Leaderboard init failed", e);
-        } finally {
-          router.replace(`/lobbies/${lobbyId}/games/${lobby.gameId}`);
-        }
-      };
-      void finalize();
+      router.replace(`/lobbies/${lobbyId}/games/${lobby.gameId}`);
     }
-  }, [lobby?.gameId, lobbyId, isHost, api, token, router]);
+  }, [lobby?.gameId, lobbyId, router]);
 
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     if (!lobbyId) return;
     setPending(true);
     setMsg({ text: "Starting game...", tone: "info" });
     try {
       await client.startLobby(lobbyId);
+      // We don't redirect here manually; the SSE update will trigger the useEffect above
     } catch (e: unknown) {
       const error = e as Error;
       setMsg({ text: error.message || "Failed to start", tone: "error" });
       setPending(false);
     }
-  };
+  }, [client, lobbyId]);
 
-  const handleLeave = async () => {
+  const handleLeave = useCallback(async () => {
     if (!lobbyId) {
       router.push("/menu");
       return;
@@ -90,7 +88,7 @@ export default function LobbyPage() {
       localStorage.removeItem(`vq.activeLobbyId.${lobbyId}`);
       router.push("/menu");
     }
-  };
+  }, [client, lobbyId, isHost, router]);
 
   if (!loaded || !isAuthenticated) return null;
 
@@ -108,7 +106,9 @@ export default function LobbyPage() {
             </span>
           </div>
           <div className="lobby-code-box">
-            {lobby?.joinCode ? lobby.joinCode.toUpperCase().replace(/(.{3})/g, "$1 ").trim() : "------"}
+            {lobby?.joinCode 
+              ? lobby.joinCode.toUpperCase().replace(/(.{3})/g, "$1 ").trim() 
+              : "------"}
           </div>
         </section>
 

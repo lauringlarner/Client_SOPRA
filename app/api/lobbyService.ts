@@ -11,7 +11,6 @@ import { getApiDomain } from "@/utils/domain";
 
 /**
  * Präzise Definitionen der Backend-Antworten.
- * Verhindert Fehler beim Vercel-Linting.
  */
 interface BackendPlayer {
   id: string;
@@ -78,6 +77,7 @@ export function createLobbyClient({ api, token }: { api: ApiService; token: stri
     },
     async startLobby(lId) {
       await api.post(`/lobbies/${lId}/start`, {}, token);
+      // Backend gibt gameId oft erst via SSE zurück, daher hier undefined
       return { gameId: undefined, source: "remote" };
     },
     async deleteLobby(lId) { await api.delete(`/lobbies/${lId}`, token); },
@@ -85,13 +85,20 @@ export function createLobbyClient({ api, token }: { api: ApiService; token: stri
     
     subscribeToLobby: (lobbyId, onUpdate, onError) => {
       const controller = new AbortController();
-      void (async () => {
+      
+      // Benannte Funktion statt "void async" für bessere Lesbarkeit und Linting-Compliance
+      const establishStream = async () => {
         try {
           const response = await fetch(`${getApiDomain()}/lobbies/${lobbyId}/stream`, {
-            headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
+            headers: { 
+              Authorization: `Bearer ${token}`, 
+              Accept: "text/event-stream" 
+            },
             signal: controller.signal,
           });
-          if (!response.ok) throw new Error("Stream failed");
+
+          if (!response.ok) throw new Error(`Stream failed with status ${response.status}`);
+          
           const reader = response.body?.getReader();
           if (!reader) throw new Error("No reader available");
           
@@ -101,9 +108,13 @@ export function createLobbyClient({ api, token }: { api: ApiService; token: stri
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+
             buffer += decoder.decode(value, { stream: true });
             const parts = buffer.split("\n\n");
+            
+            // Letzten (unvollständigen) Teil zurück in den Buffer
             buffer = parts.pop() || "";
+            
             for (const part of parts) {
               const lobby = parseLobbySseEvent(part);
               if (lobby) onUpdate(lobby);
@@ -114,23 +125,37 @@ export function createLobbyClient({ api, token }: { api: ApiService; token: stri
             onError(normalizeApplicationError(e));
           }
         }
-      })();
-      return () => controller.abort();
+      };
+
+      establishStream();
+      
+      return () => {
+        controller.abort();
+      };
     },
   };
 }
 
 function parseLobbySseEvent(segment: string): LobbyDetails | null {
+  if (!segment.trim()) return null;
+  
   const lines = segment.split("\n");
   let data = "";
   for (const line of lines) {
-    if (line.startsWith("data:")) data += line.replace("data:", "").trim();
+    if (line.startsWith("data:")) {
+      data += line.replace("data:", "").trim();
+    }
   }
+  
   if (!data) return null;
+  
   try {
     const parsed = JSON.parse(data) as BackendLobby;
     return normalizeLobbyDetails(parsed);
-  } catch { return null; }
+  } catch (e) {
+    console.error("SSE Parse Error", e);
+    return null;
+  }
 }
 
 function normalizeLobbyDetails(v: BackendLobby): LobbyDetails {
@@ -138,7 +163,6 @@ function normalizeLobbyDetails(v: BackendLobby): LobbyDetails {
     id: v.id,
     joinCode: v.joinCode || v.code || "",
     gameDuration: v.gameDuration,
-    // Fix: Nutze undefined statt null für string | undefined Typen
     gameId: v.gameId ?? undefined,
     bingoBoardSize: v.bingoBoardSize || 4,
     lobbyPlayers: (v.lobbyPlayers || []).map(normalizeLobbyPlayer),
@@ -151,7 +175,7 @@ function normalizeLobbyPlayer(p: BackendPlayer): LobbyPlayer {
     isHost: p.isHost,
     isReady: p.isReady,
     joinedAt: p.joinedAt,
-    // Da LobbyTeam anscheinend null statt undefined erwartet:
+    // Sicherstellen, dass nur gültige Team-Typen gemappt werden
     team: (p.teamType === "Team1" || p.teamType === "Team2") ? p.teamType : null,
     user: {
       id: p.user.id,
@@ -166,11 +190,10 @@ function normalizeLobbyPlayer(p: BackendPlayer): LobbyPlayer {
 }
 
 function normalizeApplicationError(error: unknown): ApplicationError {
-  const e = new Error(
-    error instanceof Error ? error.message : "Unknown error"
-  ) as ApplicationError;
+  const message = error instanceof Error ? error.message : "Unknown error";
+  const e = new Error(message) as ApplicationError;
   
-  if (typeof error === 'object' && error !== null && 'status' in error) {
+  if (error && typeof error === 'object' && 'status' in error) {
     e.status = (error as { status: number }).status;
   } else {
     e.status = 500;
