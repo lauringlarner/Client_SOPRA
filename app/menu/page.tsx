@@ -22,7 +22,6 @@ export default function MenuPage() {
   const lobbyClient = useMemo(() => createLobbyClient({
     api,
     token,
-    userId,
   }), [api, token, userId]);
 
   useEffect(() => {
