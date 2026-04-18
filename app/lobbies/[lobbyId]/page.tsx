@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { LobbyDetails, LobbyPlayer, LobbySelectableTeam, getLobbyTeamLabel, LOBBY_TEAMS, LobbyTeam } from "@/types/lobby";
+import { LobbyDetails, LobbyPlayer, getLobbyTeamLabel, LOBBY_TEAMS, LobbyTeam } from "@/types/lobby";
 
 const TEAM_SECTIONS: LobbyTeam[] = [...LOBBY_TEAMS, null];
 
@@ -13,7 +13,8 @@ export default function LobbyPage() {
   const api = useApi();
   const router = useRouter();
   const { token, userId, isAuthenticated, loaded } = useAuthSession();
-  const { lobbyId } = useParams<{ lobbyId: string }>();
+  const params = useParams<{ lobbyId: string }>();
+  const lobbyId = params?.lobbyId;
 
   const [lobby, setLobby] = useState<LobbyDetails | null>(null);
   const [connection, setConnection] = useState<"connecting" | "live" | "error">("connecting");
@@ -21,13 +22,18 @@ export default function LobbyPage() {
   const [msg, setMsg] = useState<{ text: string; tone: "info" | "error" } | null>(null);
 
   const client = useMemo(() => createLobbyClient({ api, token }), [api, token]);
-  const me = lobby?.lobbyPlayers.find(p => p.user.id === userId) || null;
+  
+  const me = useMemo(() => 
+    lobby?.lobbyPlayers.find((p: LobbyPlayer) => p.user.id === userId) || null, 
+  [lobby, userId]);
+
   const isHost = me?.isHost ?? false;
-  const allReady = (lobby?.lobbyPlayers.length ?? 0) >= 2 && lobby?.lobbyPlayers.every(p => p.isReady);
+  const allReady = (lobby?.lobbyPlayers.length ?? 0) >= 2 && lobby?.lobbyPlayers.every((p: LobbyPlayer) => p.isReady);
 
   // 1. SSE Stream
   useEffect(() => {
-    if (!loaded || !isAuthenticated) return;
+    if (!loaded || !isAuthenticated || !lobbyId) return;
+    
     return client.subscribeToLobby(lobbyId, (data) => {
       setLobby(data);
       setConnection("live");
@@ -36,17 +42,16 @@ export default function LobbyPage() {
 
   // 2. Automatischer Start-Flow (Init & Redirect)
   useEffect(() => {
-    if (lobby?.gameId) {
+    if (lobby?.gameId && lobbyId) {
       const finalize = async () => {
         try {
           if (isHost) {
-            // Leaderboard Initialisierung: /lobbies/{lId}/games/{gId}/leaderboard
-            await api.post(`/lobbies/${lobbyId}/games/${lobby.gameId}/leaderboard`, undefined, token);
+            // Leaderboard Initialisierung mit leerem Objekt statt undefined (Vermeidung 400er)
+            await api.post(`/lobbies/${lobbyId}/games/${lobby.gameId}/leaderboard`, {}, token);
           }
         } catch (e) {
           console.error("Leaderboard init failed", e);
         } finally {
-          // Redirect zur hierarchischen URL: /lobbies/{lId}/games/{gId}
           router.replace(`/lobbies/${lobbyId}/games/${lobby.gameId}`);
         }
       };
@@ -55,13 +60,35 @@ export default function LobbyPage() {
   }, [lobby?.gameId, lobbyId, isHost, api, token, router]);
 
   const handleStart = async () => {
+    if (!lobbyId) return;
     setPending(true);
     setMsg({ text: "Starting game...", tone: "info" });
     try {
       await client.startLobby(lobbyId);
-    } catch (e: any) {
-      setMsg({ text: e.message || "Failed to start", tone: "error" });
+    } catch (e: unknown) {
+      const error = e as Error;
+      setMsg({ text: error.message || "Failed to start", tone: "error" });
       setPending(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!lobbyId) {
+      router.push("/menu");
+      return;
+    }
+    setPending(true);
+    try {
+      if (isHost) {
+        await client.deleteLobby(lobbyId);
+      } else {
+        await client.leaveLobby(lobbyId);
+      }
+    } catch (e) {
+      console.error("Leave failed", e);
+    } finally {
+      localStorage.removeItem(`vq.activeLobbyId.${lobbyId}`);
+      router.push("/menu");
     }
   };
 
@@ -70,7 +97,6 @@ export default function LobbyPage() {
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient lobby-layout">
-        {/* Code Card */}
         <section className="lobby-card lobby-code-card">
           <div className="lobby-code-header">
             <div>
@@ -94,7 +120,6 @@ export default function LobbyPage() {
 
         {lobby && (
           <>
-            {/* My Status */}
             <section className="lobby-card lobby-me-card">
               <div className="lobby-me-header">
                 <h2 className="lobby-section-title">Your Seat</h2>
@@ -105,25 +130,26 @@ export default function LobbyPage() {
               <div className="lobby-team-selector">
                 {LOBBY_TEAMS.map(t => (
                   <button key={t} className={`vq-button ${me?.team === t ? "is-selected" : ""}`}
-                    onClick={() => client.updatePlayerTeam(lobbyId, me!.id, t)}>
+                    disabled={pending}
+                    onClick={() => lobbyId && me && client.updatePlayerTeam(lobbyId, me.id, t)}>
                     {getLobbyTeamLabel(t)}
                   </button>
                 ))}
               </div>
               <button className={`vq-button ${me?.isReady ? "is-ready" : ""}`}
-                disabled={!me?.team || pending} onClick={() => client.updatePlayerReady(lobbyId, me!.id, !me?.isReady)}>
+                disabled={!me?.team || pending || !lobbyId} 
+                onClick={() => lobbyId && me && client.updatePlayerReady(lobbyId, me.id, !me.isReady)}>
                 {me?.isReady ? "CANCEL READY" : "CONFIRM READY"}
               </button>
             </section>
 
-            {/* Team Player Lists */}
             {TEAM_SECTIONS.map(team => (
               <section key={team ?? "none"} className="lobby-card lobby-team-card">
                 <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
                 <div className="lobby-team-list">
-                  {lobby.lobbyPlayers.filter(p => p.team === team).map(p => (
+                  {lobby.lobbyPlayers.filter((p: LobbyPlayer) => p.team === team).map((p: LobbyPlayer) => (
                     <div key={p.id} className={`lobby-player-item ${p.user.id === userId ? "is-self" : ""}`}>
-                      <span className="lobby-player-icon">{p.user.username.charAt(0)}</span>
+                      <span className="lobby-player-icon">{p.user.username.charAt(0).toUpperCase()}</span>
                       <div className="lobby-player-copy">
                         <span className="lobby-player-name">{p.user.username}</span>
                         <span className="lobby-player-team">{p.isHost ? "Host" : "Player"}</span>
@@ -137,7 +163,6 @@ export default function LobbyPage() {
               </section>
             ))}
 
-            {/* Footer Actions */}
             <section className="lobby-action-bar">
               {isHost ? (
                 <button className="vq-button is-primary" disabled={!allReady || pending} onClick={handleStart}>
@@ -146,7 +171,9 @@ export default function LobbyPage() {
               ) : (
                 <div className="lobby-action-note">Waiting for host to start</div>
               )}
-              <button className="vq-button" onClick={() => router.push("/menu")}>LEAVE</button>
+              <button className="vq-button" disabled={pending} onClick={handleLeave}>
+                {pending ? "LEAVING..." : "LEAVE"}
+              </button>
             </section>
           </>
         )}
