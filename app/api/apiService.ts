@@ -12,8 +12,10 @@ export class ApiService {
     };
   }
 
-  private createHeaders(token?: string): HeadersInit {
-    const headers: Record<string, string> = { ...this.defaultHeaders };
+  private createHeaders(token?: string, includeJsonContentType: boolean = true): HeadersInit {
+    const headers: Record<string, string> = includeJsonContentType
+      ? { ...this.defaultHeaders }
+      : {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
@@ -76,18 +78,18 @@ export class ApiService {
    * @returns JSON data of type T.
    */
   public async get<T>(endpoint: string, token?: string): Promise<T> {
-  const url = `${this.baseURL}${endpoint}`;
+    const url = `${this.baseURL}${endpoint}`;
 
-  const res = await fetch(url, {
-    method: "GET",
-    headers: this.createHeaders(token),
-  });
+    const res = await fetch(url, {
+      method: "GET",
+      headers: this.createHeaders(token),
+    });
 
-  return this.processResponse<T>(
-    res,
-    "An error occurred while fetching the data.\n",
-  );
-}
+    return this.processResponse<T>(
+      res,
+      "An error occurred while fetching the data.\n",
+    );
+  }
 
   /**
    * POST request.
@@ -102,12 +104,17 @@ export class ApiService {
     token?: string,
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+    const isFormData = data instanceof FormData;
     const request: RequestInit = {
       method: "POST",
-      headers: this.createHeaders(token),
+      headers: this.createHeaders(token, !isFormData),
     };
     if (data !== undefined) {
-      request.body = JSON.stringify(data);
+      if (isFormData) {
+        request.body = data;
+      } else {
+        request.body = JSON.stringify(data);
+      }
     }
     const res = await fetch(url, request);
     return this.processResponse<T>(

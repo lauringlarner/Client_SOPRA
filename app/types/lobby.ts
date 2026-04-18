@@ -25,24 +25,21 @@ export interface LobbyPlayer {
 }
 
 export interface LobbyDetails {
-  bingoBoardSize: number;
+  createdAt?: string;
   gameDuration: number;
   gameId?: string;
   id: string;
   joinCode: string;
   lobbyPlayers: LobbyPlayer[];
-  startedAt?: string;
 }
 
 export interface JoinLobbyResult {
   joinCode: string;
   lobbyId: string;
-  source: "mock" | "remote";
 }
 
 export interface StartLobbyResult {
   gameId?: string;
-  source: "mock" | "remote";
 }
 
 export function getLobbyTeamLabel(team: LobbyTeam): string {

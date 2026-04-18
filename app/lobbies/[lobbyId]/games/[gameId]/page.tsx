@@ -43,6 +43,7 @@ export default function GameBoardPage() {
   const router = useRouter();
   const { loaded, isAuthenticated } = useAuthSession();
   const params = useParams();
+  const lobbyId = params?.lobbyId as string;
   const gameId = params?.gameId as string;
 
   const [teamScores] = useState<TeamScore[]>(MOCK_SCORES);
@@ -123,8 +124,8 @@ export default function GameBoardPage() {
                       className={`bingo-field-button ${isClaimed ? `is-claimed ${claimedClass}` : ""} ${isAnalyzing ? "is-analyzing" : ""}`}
                       disabled={isClaimed || isAnalyzing}
                       onClick={() => {
-                        if (gameId) {
-                          router.push(`/games/${gameId}/submission?tileWord=${encodeURIComponent(word)}`);
+                        if (lobbyId && gameId) {
+                          router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(word)}`);
                         }
                       }}
                     >

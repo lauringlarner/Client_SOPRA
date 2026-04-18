@@ -76,10 +76,10 @@ export default function LeaderboardPage() {
               <h2 className="confirm-title">Leaving Lobby</h2>
               <p className="confirm-text">Are you sure you want to exit the game results?</p>
               <div className="confirm-actions">
-                <button className="confirm-btn cancel" onClick={() => setShowConfirm(false)}>
+                <button type="button" className="confirm-btn cancel" onClick={() => setShowConfirm(false)}>
                   Stay
                 </button>
-                <button className="confirm-btn leave" onClick={confirmLeave}>
+                <button type="button" className="confirm-btn leave" onClick={confirmLeave}>
                   Exit
                 </button>
               </div>
@@ -122,10 +122,10 @@ export default function LeaderboardPage() {
         </section>
 
         <footer className="leaderboard-action-bar">
-          <button className="leaderboard-action-btn" onClick={() => setShowConfirm(true)} disabled={isLeaving}>
+          <button type="button" className="leaderboard-action-btn" onClick={() => setShowConfirm(true)} disabled={isLeaving}>
             Leave
           </button>
-          <button className="leaderboard-action-btn" onClick={() => router.push(`/lobbies/${lobbyId}`)} disabled={isLeaving}>
+          <button type="button" className="leaderboard-action-btn" onClick={() => router.push(`/lobbies/${lobbyId}`)} disabled={isLeaving}>
             To Lobby
           </button>
         </footer>

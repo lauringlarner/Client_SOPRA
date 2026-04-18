@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useEffect, useRef, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { ApiService } from "@/api/apiService"; 
+import { ApiService } from "@/api/apiService";
 
 const api = new ApiService();
 
 function CameraContent() {
   const router = useRouter();
+  const params = useParams();
   const searchParams = useSearchParams();
-  const { loaded, isAuthenticated } = useAuthSession();
-  
+  const { loaded, isAuthenticated, token } = useAuthSession();
+  const gameId = params?.gameId as string;
   const tileWord = searchParams.get("tileWord");
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -57,15 +58,16 @@ function CameraContent() {
   }, [isAuthenticated, loaded, router, capturedImage]);
 
   const handleCapture = () => {
-    if (!videoRef.current) return;
-    
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0);
+      ctx.drawImage(videoElement, 0, 0);
       const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
       setCapturedImage(dataUrl);
     }
@@ -78,12 +80,15 @@ function CameraContent() {
     }
 
     setIsSubmitting(true);
-    
-    try {
-      const gameId = localStorage.getItem("gameId");
-      const teamName = localStorage.getItem("teamName") || "UnknownTeam";
 
-      if (!gameId) throw new Error("Game ID missing from storage");
+    if (!gameId) {
+      alert("Game ID missing from route.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const teamName = localStorage.getItem("teamName") || "UnknownTeam";
 
       // Bild für den Upload vorbereiten
       const fetchRes = await fetch(capturedImage);
@@ -94,25 +99,25 @@ function CameraContent() {
       formData.append("object", tileWord); 
       formData.append("team", teamName);
 
-      
       localStorage.setItem("pendingCheck", tileWord);
 
       // Request wird im Hintergrund ausgeführt
-      api.post<{ result: number }>(
+      void api.post<{ result: number }>(
         `/games/${gameId}/submission`,
-        formData
-      ).then((response) => {
-        console.log("Background analysis complete:", response);
-        // Sobald der Server antwortet, entfernen wir die Markierung
-        localStorage.removeItem("pendingCheck");
-      }).catch((error) => {
-        console.error("Background analysis failed:", error);
-        localStorage.removeItem("pendingCheck");
-      });
-
+        formData,
+        token,
+      )
+        .then((response) => {
+          console.log("Background analysis complete:", response);
+          // Sobald der Server antwortet, entfernen wir die Markierung
+          localStorage.removeItem("pendingCheck");
+        })
+        .catch((error) => {
+          console.error("Background analysis failed:", error);
+          localStorage.removeItem("pendingCheck");
+        });
 
       router.back();
-
     } catch (error) {
       console.error("Submission error:", error);
       alert("Could not process image.");

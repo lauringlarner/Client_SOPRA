@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo} from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
@@ -22,7 +22,7 @@ export default function MenuPage() {
   const lobbyClient = useMemo(() => createLobbyClient({
     api,
     token,
-  }), [api, token, userId]);
+  }), [api, token]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -200,71 +200,67 @@ export default function MenuPage() {
               </>
             )}
 
-{activeOverlay === "rules" && (
-  <>
-    <h2 className="overlay-title">Game Rules</h2>
+            {activeOverlay === "rules" && (
+              <>
+                <h2 className="overlay-title">Game Rules</h2>
 
-    <div>
-      <ul className="rules-bullet-list">
-        <li>
-          <strong>Find:</strong> Locate an item listed on the bingo board in the real world.
-        </li>
-        <li>
-          <strong>Capture:</strong> Tap the tile to open the camera and snap a photo of that item.
-        </li>
-        <li>
-          <strong>Submission:</strong> Once submitted, our AI will validate the image to ensure it matches the item on the tile.
-        </li>
-        <li>
-          <strong>Win:</strong> Earn points for every captured tile, plus bonus points for completing rows, columns, or diagonals.
-        </li>
-      </ul>
+                <div>
+                  <ul className="rules-bullet-list">
+                    <li>
+                      <strong>Find:</strong> Locate an item listed on the bingo board in the real world.
+                    </li>
+                    <li>
+                      <strong>Capture:</strong> Tap the tile to open the camera and snap a photo of that item.
+                    </li>
+                    <li>
+                      <strong>Submission:</strong> Once submitted, our AI will validate the image to ensure it matches the item on the tile.
+                    </li>
+                    <li>
+                      <strong>Win:</strong> Earn points for every captured tile, plus bonus points for completing rows, columns, or diagonals.
+                    </li>
+                  </ul>
 
-      <div className="rules-visual-preview">
+                  <div className="rules-visual-preview">
+                    <div className="preview-item">
+                      <button
+                        className="bingo-field-button"
+                        style={{ backgroundColor: "#ffffff", color: "#000000", border: "1px solid #ddd" }}
+                        type="button"
+                      >
+                        <span className="tile-text">Item</span>
+                      </button>
+                      <span style={{ color: "#000000", fontWeight: "bold" }}>Available</span>
+                    </div>
 
-        <div className="preview-item">
-          <button
-            className="bingo-field-button"
-            style={{ backgroundColor: '#ffffff', color: '#000000', border: '1px solid #ddd' }}
-            type="button"
+                    <div className="preview-item">
+                      <button className="bingo-field-button is-analyzing" type="button" disabled>
+                        <div className="loader"></div>
+                      </button>
+                      <span style={{ color: "#000000", fontWeight: "bold" }}>AI Checking</span>
+                    </div>
 
-          >
-            <span className="tile-text">Item</span>
-          </button>
-          <span style={{ color: '#000000', fontWeight: 'bold' }}>Available</span>
-        </div>
+                    <div className="preview-item">
+                      <button className="bingo-field-button is-claimed" type="button" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                      <span style={{ color: "#000000", fontWeight: "bold" }}>Claimed</span>
+                    </div>
+                  </div>
+                </div>
 
-        {/* State 2: Processing (AI Validation) */}
-        <div className="preview-item">
-          <button className="bingo-field-button is-analyzing" type="button" disabled>
-            <div className="loader"></div>
-          </button>
-          <span style={{ color: '#000000', fontWeight: 'bold' }}>AI Checking</span>
-        </div>
-
-        {/* State 3: Claimed */}
-        <div className="preview-item">
-          <button className="bingo-field-button is-claimed" type="button" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-          <span style={{ color: '#000000', fontWeight: 'bold' }}>Claimed</span>
-        </div>
-      </div>
-    </div>
-
-    <div className="overlay-actions overlay-actions-single">
-      <button
-        type="button"
-        className="vq-button"
-        onClick={() => setActiveOverlay(null)}
-      >
-        Got it!
-      </button>
-    </div>
-  </>
-)}
+                <div className="overlay-actions overlay-actions-single">
+                  <button
+                    type="button"
+                    className="vq-button"
+                    onClick={() => setActiveOverlay(null)}
+                  >
+                    Got it!
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -108,20 +108,21 @@ export default function UserProfilePage() {
             </div>
           </div>
           <div className="profile-actions-row">
-            <button className="btn-profile-dark" onClick={() => { setError(""); setSuccess(""); setActiveOverlay("edit"); }}>
+            <button type="button" className="btn-profile-dark" onClick={() => { setError(""); setSuccess(""); setActiveOverlay("edit"); }}>
               Change Password
             </button>
-            <button className="btn-profile-dark" onClick={() => setActiveOverlay("stats")}>
+            <button type="button" className="btn-profile-dark" onClick={() => setActiveOverlay("stats")}>
               Show Stats
             </button>
           </div>
         </section>
 
         <section className="user-profile-nav-card">
-          <button className="btn-profile-dark btn-profile-full" onClick={() => router.push("/menu")}>
+          <button type="button" className="btn-profile-dark btn-profile-full" onClick={() => router.push("/menu")}>
             Back to Main Menu
           </button>
           <button
+            type="button"
             className="btn-profile-dark btn-profile-full"
             style={{ marginTop: '10px', color: '#ff6b6b' }}
             onClick={() => {
@@ -184,7 +185,7 @@ export default function UserProfilePage() {
               </div>
             </div>
             <div className="overlay-actions overlay-actions-single">
-              <button className="vq-button" onClick={() => setActiveOverlay(null)}>Close</button>
+              <button type="button" className="vq-button" onClick={() => setActiveOverlay(null)}>Close</button>
             </div>
           </div>
         </div>
