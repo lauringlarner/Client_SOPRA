@@ -76,16 +76,18 @@ export class ApiService {
    * @returns JSON data of type T.
    */
   public async get<T>(endpoint: string, token?: string): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const res = await fetch(url, {
-      method: "GET",
-      headers: this.createHeaders(token),
-    });
-    return this.processResponse<T>(
-      res,
-      "An error occurred while fetching the data.\n",
-    );
-  }
+  const url = `${this.baseURL}${endpoint}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: this.createHeaders(token),
+  });
+
+  return this.processResponse<T>(
+    res,
+    "An error occurred while fetching the data.\n",
+  );
+}
 
   /**
    * POST request.
