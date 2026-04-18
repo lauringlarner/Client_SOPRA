@@ -1506,24 +1506,134 @@ background-color: #ffffff;
   color: black;
 }
 
-.overlay-title{
-  text-align: center;
-  width: 100%;
-
-}
-
-.leaderboard-action-bar {
+/* --- Base Layout --- */
+.leaderboard-layout {
   display: flex;
-  flex-direction: row;
-  justify-content: space-between; /* One left, one right */
-  gap: 16px;                     /* Gap in the middle */
-  width: 100%;
-  padding: 10px 20px;
+  flex-direction: column;
+  padding: 20px;
+  height: 100%;
   box-sizing: border-box;
+  position: relative;
 }
 
+.leaderboard-header { flex-shrink: 0; text-align: center; margin-bottom: 10px; }
+.leaderboard-title { font-size: 1.8rem; font-weight: 900; color: white; text-transform: uppercase; margin: 0; }
+.leaderboard-subtitle { font-size: 1rem; color: rgba(255, 255, 255, 0.8); margin-top: 4px; }
+
+/* --- Stretching Logic --- */
+.leaderboard-card-container { display: flex; flex-direction: column; }
+.teams-fill-wrapper { display: flex; flex-direction: column; gap: 12px; height: 70vh; }
+.team-card { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; border-radius: 24px; text-align: center; box-sizing: border-box; }
+
+/* --- Content Styling --- */
+.team-label { font-size: 1.6rem; font-weight: 800; color: white; text-transform: uppercase; margin-bottom: 5px; }
+.team-score-section { display: flex; flex-direction: column; align-items: center; }
+.score-label { font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); text-transform: uppercase; letter-spacing: 1px; }
+.score-row { display: flex; align-items: center; gap: 10px; }
+.score-value { font-size: 4.5rem; font-weight: 900; color: white; line-height: 1; }
+.trophy-icon { font-size: 3rem; }
+
+/* --- Winner (Green) & Standard --- */
+.leaderboard-row-win-primary {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
+  border: 2px solid #fff;
+  box-shadow: 0 10px 20px rgba(39, 174, 96, 0.3);
+}
+.leaderboard-row-standard {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Action Buttons --- */
+.leaderboard-action-bar { display: flex; gap: 12px; margin-top: 15px; flex-shrink: 0; }
 .leaderboard-action-btn {
-  flex: 1;
-   /* Both buttons grow equally to fill the left and right halves */
+  flex: 1; padding: 16px; border-radius: 14px; font-weight: 800; text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s ease;
+}
+
+/* --- THE RECTANGLE OVERLAY --- */
+.confirm-overlay {
+  position: absolute;
+  /* Centers the rectangle in the middle of the screen */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  /* Creates the rectangular shape */
+  width: 90%; 
+  height: 320px; 
+  
+  /* Dark background instead of transparent */
+  background: #0f0f0f; 
+  border-radius: 30px;
+  border: 1px solid rgba(87, 165, 184, 0.2);
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.8);
+}
+
+.confirm-card.theme-dark-teal {
+  /* No background here because the overlay is already the dark rectangle */
+  background: transparent; 
+  padding: 20px;
   text-align: center;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.confirm-title { 
+  color: #57a5b8;
+  font-size: 1.4rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.confirm-text { 
+  color: #ffffff;
+  font-size: 1rem;
+  margin-bottom: 25px;
+  line-height: 1.4;
+  opacity: 0.9;
+  align-items: center;
+}
+
+/* --- Centered Buttons --- */
+.confirm-actions { 
+  display: flex; 
+  gap: 15px; 
+  width: 100%;
+  justify-content: center; 
+}
+
+.confirm-btn {
+  width: 110px; 
+  padding: 14px 0;
+  border-radius: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  font-size: 0.85rem;
+}
+
+.confirm-btn.cancel {
+  background: #2a2a2a; 
+  color: #888;
+}
+
+.confirm-btn.leave {
+  background: #57a5b8; /* VQ-Teal */
+  color: white;
+}
+
+.confirm-btn:active {
+  transform: scale(0.95);
 }
