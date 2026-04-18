@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo} from "react";
 import { useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
@@ -201,24 +201,6 @@ export default function MenuPage() {
               </>
             )}
 
-            {activeOverlay === "rules" && (
-              <>
-                <h2 className="overlay-title">Game Rules</h2>
-                <p className="overlay-text">
-                  Create or join a lobby, pick a team, mark yourself ready, and
-                  the round starts automatically once everyone is ready.
-                </p>
-                <div className="overlay-actions overlay-actions-single">
-                  <button
-                    type="button"
-                    className="vq-button"
-                    onClick={() => setActiveOverlay(null)}
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
 {activeOverlay === "rules" && (
   <>
     <h2 className="overlay-title">Game Rules</h2>
@@ -284,25 +266,6 @@ export default function MenuPage() {
     </div>
   </>
 )}
-
-            {activeOverlay === "options" && (
-              <>
-                <h2 className="overlay-title">Game Options</h2>
-                <label className="overlay-range-label">
-                  Round duration
-                  <input type="range" min={30} max={180} defaultValue={90} />
-                </label>
-                <div className="overlay-actions overlay-actions-single">
-                  <button
-                    type="button"
-                    className="vq-button"
-                    onClick={() => setActiveOverlay(null)}
-                  >
-                    Save
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
