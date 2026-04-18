@@ -836,7 +836,7 @@ textarea {
 }
 
 .leaderboard-row-win-primary {
-  background: #8bff4d;
+  background: #bdf59e;
 }
 
 .leaderboard-row-win-secondary {
@@ -887,6 +887,7 @@ textarea {
   column-gap: 8px;
   row-gap: 2px;
   color: #49454f;
+  margin-right: 10px;
 }
 
 .leaderboard-player-stat-label,
@@ -1509,4 +1510,20 @@ background-color: #ffffff;
   text-align: center;
   width: 100%;
 
+}
+
+.leaderboard-action-bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between; /* One left, one right */
+  gap: 16px;                     /* Gap in the middle */
+  width: 100%;
+  padding: 10px 20px;
+  box-sizing: border-box;
+}
+
+.leaderboard-action-btn {
+  flex: 1;
+   /* Both buttons grow equally to fill the left and right halves */
+  text-align: center;
 }
