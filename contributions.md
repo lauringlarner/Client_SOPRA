@@ -68,9 +68,22 @@ reason).
 
 ---
 
-## Contributions Week 3 - [Begin Date] to [End Date]
+## Contributions Week 3 - [13.04.2026] to [19.04.2026]
 
-_Continue with the same table format as above._
+| **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
+| ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
+| **[@aydinarda]** | [16.04.2026] | [https://github.com/lauringlarner/Server_SOPRA/commit/e769533] | [Added Tile entity (word, value, status) and TileStatus enum (UNCLAIMED, CLAIMED_TEAM1, CLAIMED_TEAM2). Integrated tileGrid (NxN Tile[][]) and boardSize into Game entity.] | [Tiles are the core data structure of a bingo board; persisting the grid in Game enables the backend to track and update each cell's claim state per team.] |
+|                  | [18.04.2026] | [https://github.com/lauringlarner/Server_SOPRA/commit/8069927] [https://github.com/lauringlarner/Server_SOPRA/commit/08c45bc] | [Added Leaderboard entity, repository, service and DTOs. Leaderboard tracks team scores and tileGrid snapshot per game. Added POST/GET /lobbies/{lobbyId}/games/{gameId}/leaderboard endpoints. A simple function handles both initialization and score updates in a single call.] | [The leaderboard is required to display end-of-game results and track team scores (in the future maybe even player scores); exposing it via REST allows the frontend to fetch and use after each round.] |
+|                  | [18.04.2026] | [https://github.com/lauringlarner/Server_SOPRA/commit/3249e96] | [Added ScoreService. Tile value-based scoring (currently 1, extendable for bonuses). imageSubmission now delegates scoring to ScoreService and triggers leaderboard update after each successful submission.  Also migrated gameId from Long to UUID across leaderboard layer to combat type mismatch.] | [Centralizing score logic in ScoreService keeps game flow clean and makes scoring rules easy to extend; linking it to image submission ensures the leaderboard stays in sync after every validated capture (no resolution for racing conditions right now).] |
+
+|  | | | | |
+|                  | | | | |
+|  | | | | |
+|                      | | | | |
+|  | | | | |
+|                            | | | | |
+|  | | | | |
+|                | | | | |
 
 ---
 
