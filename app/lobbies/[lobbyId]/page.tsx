@@ -45,6 +45,7 @@ export default function LobbyPage() {
   }), [api, token]);
 
   const lobbyPlayers = lobby?.lobbyPlayers ?? [];
+  const playerCount = lobbyPlayers.length;
   const currentPlayer = lobbyPlayers.find((player: LobbyPlayer) => player.user.id === userId) ?? null;
   const isHost = currentPlayer?.isHost ?? false;
   const needsTeamSelection = currentPlayer?.team == null;
@@ -65,6 +66,8 @@ export default function LobbyPage() {
     ? "Everyone is ready. Starting the game."
     : !currentPlayer
     ? "Your player entry is missing from this lobby."
+    : playerCount < 2
+    ? "At least 2 players are required before the game can start."
     : !bothTeamsHavePlayers
     ? "Each team needs at least one player before the game can start."
     : !allPlayersReady
@@ -122,12 +125,8 @@ export default function LobbyPage() {
       return;
     }
 
-    if (currentPlayer?.team) {
-      globalThis.localStorage.setItem("teamName", currentPlayer.team);
-    } else {
-      globalThis.localStorage.removeItem("teamName");
-    }
-  }, [currentPlayer?.team]);
+    globalThis.localStorage.removeItem("teamName");
+  }, []);
 
   useEffect(() => {
     if (!lobby?.gameId) {
@@ -227,6 +226,23 @@ export default function LobbyPage() {
         !currentPlayer.isReady,
       );
     });
+
+    if (!currentPlayer.isReady) {
+      if (playerCount < 2) {
+        setPageMessage({
+          text: "At least 2 players are required before the game can start.",
+          tone: "error",
+        });
+        return;
+      }
+
+      if (!bothTeamsHavePlayers) {
+        setPageMessage({
+          text: "Each team needs at least one player before the game can start.",
+          tone: "error",
+        });
+      }
+    }
   };
 
   const handleSaveSettings = async (): Promise<void> => {
