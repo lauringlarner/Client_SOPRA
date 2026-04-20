@@ -130,7 +130,7 @@ function createRemoteLobbySubscriber(token: string): SubscribeToLobby {
 
     void (async () => {
       try {
-        const response = await fetch(`${getApiDomain()?.replace(/\/$/, "")}/lobbies/${lobbyId}/stream`, {
+        const response = await fetch(`${getApiDomain()}/lobbies/${lobbyId}/stream`, {
           method: "GET",
           headers,
           signal: controller.signal,
