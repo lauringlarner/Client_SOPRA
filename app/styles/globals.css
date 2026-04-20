@@ -70,6 +70,7 @@ textarea {
   overflow-y: auto;
   isolation: isolate; 
   z-index: 0;
+  
 }
 
 .screen-home {
@@ -1509,18 +1510,16 @@ background: var(--vq-aquamarine);
 
 /* --- PROFIL LAYOUT & LAYER SYSTEM --- */
 .user-profile-container {
+  width: 100%;
   position: relative;
-  /* Garantiert, dass der Bingo-Regen dahinter bleibt und nicht überdeckt wird */
   isolation: isolate; 
   z-index: 100;
-  
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 0 24px;
   height: 100dvh;
   overflow-y: auto;
-  /* Hintergrund auf transparent, damit die Animation sichtbar ist */
   background: transparent !important;
 }
 
@@ -1542,6 +1541,7 @@ background: var(--vq-aquamarine);
   max-width: 380px; /* Synchron zum Phone-Frame */
   padding: 2rem 1.5rem;
   display: flex;
+  align-self: center;
   flex-direction: column;
   gap: 1rem;
   margin-bottom: 1.5rem;
@@ -1554,6 +1554,7 @@ background: var(--vq-aquamarine);
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-self: center;
 }
 
 /* --- LABELS, USERNAME & STATUS --- */
@@ -1607,7 +1608,7 @@ background: var(--vq-aquamarine);
   border-radius: var(--vq-radius);
   padding: 24px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  position: relative;
+  position: absolute;
 }
 
 .overlay-title {
@@ -1661,6 +1662,7 @@ background: var(--vq-aquamarine);
   background: rgba(150, 34, 34, 0.7) !important;
   color: white !important;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  
 }
 
 /* --- FORMS & INPUTS --- */

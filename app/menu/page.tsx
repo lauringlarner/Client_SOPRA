@@ -25,14 +25,17 @@ export default function MenuPage() {
     return username.trim().charAt(0).toUpperCase() || "U";
   }, [username]);
 
+  // Auth Schutz
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) router.replace("/");
   }, [isAuthenticated, loaded, router]);
 
+  // Lade gespeicherte Lobby nur wenn User Daten da sind
   useEffect(() => {
-    if (loaded && isAuthenticated && userId) {
-      setActiveLobbyId(getStoredLobbyId(userId));
+    if (loaded && isAuthenticated && userId && userId.trim() !== "") {
+      const id = getStoredLobbyId(userId);
+      setActiveLobbyId(id);
     }
   }, [isAuthenticated, loaded, userId]);
 
@@ -60,8 +63,11 @@ export default function MenuPage() {
     setPendingAction("join");
     try {
       const joinedLobby = await lobbyClient.joinLobby(joinCode);
-      setStoredLobbyId(userId, joinedLobby.lobbyId);
-      router.push(`/lobbies/${joinedLobby.lobbyId}`);
+      // Stabilitäts-Fix: ID speichern und SOFORT mit der API-ID navigieren
+      if (joinedLobby && joinedLobby.lobbyId) {
+        setStoredLobbyId(userId, joinedLobby.lobbyId);
+        router.push(`/lobbies/${joinedLobby.lobbyId}`);
+      }
     } catch (error) {
       setOverlayError("Invalid join code. Please enter a valid code!");
     } finally {
@@ -77,7 +83,47 @@ export default function MenuPage() {
 
   return (
     <div className="app-shell">
-      <main className="phone-frame screen-gradient">
+      <main className="phone-frame screen-gradient" style={{ position: 'relative' }}>
+        
+        {/* CSS: Overlays klein halten & im Frame einsperren */}
+        <style jsx>{`
+          .overlay-backdrop {
+            position: absolute; /* Bleibt im phone-frame */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: grid;
+            place-items: center;
+            z-index: 1000;
+          }
+
+          .overlay-card {
+            width: 88%;
+            max-height: 85%;
+            background: var(--vq-aquamarine, #48c9b0);
+            border-radius: 24px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          }
+
+          .rules-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .rules-section {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 12px;
+          }
+        `}</style>
+
         <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
             <span key={i} className="rain-item">BINGO</span>
@@ -110,16 +156,13 @@ export default function MenuPage() {
         </div>
 
         {activeOverlay && (
-          <div className="overlay-backdrop">
-            <div className="overlay-card">
+          <div className="overlay-backdrop" onClick={closeOverlay}>
+            <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+              
               {activeOverlay === "join" && (
                 <>
                   <h2 className="overlay-title">Join Lobby</h2>
-                  
-                  {overlayError && (
-                    <div className="overlay-error-bubble">{overlayError}</div>
-                  )}
-
+                  {overlayError && <div className="overlay-error-bubble">{overlayError}</div>}
                   <input
                     className="overlay-input"
                     placeholder="CODE"
@@ -149,7 +192,7 @@ export default function MenuPage() {
                 </>
               )}
 
-              {activeOverlay === "rules" && (
+               {activeOverlay === "rules" && (
                 <div className="rules-content">
                   <h2 className="overlay-title">Game Rules</h2>
                   <div className="rules-section">
