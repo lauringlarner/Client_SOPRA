@@ -15,6 +15,7 @@ export default function MenuPage() {
   const [activeLobbyId, setActiveLobbyId] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [menuMessage, setMenuMessage] = useState<string | null>(null);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"create" | "join" | null>(null);
 
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
@@ -54,27 +55,35 @@ export default function MenuPage() {
   };
 
   const handleJoinLobby = async () => {
-    setMenuMessage(null);
+    if (joinCode.length < 6) return;
+    setOverlayError(null);
     setPendingAction("join");
     try {
       const joinedLobby = await lobbyClient.joinLobby(joinCode);
       setStoredLobbyId(userId, joinedLobby.lobbyId);
       router.push(`/lobbies/${joinedLobby.lobbyId}`);
     } catch (error) {
-      setMenuMessage("Invalid join code.");
+      setOverlayError("Invalid join code. Please enter a valid code!");
     } finally {
       setPendingAction(null);
     }
   };
 
+  const closeOverlay = () => {
+    setActiveOverlay(null);
+    setOverlayError(null);
+    setJoinCode("");
+  };
+
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient">
-              <div className="bingo-rain-container">
+        <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
             <span key={i} className="rain-item">BINGO</span>
           ))}
         </div>
+
         <div className="menu-layout">
           <section className="menu-panel">
             <button className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
@@ -106,16 +115,34 @@ export default function MenuPage() {
               {activeOverlay === "join" && (
                 <>
                   <h2 className="overlay-title">Join Lobby</h2>
+                  
+                  {overlayError && (
+                    <div className="overlay-error-bubble">{overlayError}</div>
+                  )}
+
                   <input
                     className="overlay-input"
                     placeholder="CODE"
                     value={joinCode}
                     maxLength={6}
-                    onChange={(e) => setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}
+                    autoFocus
+                    onChange={(e) => {
+                      setOverlayError(null);
+                      setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase());
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && joinCode.length === 6 && pendingAction === null) {
+                        void handleJoinLobby();
+                      }
+                    }}
                   />
                   <div className="overlay-actions">
-                    <button className="vq-button btn-cancel" onClick={() => setActiveOverlay(null)}>Cancel</button>
-                    <button className="vq-button btn-confirm" disabled={joinCode.length < 6 || pendingAction !== null} onClick={() => void handleJoinLobby()}>
+                    <button className="vq-button btn-cancel" onClick={closeOverlay}>Cancel</button>
+                    <button 
+                      className="vq-button btn-confirm" 
+                      disabled={joinCode.length < 6 || pendingAction !== null} 
+                      onClick={() => void handleJoinLobby()}
+                    >
                       {pendingAction === "join" ? "..." : "Join"}
                     </button>
                   </div>
@@ -137,7 +164,6 @@ export default function MenuPage() {
                   <div className="rules-section">
                     <h3 className="rules-subtitle">Tile Examples</h3>
                     <div className="rules-tile-grid">
-                      {/* UNCLAIMED */}
                       <div className="rules-tile-item">
                         <button type="button" className="bingo-field-button">
                           <span className="tile-text">Tree</span>
@@ -145,7 +171,6 @@ export default function MenuPage() {
                         <span>Unclaimed</span>
                       </div>
 
-                      {/* IN VALIDATION */}
                       <div className="rules-tile-item">
                         <button type="button" className="bingo-field-button is-processing-friendly is-analyzing" disabled>
                           <div className="loader is-friendly"></div>
@@ -153,20 +178,18 @@ export default function MenuPage() {
                         <span>In Validation</span>
                       </div>
 
-                      {/* CLAIMED TEAM 1 */}
                       <div className="rules-tile-item">
                         <button type="button" className="bingo-field-button is-claimed is-claimed-friendly" disabled>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
                             <path d="M20 6L9 17l-5-5" />
                           </svg>
                         </button>
                         <span>Claimed Team 1</span>
                       </div>
 
-                      {/* CLAIMED TEAM 2 */}
                       <div className="rules-tile-item">
                         <button type="button" className="bingo-field-button is-claimed is-claimed-enemy" disabled>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
                             <path d="M20 6L9 17l-5-5" />
                           </svg>
                         </button>
@@ -175,7 +198,7 @@ export default function MenuPage() {
                     </div>
                   </div>
                   <div className="overlay-actions overlay-actions-single">
-                    <button className="btn-rules-confirm" onClick={() => setActiveOverlay(null)}>Got it!</button>
+                    <button className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
                   </div>
                 </div>
               )}
