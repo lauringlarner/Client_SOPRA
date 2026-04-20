@@ -60,12 +60,17 @@ textarea {
 }
 
 .phone-frame {
-  width: min(100%, var(--vq-phone-width));
-  min-height: 100dvh;
+  position: relative;
+  width: min(100%, var(--vq-phone-width)); /* max 402px */
+  height: 100dvh;
+  margin: 0 auto; /* Zentriert den Frame in der app-shell */
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  
+  /* Das hier ist entscheidend: */
+  overflow: hidden; 
+  isolation: isolate; /* Erzeugt einen komplett neuen Stacking Context */
+  z-index: 0;
 }
 
 .screen-home {
@@ -81,6 +86,65 @@ textarea {
     var(--vq-teal) 100%
   );
 }
+
+.bingo-rain-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  /* Wir lockern contain etwas auf, damit die Kinder die Höhe berechnen können */
+  contain: layout paint; 
+}
+
+.rain-item {
+  position: absolute;
+  /* Wir nehmen das Wort komplett aus dem normalen Fluss */
+  top: -50px; 
+  left: 0;
+  color: var(--vq-teal);
+  font-weight: 900;
+  font-size: 0.9rem;
+  opacity: 0;
+  white-space: nowrap;
+  will-change: transform;
+  /* Hardware-Beschleunigung erzwingen */
+  transform: translateZ(0); 
+  animation: bingoRain linear infinite;
+}
+
+@keyframes bingoRain {
+  0% {
+    /* Start bei -50px (fest definiert oben) */
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.15;
+  }
+  90% {
+    opacity: 0.15;
+  }
+  100% {
+    /* Wir nutzen 110% der Containerhöhe für das Ende */
+    transform: translate3d(0, calc(100dvh + 100px), 0) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+/* Rain-Item Variationen */
+.rain-item:nth-child(1)  { left: 5%;  animation-duration: 10s; animation-delay: 0s; }
+.rain-item:nth-child(2)  { left: 15%; animation-duration: 14s; animation-delay: 2s; font-size: 1.2rem; }
+.rain-item:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 5s; filter: blur(1px); }
+.rain-item:nth-child(4)  { left: 35%; animation-duration: 18s; animation-delay: 1s; }
+.rain-item:nth-child(5)  { left: 45%; animation-duration: 11s; animation-delay: 4s; font-size: 1.4rem; }
+.rain-item:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 7s; filter: blur(1px); }
+.rain-item:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 3s; }
+.rain-item:nth-child(8)  { left: 75%; animation-duration: 16s; animation-delay: 6s; font-size: 0.8rem; }
+.rain-item:nth-child(9)  { left: 85%; animation-duration: 9s;  animation-delay: 2s; }
+.rain-item:nth-child(10) { left: 10%; animation-duration: 20s; animation-delay: 8s; opacity: 0.05; }
 
 .home-layout {
   padding: clamp(56px, 11vh, 107px) 9px clamp(40px, 14vh, 142px);
@@ -179,12 +243,18 @@ textarea {
   line-height: 1.2;
   letter-spacing: -1.44px;
   text-align: center;
-}
-
-.auth-title-register {
   min-height: 116px;
   display: grid;
   place-items: center;
+  text-shadow: 0 0 20px rgba(107, 202, 226, 0.3), 
+               0 0 40px rgba(107, 202, 226, 0.1);
+  color: var(--vq-aquamarine); 
+}
+.auth-title,
+.auth-form-card,
+.auth-link-button {
+  position: relative;
+  z-index: 2;
 }
 
 .auth-form-card {
@@ -195,10 +265,6 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.auth-form-card-register {
-  gap: 15px;
 }
 
 .field-group {
@@ -766,17 +832,8 @@ textarea {
   color: #acb3c9;
 }
 
-.login-container,
-.card-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100dvh;
-}
 
-.login-button {
-  width: 100%;
-}
+
 
 .leaderboard-layout {
   padding: clamp(28px, 11vh, 105px) 20px clamp(20px, 9vh, 101px);

@@ -65,9 +65,14 @@ export default function RegisterPage() {
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient auth-layout">
-        <h1 className="auth-title auth-title-register">Create Your Account</h1>
+      <div className="bingo-rain-container">
+          {[...Array(12)].map((_, i) => (
+            <span key={i} className="rain-item">BINGO</span>
+          ))}
+        </div>
+        <h1 className="auth-title">Create Your Account</h1>
 
-        <form className="auth-form-card auth-form-card-register" onSubmit={handleRegister}>
+        <form className="auth-form-card" onSubmit={handleRegister}>
           {error && (
             <div className="error-template">
               {error}
