@@ -103,7 +103,7 @@ export default function MenuPage() {
 
           <section className={`menu-secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
             {activeLobbyId && (
-              <button className="vq-button menu-secondary-btn" onClick={() => router.push(`/lobbies/${activeLobbyId}`)}>Return</button>
+              <button className="vq-button menu-secondary-btn" onClick={() => router.push(`/lobbies/${activeLobbyId}`)}>Return to Lobby</button>
             )}
             <button className="vq-button menu-secondary-btn logout" onClick={() => { logout(); router.replace("/"); }}>Logout</button>
           </section>
