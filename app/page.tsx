@@ -30,12 +30,14 @@ export default function Home() {
 
         <section className="home-action-row">
           <button
+            type="button"
             className="vq-button home-action-btn"
             onClick={() => router.push("/login")}
           >
             Sign In
           </button>
           <button
+            type="button"
             className="vq-button home-action-btn"
             onClick={() => router.push("/register")}
           >

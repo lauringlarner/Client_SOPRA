@@ -966,6 +966,14 @@ background-color: var(--vq-aquamarine);
   gap: clamp(20px, 6vh, 41px);
 }
 
+.bingo-submission-note {
+  margin: 6px 8px 0;
+  color: rgba(34, 49, 58, 0.74);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
 .bingo-card{
 display: flex;
 padding: 5px 0;
@@ -1040,9 +1048,18 @@ background: var(--vq-aquamarine);
   border-color: #FFCB88 !important;
 }
 
+.bingo-field-button.is-processing-friendly {
+  background-color: #cfead5 !important;
+  border-color: #aadab4 !important;
+}
+
+.bingo-field-button.is-processing-enemy {
+  background-color: #f7e1c4 !important;
+  border-color: #edc99a !important;
+}
+
 .bingo-field-button.is-analyzing {
-  background-color: var(--vq-teal) !important;
-  border-color: var(--vq-teal) !important;
+  color: #ffffff;
 }
 
 /* White text for better contrast on the green background */
@@ -1097,7 +1114,7 @@ background: var(--vq-aquamarine);
 
 .bingo-team-points-card-text {
   color: var(--vq-deep);
-  font-family: var(--font-geist-sans);
+  font-family: var(--font-geist-sans), sans-serif;
   font-size: 20px;
   font-weight: 500;
   text-align: center;
@@ -1136,7 +1153,7 @@ background: var(--vq-aquamarine);
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
-  font-family: var(--font-geist-sans);
+  font-family: var(--font-geist-sans), sans-serif;
   text-align: center;
   width: 100%;
 }
@@ -1259,6 +1276,14 @@ background: var(--vq-aquamarine);
   letter-spacing: 1px;
   font-size: 14px;
   white-space: nowrap;
+}
+
+.camera-feedback-card {
+  position: absolute;
+  top: 72px;
+  left: 16px;
+  right: 16px;
+  z-index: 10;
 }
 
 
@@ -1444,6 +1469,16 @@ background-color: #ffffff;
   display: inline-block;
 }
 
+.loader.is-friendly {
+  border-color: rgba(72, 110, 77, 0.18);
+  border-top-color: #486e4d;
+}
+
+.loader.is-enemy {
+  border-color: rgba(124, 78, 33, 0.16);
+  border-top-color: #7c4e21;
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -1451,7 +1486,7 @@ background-color: #ffffff;
 
 .is-analyzing {
   cursor: wait;
-  opacity: 0.8;
+  opacity: 0.92;
 }
 
 

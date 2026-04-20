@@ -1,23 +1,26 @@
 "use client";
 
 import React, { useEffect, useRef, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { ApiService } from "@/api/apiService"; 
+import { ApiService } from "@/api/apiService";
+import { setLastSubmissionWord } from "@/utils/submissionFeedback";
 
 const api = new ApiService();
 
 function CameraContent() {
   const router = useRouter();
+  const params = useParams();
   const searchParams = useSearchParams();
-  const { loaded, isAuthenticated } = useAuthSession();
-  
+  const { loaded, isAuthenticated, token } = useAuthSession();
+  const gameId = params?.gameId as string;
   const tileWord = searchParams.get("tileWord");
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loaded) return;
@@ -57,15 +60,16 @@ function CameraContent() {
   }, [isAuthenticated, loaded, router, capturedImage]);
 
   const handleCapture = () => {
-    if (!videoRef.current) return;
-    
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0);
+      ctx.drawImage(videoElement, 0, 0);
       const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
       setCapturedImage(dataUrl);
     }
@@ -73,51 +77,42 @@ function CameraContent() {
 
   const handleSubmit = async () => {
     if (!capturedImage || !tileWord) {
-      alert("Missing image or target word.");
+      setSubmissionError("The target word or captured image is missing.");
       return;
     }
 
     setIsSubmitting(true);
-    
+    setSubmissionError(null);
+
+    if (!gameId) {
+      setSubmissionError("The game route is missing its game id.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const gameId = localStorage.getItem("gameId");
-      const teamName = localStorage.getItem("teamName") || "UnknownTeam";
-
-      if (!gameId) throw new Error("Game ID missing from storage");
-
       // Bild für den Upload vorbereiten
       const fetchRes = await fetch(capturedImage);
       const blob = await fetchRes.blob();
 
       const formData = new FormData();
       formData.append("image", blob, "submission.jpg");
-      formData.append("object", tileWord); 
-      formData.append("team", teamName);
+      formData.append("object", tileWord);
 
-      
-      localStorage.setItem("pendingCheck", tileWord);
-
-      // Request wird im Hintergrund ausgeführt
-      api.post<{ result: number }>(
+      // The backend accepts the upload immediately and finishes analysis asynchronously.
+      await api.post<void>(
         `/games/${gameId}/submission`,
-        formData
-      ).then((response) => {
-        console.log("Background analysis complete:", response);
-        // Sobald der Server antwortet, entfernen wir die Markierung
-        localStorage.removeItem("pendingCheck");
-      }).catch((error) => {
-        console.error("Background analysis failed:", error);
-        localStorage.removeItem("pendingCheck");
-      });
+        formData,
+        token,
+      );
 
+      setLastSubmissionWord(tileWord);
 
       router.back();
-
     } catch (error) {
       console.error("Submission error:", error);
-      alert("Could not process image.");
+      setSubmissionError(getSubmissionErrorMessage(error));
       setIsSubmitting(false);
-      router.back();
     }
   };
 
@@ -132,6 +127,12 @@ function CameraContent() {
             <div className="camera-target-badge">
               Target: <strong>{tileWord}</strong>
             </div>
+          )}
+
+          {submissionError && (
+            <section className="lobby-card lobby-feedback-card is-error camera-feedback-card">
+              <p className="lobby-feedback-text">{submissionError}</p>
+            </section>
           )}
 
           {capturedImage ? (
@@ -187,4 +188,18 @@ export default function CameraPage() {
       <CameraContent />
     </Suspense>
   );
+}
+
+function getSubmissionErrorMessage(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.trim() !== ""
+  ) {
+    return error.message;
+  }
+
+  return "The submission could not be sent. Please try again.";
 }
