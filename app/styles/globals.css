@@ -95,56 +95,33 @@ textarea {
   pointer-events: none;
   z-index: 1;
   overflow: hidden;
-  /* Wir lockern contain etwas auf, damit die Kinder die Höhe berechnen können */
-  contain: layout paint; 
+  contain: layout paint;
 }
 
 .rain-item {
   position: absolute;
-  /* Wir nehmen das Wort komplett aus dem normalen Fluss */
-  top: -50px; 
-  left: 0;
+  top: -60px;
   color: var(--vq-teal);
   font-weight: 900;
   font-size: 0.9rem;
   opacity: 0;
   white-space: nowrap;
-  will-change: transform;
-  /* Hardware-Beschleunigung erzwingen */
-  transform: translateZ(0); 
   animation: bingoRain linear infinite;
 }
 
 @keyframes bingoRain {
-  0% {
-    /* Start bei -50px (fest definiert oben) */
-    transform: translate3d(0, 0, 0) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.15;
-  }
-  90% {
-    opacity: 0.15;
-  }
-  100% {
-    /* Wir nutzen 110% der Containerhöhe für das Ende */
-    transform: translate3d(0, calc(100dvh + 100px), 0) rotate(180deg);
-    opacity: 0;
-  }
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.15; }
+  90% { opacity: 0.15; }
+  100% { transform: translate3d(0, calc(100dvh + 100px), 0) rotate(180deg); opacity: 0; }
 }
 
-/* Rain-Item Variationen */
-.rain-item:nth-child(1)  { left: 5%;  animation-duration: 10s; animation-delay: 0s; }
-.rain-item:nth-child(2)  { left: 15%; animation-duration: 14s; animation-delay: 2s; font-size: 1.2rem; }
-.rain-item:nth-child(3)  { left: 25%; animation-duration: 12s; animation-delay: 5s; filter: blur(1px); }
-.rain-item:nth-child(4)  { left: 35%; animation-duration: 18s; animation-delay: 1s; }
-.rain-item:nth-child(5)  { left: 45%; animation-duration: 11s; animation-delay: 4s; font-size: 1.4rem; }
-.rain-item:nth-child(6)  { left: 55%; animation-duration: 15s; animation-delay: 7s; filter: blur(1px); }
-.rain-item:nth-child(7)  { left: 65%; animation-duration: 13s; animation-delay: 3s; }
-.rain-item:nth-child(8)  { left: 75%; animation-duration: 16s; animation-delay: 6s; font-size: 0.8rem; }
-.rain-item:nth-child(9)  { left: 85%; animation-duration: 9s;  animation-delay: 2s; }
-.rain-item:nth-child(10) { left: 10%; animation-duration: 20s; animation-delay: 8s; opacity: 0.05; }
+/* Rain Positions */
+.rain-item:nth-child(1) { left: 5%; animation-duration: 8s; }
+.rain-item:nth-child(2) { left: 20%; animation-duration: 12s; animation-delay: 2s; }
+.rain-item:nth-child(3) { left: 40%; animation-duration: 10s; animation-delay: 5s; }
+.rain-item:nth-child(4) { left: 60%; animation-duration: 14s; animation-delay: 1s; }
+.rain-item:nth-child(5) { left: 85%; animation-duration: 9s; animation-delay: 3s; }
 
 .home-layout {
   padding: clamp(56px, 11vh, 107px) 9px clamp(40px, 14vh, 142px);
@@ -321,103 +298,116 @@ textarea {
   padding: 0;
 }
 
+
+/* --- MENU LAYOUT --- */
 .menu-layout {
-  padding: clamp(44px, 18vh, 188px) 20px max(20px, env(safe-area-inset-bottom));
-  gap: 14px;
+  position: relative;
+  z-index: 10; /* Höher als der Regen */
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 16px;
+  height: 100dvh;
 }
 
 .menu-panel {
+  position: relative;
   background: var(--vq-aquamarine);
   border-radius: var(--vq-radius);
-  padding: 10px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: clamp(20px, 6vh, 41px);
+  gap: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .menu-profile {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--vq-text-dark);
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  width: fit-content;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  padding: 0;
   cursor: pointer;
 }
 
 .menu-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
   background: var(--vq-charcoal);
   color: var(--vq-text-light);
-  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
 }
 
 .menu-username {
-  font-size: 16px;
-  line-height: 1.4;
+  color: var(--vq-text-dark);
+  font-weight: 800;
+  font-size: 1.1rem;
 }
 
-.menu-main-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.menu-rules-trigger {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--vq-text-dark);
+  background: transparent;
+  color: var(--vq-text-dark);
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
 }
 
 .menu-main-btn {
   width: 100%;
-  min-height: 76px;
+  min-height: 64px;
+  background: var(--vq-charcoal);
+  color: white;
+  border-radius: var(--vq-radius);
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-top: 10px;
 }
 
 .menu-secondary-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-}
-
-.menu-secondary-actions.is-single-item {
-  grid-template-columns: 1fr;
+  position: relative; 
+  z-index: 20;        
+  width: 100%;
 }
 
 .menu-secondary-btn {
-  min-height: 44px;
-  font-size: 14px;
-  line-height: 1.1;
-  padding: 10px 8px;
-}
-
-.menu-status-card {
-  background: rgb(255 255 255 / 8%);
-  border: 1px solid rgb(255 255 255 / 10%);
+  width: 100%;
+  min-height: 50px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
   border-radius: var(--vq-radius);
-  padding: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 21;
 }
 
-.menu-status-message {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: var(--vq-radius);
-  background: rgb(107 202 226 / 18%);
-  color: var(--vq-text-light);
-  font-size: 14px;
-  line-height: 1.45;
+.menu-secondary-btn.logout { 
+  background: rgb(90, 11, 11) !important; 
+    z-index: 22;  
 }
-
-.menu-status-message.is-error {
-  background: rgb(150 34 34 / 28%);
-  color: #ffe0e0;
-}
-
+/* --- RULES OVERLAY --- */
 .overlay-backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 1000;
-  background: rgb(8 13 20 / 70%);
+  z-index: 1000; /* Weit über dem Menü und dem Regen */
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -425,55 +415,166 @@ textarea {
 }
 
 .overlay-card {
-  width: min(100%, 362px);
+  width: 100%;
   background: var(--vq-aquamarine);
-  border: 1px solid var(--vq-border);
   border-radius: var(--vq-radius);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  padding: 24px;
 }
-
 .overlay-title {
   color: var(--vq-text-dark);
-  font-size: 24px;
-  line-height: 1.2;
-  font-weight: 600;
-}
-
-.overlay-text {
-  color: var(--vq-text-dark);
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-.overlay-text-compact {
-  margin-top: -2px;
-  margin-bottom: 0;
-  font-size: 14px;
-}
-
-.overlay-input {
+  font-weight: 900; /* Extra fett für den Bingo-Look */
+  font-size: 1.6rem;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  letter-spacing: 0.5px;
   width: 100%;
-  min-height: 40px;
-  border: 1px solid var(--vq-border);
-  border-radius: var(--vq-radius);
-  background: #fff;
-  color: var(--vq-text-dark);
-  padding: 12px 16px;
-  font-size: 16px;
 }
 
 .overlay-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 20px;
+  /* Sorgt dafür, dass alle Items im Grid an der Baseline/Mitte ausgerichtet sind */
+  align-items: stretch; 
+}
+.overlay-actions-single {
+  width: 100%;
+  display: block; /* Verhindert Flex-Einschränkungen des Grids */
+  padding: 0;
+  margin: 0;
 }
 
-.overlay-actions-single {
-  grid-template-columns: 1fr;
+.btn-confirm, 
+.btn-cancel {
+  width: 100%;
+  min-height: 52px;
+  /* WICHTIG: Margins entfernen, damit sie nicht versetzt sind */
+  margin: 0 !important; 
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--vq-radius);
+  font-weight: 800;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  
+  /* Gleiche Schriftgröße für beide erzwingen */
+  font-size: 0.9rem; 
 }
+
+.btn-confirm {
+  background: var(--vq-charcoal);
+  color: white;
+}
+
+.btn-cancel {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--vq-text-dark);
+}
+
+/* Das Input Feld braucht auch etwas Liebe */
+.overlay-input {
+  width: 100%;
+  background: white;
+  border: 3px solid var(--vq-border);
+  border-radius: var(--vq-radius);
+  padding: 16px;
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 4px;
+  color: var(--vq-text-dark);
+  margin: 10px 0;
+  outline: none;
+}
+
+.overlay-input:focus {
+  border-color: var(--vq-charcoal);
+}
+
+.overlay-card.is-rules-large {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.rules-subtitle {
+  color: var(--vq-text-dark);
+  font-weight: 800;
+  margin: 20px 0 12px;
+  text-transform: uppercase;
+  
+  /* Zentrierung des Textes */
+  text-align: center;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.rules-bullet-list {
+  padding: 0;
+  list-style: none;
+  color: var(--vq-text-dark);
+}
+
+.rules-bullet-list li {
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.rules-tile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.rules-tile-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vq-text-dark);
+}
+
+/* FIX FÜR DIE BUTTON-GRÖSSE IM OVERLAY */
+.rules-tile-item .bingo-field-button {
+  width: 65px !important;
+  height: 65px !important;
+  flex: none;
+  padding: 5px;
+}
+
+.rules-tile-item .tile-text {
+  font-size: 10px;
+}
+
+.claimed-icon-svg {
+  width: 28px;
+  height: 28px;
+}
+
+
+.btn-rules-confirm {
+  width: 100%; /* Streckt den Button über die volle Breite */
+  background: var(--vq-charcoal);
+  color: white;
+  font-weight: 800;
+  text-transform: uppercase;
+  min-height: 52px; /* Etwas höher für bessere Klickbarkeit */
+  border-radius: var(--vq-radius);
+  border: none;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+
+
+/*---------------------------------------------------------------*\
 
 .lobby-layout {
   padding: clamp(24px, 9vh, 84px) 20px clamp(20px, 8vh, 72px);
@@ -1593,10 +1694,6 @@ background-color: #ffffff;
   100% { transform: rotate(360deg); }
 }
 
-.rules-bullet-list{
-
-  color: black;
-}
 
 /* --- Base Layout --- */
 .leaderboard-layout {
