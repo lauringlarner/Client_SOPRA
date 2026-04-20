@@ -111,7 +111,7 @@ export default function MenuPage() {
 
         {activeOverlay && (
           <div className="overlay-backdrop">
-            <div className={`overlay-card ${activeOverlay === 'rules' ? 'is-rules-large' : ''}`}>
+            <div className="overlay-card">
               {activeOverlay === "join" && (
                 <>
                   <h2 className="overlay-title">Join Lobby</h2>
