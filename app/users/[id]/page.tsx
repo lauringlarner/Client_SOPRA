@@ -7,7 +7,6 @@ import { ApiService } from "@/api/apiService";
 
 const api = new ApiService();
 
-// Simplified: Only include what we actually use in the UI
 interface User {
   id: string;
   username: string;
@@ -44,6 +43,13 @@ export default function UserProfilePage() {
     }
   }, [isAuthenticated, loaded, router, fetchUserData]);
 
+  const closeOverlay = () => {
+    if (isSubmitting) return;
+    setActiveOverlay(null);
+    setError("");
+    setSuccess("");
+  };
+
   const handleSavePassword = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -54,7 +60,6 @@ export default function UserProfilePage() {
     const oldPassword = formData.get("oldPassword") as string;
     const newPassword = formData.get("newPassword") as string;
 
-    // 1. Instant check: Are they the same?
     if (oldPassword === newPassword) {
       setError("New password cannot be the same as the current one.");
       setIsSubmitting(false);
@@ -62,25 +67,14 @@ export default function UserProfilePage() {
     }
 
     try {
-      // 2. Call PUT /users/{id}/password
-      await api.put(`/users/${userId}/password`, {
-        oldPassword,
-        newPassword
-      }, token);
-
-      setSuccess("Password updated successfully! Logging out...");
-
+      await api.put(`/users/${userId}/password`, { oldPassword, newPassword }, token);
+      setSuccess("Password updated! Logging out...");
       setTimeout(() => {
         logout();
         router.replace("/");
       }, 2000);
-      
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Error updating password. Please try again.");
-      }
+      setError(err instanceof Error ? err.message : "Error updating password.");
       setIsSubmitting(false);
     }
   };
@@ -93,7 +87,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="app-shell">
-      <main className="phone-frame screen-gradient user-profile-container">
+      <main className="phone-frame screen-gradient ">
         <h1 className="user-profile-title">Your Profile</h1>
 
         <section className="user-profile-card">
@@ -103,46 +97,42 @@ export default function UserProfilePage() {
           </div>
           <div className="info-group">
             <label className="info-label">Status</label>
-            <div className="info-value" style={{ textTransform: 'capitalize' }}>
+            <div className="info-value status-text">
               {userData.status.toLowerCase()}
             </div>
           </div>
+          
           <div className="profile-actions-row">
-            <button type="button" className="btn-profile-dark" onClick={() => { setError(""); setSuccess(""); setActiveOverlay("edit"); }}>
-              Change Password
+            <button type="button" className="vq-button btn-confirm" onClick={() => setActiveOverlay("edit")}>
+              Password
             </button>
-            <button type="button" className="btn-profile-dark" onClick={() => setActiveOverlay("stats")}>
-              Show Stats
+            <button type="button" className="vq-button btn-confirm" onClick={() => setActiveOverlay("stats")}>
+              Stats
             </button>
           </div>
         </section>
 
         <section className="user-profile-nav-card">
-          <button type="button" className="btn-profile-dark btn-profile-full" onClick={() => router.push("/menu")}>
-            Back to Main Menu
+          <button type="button" className="vq-button btn-confirm btn-profile-full" onClick={() => router.push("/menu")}>
+            Back to Menu
           </button>
           <button
             type="button"
-            className="btn-profile-dark btn-profile-full"
-            style={{ marginTop: '10px', color: '#ff6b6b' }}
-            onClick={() => {
-              logout();
-              router.replace("/");
-            }}
+            className="vq-button btn-profile-full logout-btn-style"
+            onClick={() => { logout(); router.replace("/"); }}
           >
             Logout
           </button>
         </section>
       </main>
 
+      {/* PASSWORD OVERLAY */}
       {activeOverlay === "edit" && (
-        <div className="overlay-backdrop" onClick={() => !isSubmitting && setActiveOverlay(null)}>
+        <div className="overlay-backdrop" onClick={closeOverlay}>
           <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSavePassword}>
             <h2 className="overlay-title">Update Password</h2>
-            
             {error && <div className="error-template">{error}</div>}
             {success && <div className="success-template">{success}</div>}
-
             <div className="edit-form-stack">
               <div className="info-group">
                 <label className="info-label" htmlFor="oldPassword">Current Password</label>
@@ -153,24 +143,22 @@ export default function UserProfilePage() {
                 <input id="newPassword" name="newPassword" type="password" className="edit-input-field" placeholder="••••••••" required disabled={isSubmitting || !!success} />
               </div>
             </div>
-
             <div className="overlay-actions">
-              <button type="button" className="vq-button" onClick={() => setActiveOverlay(null)} disabled={isSubmitting}>
-                Cancel
-              </button>
-              <button type="submit" className="vq-button" style={{ background: '#22313a' }} disabled={isSubmitting || !!success}>
-                {isSubmitting ? "Updating..." : "Update"}
+              <button type="button" className="vq-button btn-cancel" onClick={closeOverlay} disabled={isSubmitting}>Cancel</button>
+              <button type="submit" className="vq-button btn-confirm" disabled={isSubmitting || !!success}>
+                {isSubmitting ? "..." : "Update"}
               </button>
             </div>
           </form>
         </div>
       )}
 
+      {/* STATS OVERLAY */}
       {activeOverlay === "stats" && (
-        <div className="overlay-backdrop" onClick={() => setActiveOverlay(null)}>
+        <div className="overlay-backdrop" onClick={closeOverlay}>
           <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-            <h2 className="overlay-title">Your Statistics</h2>
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+            <h2 className="overlay-title">Statistics</h2>
+            <div className="stats-grid">
               <div className="stat-card">
                 <span className="stat-value">{userData.gamesPlayed}</span>
                 <span className="info-label">Games</span>
@@ -181,11 +169,11 @@ export default function UserProfilePage() {
               </div>
               <div className="stat-card">
                 <span className="stat-value">{winRate}%</span>
-                <span className="info-label">Rate</span>
+                <span className="info-label">Winrate</span>
               </div>
             </div>
-            <div className="overlay-actions overlay-actions-single">
-              <button type="button" className="vq-button" onClick={() => setActiveOverlay(null)}>Close</button>
+            <div className="overlay-actions-single">
+              <button type="button" className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
             </div>
           </div>
         </div>

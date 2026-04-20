@@ -58,6 +58,11 @@ export default function LoginPage() {
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient auth-layout">
+      <div className="bingo-rain-container">
+          {[...Array(12)].map((_, i) => (
+            <span key={i} className="rain-item">BINGO</span>
+          ))}
+        </div>
         <h1 className="auth-title">Login &amp; Play</h1>
 
         <form className="auth-form-card" onSubmit={handleLogin}>
