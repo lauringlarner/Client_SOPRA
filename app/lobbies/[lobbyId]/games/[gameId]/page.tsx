@@ -1,209 +1,304 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { createGameClient } from "@/api/gameService";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { ApplicationError } from "@/types/error";
+import { GameDetails, GameTileStatus } from "@/types/game";
+import {
+  BackendTeamName,
+  buildTeamScores,
+  getTilePerspective,
+  normalizeBackendTeamName,
+  TeamPerspective,
+  TeamScoreViewModel,
+} from "@/utils/gamePerspective";
+import {
+  clearLastSubmissionWord,
+  getLastSubmissionWord,
+} from "@/utils/submissionFeedback";
 
-export default function MenuPage() {
-  const router = useRouter();
+export default function GameBoardPage() {
   const api = useApi();
-  const { loaded, isAuthenticated, logout, token, userId, username } = useAuthSession();
-  
-  const [activeOverlay, setActiveOverlay] = useState<"join" | "rules" | null>(null);
-  const [activeLobbyId, setActiveLobbyId] = useState("");
-  const [joinCode, setJoinCode] = useState("");
-  const [menuMessage, setMenuMessage] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<"create" | "join" | null>(null);
+  const router = useRouter();
+  const { loaded, isAuthenticated, token, userId } = useAuthSession();
+  const params = useParams<{ lobbyId: string; gameId: string }>();
+  const lobbyId = params.lobbyId;
+  const gameId = params.gameId;
 
+  // --- States ---
+  const [game, setGame] = useState<GameDetails | null>(null);
+  const [myTeamName, setMyTeamName] = useState<BackendTeamName | null>(null);
+  const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
+  const [pageMessage, setPageMessage] = useState<string | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+
+  const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
+  const gameClient = useMemo(() => createGameClient({ token }), [token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
-  const avatarInitial = useMemo(() => {
-    if (!username) return "U";
-    return username.trim().charAt(0).toUpperCase() || "U";
-  }, [username]);
+  // --- Timer Logik (Hooks müssen oben stehen!) ---
+  useEffect(() => {
+    if (game && remainingSeconds === null) {
+      setRemainingSeconds(game.gameDuration * 60);
+    }
+  }, [game, remainingSeconds]);
 
   useEffect(() => {
+    if (remainingSeconds === null || remainingSeconds <= 0) return;
+
+    const interval = setInterval(() => {
+      setRemainingSeconds((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [remainingSeconds]);
+
+  const progressWidth = useMemo(() => {
+    if (!game || remainingSeconds === null) return "100%";
+    const totalSeconds = game.gameDuration * 60;
+    const percentage = (remainingSeconds / totalSeconds) * 100;
+    return `${Math.max(0, Math.min(100, percentage))}%`;
+  }, [remainingSeconds, game?.gameDuration]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // --- Auth & Lobby Effekte ---
+  useEffect(() => {
     if (!loaded) return;
-    if (!isAuthenticated) router.replace("/");
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+    if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
+      globalThis.localStorage.removeItem("teamName");
+    }
   }, [isAuthenticated, loaded, router]);
 
   useEffect(() => {
-    if (loaded && isAuthenticated && userId) {
-      setActiveLobbyId(getStoredLobbyId(userId));
-    }
-  }, [isAuthenticated, loaded, userId]);
+    if (!loaded || !isAuthenticated) return;
 
-  if (!loaded || !isAuthenticated) {
-    return <div className="app-shell" />;
-  }
+    setConnectionState("connecting");
+    setPageMessage(null);
 
-  const handleCreateLobby = async () => {
-    setMenuMessage(null);
-    setPendingAction("create");
-    try {
-      const createdLobby = await lobbyClient.createLobby();
-      setStoredLobbyId(userId, createdLobby.lobbyId);
-      router.push(`/lobbies/${createdLobby.lobbyId}`);
-    } catch (error) {
-      setMenuMessage("Unable to create a lobby.");
-    } finally {
-      setPendingAction(null);
-    }
-  };
+    return gameClient.subscribeToGame(
+      gameId,
+      (details) => {
+        setGame(details);
+        setConnectionState("live");
+      },
+      (error) => {
+        setGame(null);
+        setConnectionState("error");
+        setPageMessage(getGameErrorMessage(error, "Unable to load this game."));
+      },
+    );
+  }, [gameClient, gameId, isAuthenticated, loaded]);
 
-  const handleJoinLobby = async () => {
-    setMenuMessage(null);
-    setPendingAction("join");
-    try {
-      const joinedLobby = await lobbyClient.joinLobby(joinCode);
-      setStoredLobbyId(userId, joinedLobby.lobbyId);
-      router.push(`/lobbies/${joinedLobby.lobbyId}`);
-    } catch (error) {
-      setMenuMessage("Invalid join code.");
-    } finally {
-      setPendingAction(null);
+  useEffect(() => {
+    if (!loaded || !isAuthenticated || userId.trim() === "") return;
+
+    return lobbyClient.subscribeToLobby(
+      lobbyId,
+      (details) => {
+        const currentPlayer = details.lobbyPlayers.find((p) => p.user.id === userId) ?? null;
+        setMyTeamName(normalizeBackendTeamName(currentPlayer?.team ?? null));
+      },
+      () => {}
+    );
+  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
+
+  useEffect(() => {
+    if (!game || !myTeamName) return;
+
+    const nextStatuses = new Map<string, GameTileStatus>();
+    let failedSubmissionDetected = false;
+    const lastSubmittedWord = getLastSubmissionWord();
+
+    game.tileGrid.forEach((row, rowIndex) => {
+      row.forEach((tile, colIndex) => {
+        const key = `${rowIndex}-${colIndex}`;
+        const previousStatus = previousStatuses.current.get(key);
+        nextStatuses.set(key, tile.status);
+
+        if (lastSubmittedWord === tile.word && previousStatus && isFriendlyProcessing(previousStatus, myTeamName) && tile.status === "UNCLAIMED") {
+          failedSubmissionDetected = true;
+          clearLastSubmissionWord();
+        }
+
+        if (lastSubmittedWord === tile.word && previousStatus && isFriendlyProcessing(previousStatus, myTeamName) && isClaimedStatus(tile.status)) {
+          clearLastSubmissionWord();
+        }
+      });
+    });
+
+    previousStatuses.current = nextStatuses;
+    if (failedSubmissionDetected) {
+      setSubmissionNotice("Your last submission was not recognized. You can try again.");
     }
-  };
+  }, [game, myTeamName]);
+
+  // --- Render Logik ---
+  if (!loaded || !isAuthenticated) return <div className="app-shell" />;
+
+  const teamScores: TeamScoreViewModel[] = game && myTeamName
+    ? buildTeamScores(myTeamName, game.score_1, game.score_2)
+    : [];
 
   return (
     <div className="app-shell">
-      <main className="phone-frame screen-gradient">
-        <div className="bingo-rain-container">
-          {[...Array(12)].map((_, i) => (
-            <span key={i} className="rain-item">BINGO</span>
-          ))}
-        </div>
-
-        <div className="menu-layout">
-          <section className="menu-panel">
-            <button className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
-
-            <button className="menu-profile" onClick={() => router.push(`/users/${userId}`)}>
-              <span className="menu-avatar">{avatarInitial}</span>
-              <span className="menu-username">{username || "User"}</span>
+      <main className="phone-frame screen-gradient bingo-frame-layout">
+        {(!game || !myTeamName) && (
+          <section className="lobby-card lobby-loading-card">
+            <h2 className="lobby-section-title">
+              {connectionState === "error" ? "Game unavailable" : "Connecting to game"}
+            </h2>
+            <p className="lobby-muted-note">
+              {pageMessage ?? (game ? "Resolving your team from the lobby." : "Waiting for the first game update from the stream.")}
+            </p>
+            <button
+              type="button"
+              className="vq-button"
+              onClick={() => router.replace(`/lobbies/${lobbyId}`)}
+            >
+              Back to Lobby
             </button>
-
-            <div className="menu-main-actions">
-              <button 
-                className="vq-button menu-main-btn"
-                onClick={() => void handleCreateLobby()}
-                disabled={pendingAction !== null}
-              >
-                {pendingAction === "create" ? "Creating..." : "Create Lobby"}
-              </button>
-              <button className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>
-                Join Lobby
-              </button>
-            </div>
           </section>
+        )}
 
-          {menuMessage && <div className="menu-status-card is-error">{menuMessage}</div>}
-
-          <section className={`menu-secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
-            {activeLobbyId && (
-              <button className="vq-button menu-secondary-btn" onClick={() => router.push(`/lobbies/${activeLobbyId}`)}>
-                Return
-              </button>
+        {game && myTeamName && (
+          <>
+            {pageMessage && (
+              <section className="lobby-card lobby-feedback-card is-error">
+                <p className="lobby-feedback-text">{pageMessage}</p>
+              </section>
             )}
-            <button className="vq-button menu-secondary-btn logout" onClick={() => { logout(); router.replace("/"); }}>
-              Logout
-            </button>
-          </section>
-        </div>
-
-        {/* OVERLAYS */}
-        {activeOverlay && (
-          <div className="overlay-backdrop">
-            <div className={`overlay-card ${activeOverlay === 'rules' ? 'is-rules-large' : ''}`}>
-              {activeOverlay === "join" && (
-                <>
-                  <h2 className="overlay-title">Join Lobby</h2>
-                  <input
-                    className="overlay-input"
-                    placeholder="CODE"
-                    value={joinCode}
-                    maxLength={6}
-                    onChange={(e) => setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}
-                  />
-                  <div className="overlay-actions">
-                    <button className="vq-button btn-cancel" onClick={() => setActiveOverlay(null)}>Cancel</button>
-                    <button 
-                      className="vq-button btn-confirm" 
-                      disabled={joinCode.length < 6 || pendingAction !== null}
-                      onClick={() => void handleJoinLobby()}
-                    >
-                      {pendingAction === "join" ? "..." : "Join"}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {activeOverlay === "rules" && (
-                <div className="rules-content">
-                  <h2 className="overlay-title">Game Rules</h2>
-                  
-                  <div className="rules-section">
-                    <h3 className="rules-subtitle">Objective</h3>
-                    <ul className="rules-bullet-list">
-                      <li><strong>Find:</strong> Locate real-world items shown on the tiles.</li>
-                      <li><strong>Capture:</strong> Snap a photo through the app.</li>
-                      <li><strong>AI:</strong> Our system validates your find in real-time.</li>
-                    </ul>
-                  </div>
-
-                  <div className="rules-section">
-                    <h3 className="rules-subtitle">Tile States</h3>
-                    <div className="rules-tile-grid">
-                      <div className="rules-tile-item">
-                        <div className="bingo-field-button"><span className="tile-text">Tree</span></div>
-                        <span>Unclaimed</span>
-                      </div>
-                      <div className="rules-tile-item">
-                        <div className="bingo-field-button is-processing-friendly is-analyzing">
-                           <div className="loader is-friendly"></div>
-                        </div>
-                        <span>In Validation</span>
-                      </div>
-                      <div className="rules-tile-item">
-                        <div className="bingo-field-button is-claimed is-claimed-friendly">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
-                            <path d="M18 6L6 18M6 6l12 12" />
-                          </svg>
-                        </div>
-                        <span>Team 1</span>
-                      </div>
-                      <div className="rules-tile-item">
-                        <div className="bingo-field-button is-claimed is-claimed-enemy">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
-                            <path d="M18 6L6 18M6 6l12 12" />
-                          </svg>
-                        </div>
-                        <span>Team 2</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="overlay-actions overlay-actions-single">
-                    <button className="vq-button btn-confirm" onClick={() => setActiveOverlay(null)}>Got it!</button>
-                  </div>
+            
+            <section className="bingo-team-points-container" aria-label="Team Scores">
+              {teamScores.map((score) => (
+                <div
+                  key={score.label}
+                  className={`bingo-team-points-card ${getPerspectiveCardClass(score.perspective)}`}
+                >
+                  <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
+                  <span className="bingo-team-points-card-points">{score.totalPoints}</span>
                 </div>
-              )}
+              ))}
+            </section>
+
+            <div className="bingo-time-bar-container">
+              <div className="bingo-time-bar-label">
+                Time Remaining: {remainingSeconds !== null ? formatTime(remainingSeconds) : "..."}
+              </div>
+              <div className="bingo-time-bar-track">
+                <div 
+                  className="bingo-time-bar-fill" 
+                  style={{ 
+                    width: progressWidth,
+                    transition: "width 1s linear" 
+                  }}
+                />
+              </div>
             </div>
-          </div>
+
+            <section className="bingo-panel">
+              <div className="bingo-card">
+                {game.tileGrid.map((row, rowIndex) => (
+                  <div key={`row-${rowIndex}`} className="bingo-row-frame">
+                    {row.map((tile, colIndex) => {
+                      const tileIndex = rowIndex * row.length + colIndex;
+                      const isClaimed = isClaimedStatus(tile.status);
+                      const isProcessing = isProcessingStatus(tile.status);
+                      const stateClass = getTileStateClass(tile.status, myTeamName);
+                      const loaderClass = getTileLoaderClass(tile.status, myTeamName);
+
+                      return (
+                        <button
+                          key={`tile-${tileIndex}`}
+                          type="button"
+                          className={`bingo-field-button ${stateClass} ${isProcessing ? "is-analyzing" : ""}`}
+                          disabled={isClaimed || isProcessing}
+                          onClick={() => {
+                            if (lobbyId && gameId) {
+                              router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`);
+                            }
+                          }}
+                        >
+                          {isProcessing ? (
+                            <div className={`loader ${loaderClass}`}></div>
+                          ) : isClaimed ? (
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          ) : (
+                            <span className="tile-text">{tile.word}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {submissionNotice && (
+              <p className="bingo-submission-note">
+                {submissionNotice}
+              </p>
+            )}
+          </>
         )}
       </main>
     </div>
   );
 }
 
-function getStoredLobbyId(userId: string): string {
-  if (typeof window === "undefined" || !userId) return "";
-  return localStorage.getItem(`vq.activeLobbyId.${userId}`) ?? "";
+// --- Helper Functions ---
+
+function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
+  if (status === "UNCLAIMED") return "";
+  if (isClaimedStatus(status)) {
+    return getTilePerspective(status, myTeamName) === "own" ? "is-claimed is-claimed-friendly" : "is-claimed is-claimed-enemy";
+  }
+  if (isProcessingStatus(status)) {
+    return getTilePerspective(status, myTeamName) === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
+  }
+  return "";
 }
 
-function setStoredLobbyId(userId: string, lobbyId: string): void {
-  if (typeof window === "undefined" || !userId) return;
-  localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
+function getTileLoaderClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
+  if (!isProcessingStatus(status)) return "";
+  return getTilePerspective(status, myTeamName) === "own" ? "is-friendly" : "is-enemy";
+}
+
+function getPerspectiveCardClass(perspective: TeamPerspective): string {
+  return perspective === "own" ? "is-friendly" : "is-enemy";
+}
+
+function isClaimedStatus(status: GameTileStatus): boolean {
+  return status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2";
+}
+
+function isProcessingStatus(status: GameTileStatus): boolean {
+  return status === "PROCESSING_TEAM1" || status === "PROCESSING_TEAM2";
+}
+
+function isFriendlyProcessing(status: GameTileStatus, myTeamName: BackendTeamName): boolean {
+  return isProcessingStatus(status) && getTilePerspective(status, myTeamName) === "own";
+}
+
+function getGameErrorMessage(error: unknown, fallback: string): string {
+  const applicationError = error as ApplicationError | undefined;
+  if (applicationError?.status === 403) return applicationError.message;
+  if (applicationError?.status === 404) return "This game could not be found anymore.";
+  if (applicationError instanceof Error && applicationError.message.trim() !== "") return applicationError.message;
+  return fallback;
 }
