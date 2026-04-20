@@ -164,11 +164,13 @@ function createRemoteLobbySubscriber(token: string): SubscribeToLobby {
           }
 
           buffer += decoder.decode(value, { stream: true }).replaceAll("\r\n", "\n");
-          const segments = buffer.split("\n\n");
-          buffer = segments.pop() ?? "";
+          
+          let boundary;
+          while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+            const rawEvent = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
 
-          for (const segment of segments) {
-            const nextLobby = parseLobbySseEvent(segment);
+            const nextLobby = parseLobbySseEvent(rawEvent);
             if (nextLobby) {
               onUpdate(nextLobby);
             }
@@ -231,16 +233,26 @@ function extractGameId(payload: Response | Record<string, unknown>): string | un
 }
 
 function parseLobbySseEvent(segment: string): LobbyDetails | null {
-  const data = segment
-    .split("\n")
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.slice(5).trimStart())
-    .join("\n")
-    .trim();
+  let eventName: string | null = null;
 
-  if (!data) {
+  const lines = segment.split("\n");
+  const dataLines: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith("event:")) {
+      eventName = line.slice(6).trim();
+    }
+    if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  }
+
+  if (eventName !== "lobbyUpdate") {
     return null;
   }
+
+  const data = dataLines.join("\n").trim();
+  if (!data) return null;
 
   return normalizeLobbyDetails(JSON.parse(data));
 }
@@ -321,8 +333,9 @@ function normalizeLobbyTeam(team: unknown): LobbyTeam {
 
 function createRemoteHeaders(token: string): HeadersInit {
   return {
-    Accept: "text/event-stream, application/json",
+    Accept: "text/event-stream",
     Authorization: `Bearer ${token}`,
+    "Cache-Control": "no-cache",
   };
 }
 
