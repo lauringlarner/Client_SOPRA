@@ -84,33 +84,61 @@ export default function LobbyPage() {
   }, [isAuthenticated, loaded, router]);
 
   useEffect(() => {
-    if (!loaded || !isAuthenticated) {
-      return;
-    }
+    if (!loaded || !isAuthenticated) return;
 
-    setConnectionState("connecting");
-    setPageMessage(null);
+    let unsubscribe: (() => void) | undefined;
 
-    return lobbyClient.subscribeToLobby(
-      lobbyId,
-      (details) => {
-        setStoredLobbyId(userId, details.id);
-        setLobby(details);
+    const init = async () => {
+      try {
+        setConnectionState("connecting");
+        setPageMessage(null);
+
+        // 🔥 1. FETCH INITIAL STATE (THIS WAS MISSING)
+        const response = await lobbyClient.getLobby(lobbyId)
+
+        setStoredLobbyId(userId, response.id);
+        setLobby(response);
         setConnectionState("live");
-      },
-      (error) => {
-        if (error.status === 403 || error.status === 404) {
-          clearStoredLobbyId(userId, lobbyId);
-        }
-        setLobby(null);
+
+        // 🔥 2. THEN subscribe to updates
+        unsubscribe = lobbyClient.subscribeToLobby(
+          lobbyId,
+          (details) => {
+            setStoredLobbyId(userId, details.id);
+            setLobby(details);
+            setConnectionState("live");
+          },
+          (error) => {
+            console.error("PUSHER ERROR:", error);
+
+            if (error.status === 403 || error.status === 404) {
+              clearStoredLobbyId(userId, lobbyId);
+            }
+
+            setConnectionState("error");
+            setPageMessage({
+              text: getLobbyErrorMessage(error, "Realtime connection failed."),
+              tone: "error",
+            });
+          }
+        );
+      } catch (error) {
+        console.error("INITIAL FETCH FAILED:", error);
+
         setConnectionState("error");
         setPageMessage({
-          text: getLobbyErrorMessage(error, "Unable to load this lobby."),
+          text: getLobbyErrorMessage(error, "Unable to load lobby."),
           tone: "error",
         });
-      },
-    );
-  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
+      }
+    };
+
+    void init();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId, api, token]);
 
   useEffect(() => {
     if (!lobby) {

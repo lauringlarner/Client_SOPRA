@@ -10,6 +10,7 @@ import {
   StartLobbyResult,
 } from "@/types/lobby";
 import { getApiDomain } from "@/utils/domain";
+import Pusher, { Channel } from "pusher-js";
 
 type SubscribeToLobby = (
   lobbyId: string,
@@ -20,6 +21,7 @@ type SubscribeToLobby = (
 interface LobbyClient {
   createLobby: () => Promise<JoinLobbyResult>;
   joinLobby: (joinCode: string) => Promise<JoinLobbyResult>;
+  getLobby: (lobbyId: string) => Promise<LobbyDetails>;
   updatePlayerTeam: (
     lobbyId: string,
     playerId: string,
@@ -61,6 +63,11 @@ function createRemoteLobbyClient(
   const { api, token } = options;
 
   return {
+    async getLobby(lobbyId: string): Promise<LobbyDetails> {
+      const payload = await api.get<LobbyDetails>(`/lobbies/${lobbyId}`,
+        token,);
+      return normalizeLobbyDetails(payload)
+    },
     async createLobby(): Promise<JoinLobbyResult> {
       const payload = await api.post<RemoteJoinCodePayload>("/lobbies", undefined, token);
       return resolveJoinLobbyResult(payload);
@@ -123,73 +130,73 @@ function createRemoteLobbyClient(
   };
 }
 
+let pusher: Pusher | null = null;
+const channelCache = new Map<string, Channel>();
+
+function getPusher() {
+  if (!pusher) {
+    pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY! , {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    });
+  }
+  return pusher;
+}
+
 function createRemoteLobbySubscriber(token: string): SubscribeToLobby {
   return (lobbyId, onUpdate, onError) => {
-    const controller = new AbortController();
-    const headers = createRemoteHeaders(token);
+    const pusher = getPusher();
+    const channelName = `lobby-${lobbyId}`;
 
-    void (async () => {
+    // Prevent duplicate subscriptions (IMPORTANT for React Strict Mode)
+    if (channelCache.has(channelName)) {
+      const existingChannel = channelCache.get(channelName)!;
+
+      const handler = (data: unknown) => {
+        try {
+          const lobby = normalizeLobbyDetails(data);
+          onUpdate(lobby);
+        } catch {
+          onError(createApplicationError("Invalid lobby update", 500));
+        }
+      };
+
+      existingChannel.bind("LobbyUpdate", handler);
+
+      return () => {
+        existingChannel.unbind("LobbyUpdate", handler);
+      };
+    }
+
+    const channel = pusher.subscribe(channelName);
+    channelCache.set(channelName, channel);
+
+    const handler = (data: unknown) => {
       try {
-        const response = await fetch(`${getApiDomain()}/lobbies/${lobbyId}/stream`, {
-          method: "GET",
-          headers,
-          signal: controller.signal,
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          onError(await createResponseError(
-            response,
-            "Unable to subscribe to the lobby.",
-          ));
-          return;
-        }
-
-        if (!response.body) {
-          onError(createApplicationError(
-            "The lobby stream is not available yet.",
-            500,
-          ));
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (!controller.signal.aborted) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true }).replaceAll("\r\n", "\n");
-          
-          let boundary;
-          while ((boundary = buffer.indexOf("\n\n")) !== -1) {
-            const rawEvent = buffer.slice(0, boundary);
-            buffer = buffer.slice(boundary + 2);
-
-            const nextLobby = parseLobbySseEvent(rawEvent);
-            if (nextLobby) {
-              onUpdate(nextLobby);
-            }
-          }
-        }
-
-        if (!controller.signal.aborted) {
-          onError(createApplicationError("The lobby connection was closed.", 500));
-        }
-      } catch (error) {
-        if (isAbortError(error)) {
-          return;
-        }
-
-        onError(normalizeApplicationError(error));
+        const lobby = normalizeLobbyDetails(data);
+        onUpdate(lobby);
+      } catch {
+        onError(createApplicationError("Invalid lobby update", 500));
       }
-    })();
+    };
 
-    return () => controller.abort();
+    channel.bind("LobbyUpdate", handler);
+
+    const errorHandler = () => {
+      onError(createApplicationError("Pusher connection error", 500));
+    };
+
+    pusher.connection.bind("error", errorHandler);
+
+    return () => {
+      channel.unbind("LobbyUpdate", handler);
+
+      // IMPORTANT: only unsubscribe channel, DO NOT disconnect global client
+      pusher.unsubscribe(channelName);
+
+      channelCache.delete(channelName);
+
+      pusher.connection.unbind("error", errorHandler);
+    };
   };
 }
 
@@ -232,32 +239,8 @@ function extractGameId(payload: Response | Record<string, unknown>): string | un
   return undefined;
 }
 
-function parseLobbySseEvent(segment: string): LobbyDetails | null {
-  let eventName: string | null = null;
-
-  const lines = segment.split("\n");
-  const dataLines: string[] = [];
-
-  for (const line of lines) {
-    if (line.startsWith("event:")) {
-      eventName = line.slice(6).trim();
-    }
-    if (line.startsWith("data:")) {
-      dataLines.push(line.slice(5).trimStart());
-    }
-  }
-
-  if (eventName !== "lobbyUpdate") {
-    return null;
-  }
-
-  const data = dataLines.join("\n").trim();
-  if (!data) return null;
-
-  return normalizeLobbyDetails(JSON.parse(data));
-}
-
-function normalizeLobbyDetails(value: unknown): LobbyDetails {
+// export for quick dirty fix //
+export function normalizeLobbyDetails(value: unknown): LobbyDetails {
   if (!isRecord(value)) {
     throw createApplicationError("The lobby payload is malformed.", 500);
   }
@@ -293,7 +276,7 @@ function normalizeLobbyPlayer(value: unknown): LobbyPlayer {
     isReady: Boolean(value.isReady),
     joinedAt: getRequiredString(value.joinedAt, "player joinedAt"),
     team: normalizeLobbyTeam(value.teamType ?? value.team),
-    user: normalizeLobbyUser(value.user),
+    user: normalizeLobbyUser(value.user ?? value.userGetDTO),
   };
 }
 
@@ -304,7 +287,7 @@ function normalizeLobbyUser(value: unknown): LobbyUser {
 
   return {
     correctItemsFound: getNumberOrDefault(value.correctItemsFound, 0),
-    creation_date: getRequiredString(value.creation_date, "user creation_date"),
+    creation_date: getRequiredString(value.creation_date ?? value.createdAt, "user creation_date"),
     email: typeof value.email === "string" ? value.email : undefined,
     gamesPlayed: getNumberOrDefault(value.gamesPlayed, 0),
     gamesWon: getNumberOrDefault(value.gamesWon, 0),
@@ -331,13 +314,6 @@ function normalizeLobbyTeam(team: unknown): LobbyTeam {
   return null;
 }
 
-function createRemoteHeaders(token: string): HeadersInit {
-  return {
-    Accept: "text/event-stream",
-    Authorization: `Bearer ${token}`,
-    "Cache-Control": "no-cache",
-  };
-}
 
 async function createResponseError(
   response: Response,
