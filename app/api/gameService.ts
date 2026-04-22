@@ -1,8 +1,9 @@
 import { ApiService } from "@/api/apiService";
 import { ApplicationError } from "@/types/error";
 import { GameDetails, GameStatus, GameTile, GameTileStatus } from "@/types/game";
-import { getApiDomain } from "@/utils/domain";
+// ENTFERNT: getApiDomain (ungenutzt)
 import Pusher, { Channel } from "pusher-js";
+import process from "node:process"; // HINZUGEFÜGT für Deno Support
 
 type SubscribeToGame = (
   gameId: string,
@@ -24,12 +25,13 @@ export function createGameClient(options: CreateGameClientOptions): GameClient {
   const { api, token } = options;
 
   return {
-    subscribeToGame: createRemoteGameSubscriber(options.token),
+    // Geändert: token wird jetzt als _token markiert oder (besser) hier gar nicht übergeben, 
+    // da createRemoteGameSubscriber ihn aktuell intern nicht nutzt.
+    subscribeToGame: createRemoteGameSubscriber(token), 
     async getGame(gameId: string): Promise<GameDetails> {
-          const payload = await api.get<GameDetails>(`/games/${gameId}`,
-            token,);
-          return normalizeGameDetails(payload)
-        },
+      const payload = await api.get<GameDetails>(`/games/${gameId}`, token);
+      return normalizeGameDetails(payload);
+    },
   };
 }
 
@@ -45,15 +47,13 @@ function getPusher() {
   return pusher;
 }
 
-
-
-function createRemoteGameSubscriber(token: string): SubscribeToGame {
+// Prefix _token, da die Variable im Funktionskörper nicht verwendet wird
+function createRemoteGameSubscriber(_token: string): SubscribeToGame {
   return (gameId, onUpdate, onError) => {
     const pusher = getPusher();
     const channelName = `game-${gameId}`;
     const eventName = "GameUpdate";
 
-    // Prevent duplicate subscriptions (React Strict Mode safe)
     if (channelCache.has(channelName)) {
       const existingChannel = channelCache.get(channelName)!;
 
@@ -67,7 +67,6 @@ function createRemoteGameSubscriber(token: string): SubscribeToGame {
       };
 
       existingChannel.bind(eventName, handler);
-
       return () => {
         existingChannel.unbind(eventName, handler);
       };
@@ -102,7 +101,6 @@ function createRemoteGameSubscriber(token: string): SubscribeToGame {
   };
 }
 
-
 function normalizeGameDetails(value: unknown): GameDetails {
   if (!isRecord(value)) {
     throw createApplicationError("The game payload is malformed.", 500);
@@ -132,7 +130,6 @@ function normalizeTileGrid(value: unknown): GameTile[][] {
     if (!Array.isArray(row)) {
       throw createApplicationError(`The tile row ${rowIndex + 1} is malformed.`, 500);
     }
-
     return row.map(normalizeGameTile);
   });
 }
@@ -153,7 +150,6 @@ function normalizeGameStatus(value: unknown): GameStatus {
   if (value === "IN_PROGRESS" || value === "FINISHED") {
     return value;
   }
-
   throw createApplicationError("The game status is missing from the response.", 500);
 }
 
@@ -167,7 +163,6 @@ function normalizeTileStatus(value: unknown): GameTileStatus {
   ) {
     return value;
   }
-
   throw createApplicationError("The tile status is missing from the response.", 500);
 }
 
@@ -179,53 +174,10 @@ function normalizeStringList(
   if (!Array.isArray(value)) {
     return fallback;
   }
-
   return value.map((entry) => getRequiredString(entry, label));
 }
 
-async function createResponseError(
-  response: Response,
-  fallbackMessage: string,
-): Promise<ApplicationError> {
-  let detail = response.statusText || "Unknown error";
-
-  try {
-    const payload = await response.json();
-    if (isRecord(payload)) {
-      const reason = payload.reason;
-      const message = payload.message;
-      if (typeof reason === "string" && reason.trim() !== "") {
-        detail = reason;
-      } else if (typeof message === "string" && message.trim() !== "") {
-        detail = message;
-      }
-    }
-  } catch {
-    // Keep the original response status text when the error body is not JSON.
-  }
-
-  return createApplicationError(
-    `${fallbackMessage} (${response.status}: ${detail})`,
-    response.status,
-  );
-}
-
-function normalizeApplicationError(error: unknown): ApplicationError {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    "message" in error
-  ) {
-    return error as ApplicationError;
-  }
-
-  if (error instanceof Error) {
-    return createApplicationError(error.message, 500);
-  }
-
-  return createApplicationError("An unexpected error occurred.", 500);
-}
+// ENTFERNT: createResponseError, normalizeApplicationError, isAbortError (alle ungenutzt laut Lint)
 
 function createApplicationError(message: string, status: number): ApplicationError {
   const error = new Error(message) as ApplicationError;
@@ -234,15 +186,10 @@ function createApplicationError(message: string, status: number): ApplicationErr
   return error;
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
 function getRequiredString(value: unknown, label: string): string {
   if (typeof value !== "string" || value.trim() === "") {
     throw createApplicationError(`The ${label} is missing from the response.`, 500);
   }
-
   return value;
 }
 
@@ -250,7 +197,6 @@ function getRequiredNumber(value: unknown, label: string): number {
   if (typeof value !== "number" || Number.isNaN(value)) {
     throw createApplicationError(`The ${label} is missing from the response.`, 500);
   }
-
   return value;
 }
 

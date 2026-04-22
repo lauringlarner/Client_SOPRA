@@ -50,7 +50,7 @@ export default function MenuPage() {
       const createdLobby = await lobbyClient.createLobby();
       setStoredLobbyId(userId, createdLobby.lobbyId);
       router.push(`/lobbies/${createdLobby.lobbyId}`);
-    } catch (error) {
+    } catch (_error) { // Gefixt: Unterstrich hinzugefügt
       setMenuMessage("Unable to create a lobby.");
     } finally {
       setPendingAction(null);
@@ -63,12 +63,11 @@ export default function MenuPage() {
     setPendingAction("join");
     try {
       const joinedLobby = await lobbyClient.joinLobby(joinCode);
-      // Stabilitäts-Fix: ID speichern und SOFORT mit der API-ID navigieren
       if (joinedLobby && joinedLobby.lobbyId) {
         setStoredLobbyId(userId, joinedLobby.lobbyId);
         router.push(`/lobbies/${joinedLobby.lobbyId}`);
       }
-    } catch (error) {
+    } catch (_error) { // Gefixt: Unterstrich hinzugefügt
       setOverlayError("Invalid join code. Please enter a valid code!");
     } finally {
       setPendingAction(null);

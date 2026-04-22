@@ -9,8 +9,8 @@ import {
   LobbyUser,
   StartLobbyResult,
 } from "@/types/lobby";
-import { getApiDomain } from "@/utils/domain";
 import Pusher, { Channel } from "pusher-js";
+import process from "node:process";
 
 type SubscribeToLobby = (
   lobbyId: string,
@@ -64,9 +64,8 @@ function createRemoteLobbyClient(
 
   return {
     async getLobby(lobbyId: string): Promise<LobbyDetails> {
-      const payload = await api.get<LobbyDetails>(`/lobbies/${lobbyId}`,
-        token,);
-      return normalizeLobbyDetails(payload)
+      const payload = await api.get<LobbyDetails>(`/lobbies/${lobbyId}`, token);
+      return normalizeLobbyDetails(payload);
     },
     async createLobby(): Promise<JoinLobbyResult> {
       const payload = await api.post<RemoteJoinCodePayload>("/lobbies", undefined, token);
@@ -135,19 +134,18 @@ const channelCache = new Map<string, Channel>();
 
 function getPusher() {
   if (!pusher) {
-    pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY! , {
+    pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
     });
   }
   return pusher;
 }
 
-function createRemoteLobbySubscriber(token: string): SubscribeToLobby {
+function createRemoteLobbySubscriber(_token: string): SubscribeToLobby {
   return (lobbyId, onUpdate, onError) => {
     const pusher = getPusher();
     const channelName = `lobby-${lobbyId}`;
 
-    // Prevent duplicate subscriptions (IMPORTANT for React Strict Mode)
     if (channelCache.has(channelName)) {
       const existingChannel = channelCache.get(channelName)!;
 
@@ -189,12 +187,8 @@ function createRemoteLobbySubscriber(token: string): SubscribeToLobby {
 
     return () => {
       channel.unbind("LobbyUpdate", handler);
-
-      // IMPORTANT: only unsubscribe channel, DO NOT disconnect global client
       pusher.unsubscribe(channelName);
-
       channelCache.delete(channelName);
-
       pusher.connection.unbind("error", errorHandler);
     };
   };
@@ -239,7 +233,6 @@ function extractGameId(payload: Response | Record<string, unknown>): string | un
   return undefined;
 }
 
-// export for quick dirty fix //
 export function normalizeLobbyDetails(value: unknown): LobbyDetails {
   if (!isRecord(value)) {
     throw createApplicationError("The lobby payload is malformed.", 500);
@@ -314,51 +307,6 @@ function normalizeLobbyTeam(team: unknown): LobbyTeam {
   return null;
 }
 
-
-async function createResponseError(
-  response: Response,
-  fallbackMessage: string,
-): Promise<ApplicationError> {
-  let detail = response.statusText || "Unknown error";
-
-  try {
-    const payload = await response.json();
-    if (isRecord(payload)) {
-      const reason = payload.reason;
-      const message = payload.message;
-      if (typeof reason === "string" && reason.trim() !== "") {
-        detail = reason;
-      } else if (typeof message === "string" && message.trim() !== "") {
-        detail = message;
-      }
-    }
-  } catch {
-    // Keep the original response status text when the error body is not JSON.
-  }
-
-  return createApplicationError(
-    `${fallbackMessage} (${response.status}: ${detail})`,
-    response.status,
-  );
-}
-
-function normalizeApplicationError(error: unknown): ApplicationError {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    "message" in error
-  ) {
-    return error as ApplicationError;
-  }
-
-  if (error instanceof Error) {
-    return createApplicationError(error.message, 500);
-  }
-
-  return createApplicationError("An unexpected error occurred.", 500);
-}
-
 function createApplicationError(
   message: string,
   status: number,
@@ -367,10 +315,6 @@ function createApplicationError(
   error.status = status;
   error.info = JSON.stringify({ status }, null, 2);
   return error;
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
 }
 
 function getRequiredString(value: unknown, label: string): string {

@@ -89,13 +89,14 @@ export default function LobbyPage() {
 
     const checkLobbyExists = async () => {
       try {
-        await lobbyClient.getLobby(lobbyId);
-      } catch (error: any) {
-        if (error.status === 404 || error.status === 403) {
-          clearStoredLobbyId(userId, lobbyId);
-          router.replace("/menu");
+          await lobbyClient.getLobby(lobbyId);
+        } catch (error: unknown) {
+          const appError = error as ApplicationError;
+          if (appError.status === 404 || appError.status === 403) {
+            clearStoredLobbyId(userId, lobbyId);
+            router.replace("/menu");
+          }
         }
-      }
     };
 
     const interval = setInterval(checkLobbyExists, 1000);
@@ -140,12 +141,15 @@ export default function LobbyPage() {
             });
           }
         );
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("INITIAL FETCH FAILED:", error);
-        if (error.status === 404) {
-          router.replace("/menu");
-          return;
-        }
+          
+          if (error && typeof error === "object" && "status" in error) {
+            if ((error as { status: number }).status === 404) {
+              router.replace("/menu");
+              return;
+            }
+          }
         setConnectionState("error");
         setPageMessage({
           text: getLobbyErrorMessage(error, "Unable to load lobby."),
