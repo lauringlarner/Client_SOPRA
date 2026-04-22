@@ -12,6 +12,11 @@ import {
 import Pusher, { Channel } from "pusher-js";
 import process from "node:process";
 
+/**
+ * HINWEIS: Kein "import process from 'node:process'" nötig. 
+ * Next.js injiziert process.env automatisch im Browser für NEXT_PUBLIC_ Variablen.
+ */
+
 type SubscribeToLobby = (
   lobbyId: string,
   onUpdate: (details: LobbyDetails) => void,
@@ -134,8 +139,19 @@ const channelCache = new Map<string, Channel>();
 
 function getPusher() {
   if (!pusher) {
-    pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    if (!key || !cluster) {
+      throw createApplicationError(
+        "Pusher configuration missing. Check NEXT_PUBLIC_PUSHER_KEY and NEXT_PUBLIC_PUSHER_CLUSTER in .env.local",
+        500
+      );
+    }
+
+    pusher = new Pusher(key, {
+      cluster: cluster,
+      forceTLS: true,
     });
   }
   return pusher;
@@ -143,53 +159,47 @@ function getPusher() {
 
 function createRemoteLobbySubscriber(_token: string): SubscribeToLobby {
   return (lobbyId, onUpdate, onError) => {
-    const pusher = getPusher();
-    const channelName = `lobby-${lobbyId}`;
-
-    if (channelCache.has(channelName)) {
-      const existingChannel = channelCache.get(channelName)!;
-
-      const handler = (data: unknown) => {
-        try {
-          const lobby = normalizeLobbyDetails(data);
-          onUpdate(lobby);
-        } catch {
-          onError(createApplicationError("Invalid lobby update", 500));
-        }
-      };
-
-      existingChannel.bind("LobbyUpdate", handler);
-
-      return () => {
-        existingChannel.unbind("LobbyUpdate", handler);
-      };
+    let pusherInstance: Pusher;
+    try {
+      pusherInstance = getPusher();
+    } catch (err) {
+      onError(err as ApplicationError);
+      return () => {};
     }
 
-    const channel = pusher.subscribe(channelName);
-    channelCache.set(channelName, channel);
+    const channelName = `lobby-${lobbyId}`;
 
     const handler = (data: unknown) => {
       try {
         const lobby = normalizeLobbyDetails(data);
         onUpdate(lobby);
-      } catch {
+      } catch (_err) {
         onError(createApplicationError("Invalid lobby update", 500));
       }
     };
-
-    channel.bind("LobbyUpdate", handler);
 
     const errorHandler = () => {
       onError(createApplicationError("Pusher connection error", 500));
     };
 
-    pusher.connection.bind("error", errorHandler);
+    let channel: Channel;
+    if (channelCache.has(channelName)) {
+      channel = channelCache.get(channelName)!;
+    } else {
+      channel = pusherInstance.subscribe(channelName);
+      channelCache.set(channelName, channel);
+    }
+
+    channel.bind("LobbyUpdate", handler);
+    pusherInstance.connection.bind("error", errorHandler);
 
     return () => {
       channel.unbind("LobbyUpdate", handler);
-      pusher.unsubscribe(channelName);
+      // Nur unsubscribe und Cache löschen, wenn keine anderen Listener mehr aktiv sind (optional)
+      // Hier halten wir es einfach: Wir räumen auf, wenn die Component unmountet.
+      pusherInstance.unsubscribe(channelName);
       channelCache.delete(channelName);
-      pusher.connection.unbind("error", errorHandler);
+      pusherInstance.connection.unbind("error", errorHandler);
     };
   };
 }
@@ -200,36 +210,25 @@ function resolveJoinLobbyResult(payload: RemoteJoinCodePayload): JoinLobbyResult
 
   if (!joinCode || !lobbyId) {
     throw createApplicationError(
-      "The backend response is missing lobby information. Create and join should return both joinCode and lobbyId.",
+      "The backend response is missing lobby information.",
       500,
     );
   }
 
-  return {
-    joinCode,
-    lobbyId,
-  };
+  return { joinCode, lobbyId };
 }
 
 function extractGameId(payload: Response | Record<string, unknown>): string | undefined {
   if (payload instanceof Response) {
     const location = payload.headers.get("Location");
-    if (!location) {
-      return undefined;
-    }
-
+    if (!location) return undefined;
     const segments = location.split("/").filter(Boolean);
     return segments.at(-1);
   }
 
   const gameId = payload.gameId;
-  if (typeof gameId === "string" && gameId.trim() !== "") {
-    return gameId;
-  }
-  if (typeof gameId === "number" && Number.isFinite(gameId)) {
-    return String(gameId);
-  }
-
+  if (typeof gameId === "string" && gameId.trim() !== "") return gameId;
+  if (typeof gameId === "number" && Number.isFinite(gameId)) return String(gameId);
   return undefined;
 }
 
@@ -239,10 +238,7 @@ export function normalizeLobbyDetails(value: unknown): LobbyDetails {
   }
 
   const id = getRequiredString(value.id, "lobby id");
-  const joinCode = getRequiredString(
-    value.joinCode ?? value.code,
-    "join code",
-  );
+  const joinCode = getRequiredString(value.joinCode ?? value.code, "join code");
   const gameDuration = getRequiredNumber(value.gameDuration, "game duration");
   const lobbyPlayers = Array.isArray(value.lobbyPlayers)
     ? value.lobbyPlayers.map(normalizeLobbyPlayer)
@@ -291,26 +287,13 @@ function normalizeLobbyUser(value: unknown): LobbyUser {
 }
 
 function normalizeLobbyTeam(team: unknown): LobbyTeam {
-  if (team === null || team === undefined || team === "") {
-    return null;
-  }
-  if (team === "Undecided") {
-    return null;
-  }
-  if (team === "Team1") {
-    return "Team1";
-  }
-  if (team === "Team2") {
-    return "Team2";
-  }
-
+  if (team === null || team === undefined || team === "" || team === "Undecided") return null;
+  if (team === "Team1") return "Team1";
+  if (team === "Team2") return "Team2";
   return null;
 }
 
-function createApplicationError(
-  message: string,
-  status: number,
-): ApplicationError {
+function createApplicationError(message: string, status: number): ApplicationError {
   const error = new Error(message) as ApplicationError;
   error.status = status;
   error.info = JSON.stringify({ status }, null, 2);
@@ -332,28 +315,16 @@ function getRequiredNumber(value: unknown, label: string): number {
 }
 
 function getOptionalString(value: unknown): string | undefined {
-  if (typeof value === "string" && value.trim() !== "") {
-    return value;
-  }
-
-  return undefined;
+  return (typeof value === "string" && value.trim() !== "") ? value : undefined;
 }
 
 function getNumberOrDefault(value: unknown, fallback: number): number {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return fallback;
-  }
-  return value;
+  return (typeof value === "number" && !Number.isNaN(value)) ? value : fallback;
 }
 
 function getOptionalIdentifier(value: unknown): string | undefined {
-  if (typeof value === "string" && value.trim() !== "") {
-    return value;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-
+  if (typeof value === "string" && value.trim() !== "") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return undefined;
 }
 

@@ -1,9 +1,13 @@
 import { ApiService } from "@/api/apiService";
 import { ApplicationError } from "@/types/error";
 import { GameDetails, GameStatus, GameTile, GameTileStatus } from "@/types/game";
-// ENTFERNT: getApiDomain (ungenutzt)
 import Pusher, { Channel } from "pusher-js";
-import process from "node:process"; // HINZUGEFÜGT für Deno Support
+import process from "node:process";
+
+/**
+ * HINWEIS: Kein "import process from 'node:process'" nötig. 
+ * Next.js injiziert process.env automatisch im Browser.
+ */
 
 type SubscribeToGame = (
   gameId: string,
@@ -25,8 +29,6 @@ export function createGameClient(options: CreateGameClientOptions): GameClient {
   const { api, token } = options;
 
   return {
-    // Geändert: token wird jetzt als _token markiert oder (besser) hier gar nicht übergeben, 
-    // da createRemoteGameSubscriber ihn aktuell intern nicht nutzt.
     subscribeToGame: createRemoteGameSubscriber(token), 
     async getGame(gameId: string): Promise<GameDetails> {
       const payload = await api.get<GameDetails>(`/games/${gameId}`, token);
@@ -40,40 +42,36 @@ const channelCache = new Map<string, Channel>();
 
 function getPusher() {
   if (!pusher) {
-    pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    if (!key || !cluster) {
+      throw createApplicationError(
+        "Pusher configuration missing. Check NEXT_PUBLIC_PUSHER_KEY and CLUSTER in .env.local",
+        500
+      );
+    }
+
+    pusher = new Pusher(key, {
+      cluster: cluster,
+      forceTLS: true
     });
   }
   return pusher;
 }
 
-// Prefix _token, da die Variable im Funktionskörper nicht verwendet wird
 function createRemoteGameSubscriber(_token: string): SubscribeToGame {
   return (gameId, onUpdate, onError) => {
-    const pusher = getPusher();
-    const channelName = `game-${gameId}`;
-    const eventName = "GameUpdate";
-
-    if (channelCache.has(channelName)) {
-      const existingChannel = channelCache.get(channelName)!;
-
-      const handler = (data: unknown) => {
-        try {
-          const game = normalizeGameDetails(data);
-          onUpdate(game);
-        } catch {
-          onError(createApplicationError("Invalid game update", 500));
-        }
-      };
-
-      existingChannel.bind(eventName, handler);
-      return () => {
-        existingChannel.unbind(eventName, handler);
-      };
+    let pusherInstance: Pusher;
+    try {
+      pusherInstance = getPusher();
+    } catch (err) {
+      onError(err as ApplicationError);
+      return () => {};
     }
 
-    const channel = pusher.subscribe(channelName);
-    channelCache.set(channelName, channel);
+    const channelName = `game-${gameId}`;
+    const eventName = "GameUpdate";
 
     const handler = (data: unknown) => {
       try {
@@ -84,19 +82,26 @@ function createRemoteGameSubscriber(_token: string): SubscribeToGame {
       }
     };
 
-    channel.bind(eventName, handler);
-
     const errorHandler = () => {
       onError(createApplicationError("Pusher connection error", 500));
     };
 
-    pusher.connection.bind("error", errorHandler);
+    let channel: Channel;
+    if (channelCache.has(channelName)) {
+      channel = channelCache.get(channelName)!;
+    } else {
+      channel = pusherInstance.subscribe(channelName);
+      channelCache.set(channelName, channel);
+    }
+
+    channel.bind(eventName, handler);
+    pusherInstance.connection.bind("error", errorHandler);
 
     return () => {
       channel.unbind(eventName, handler);
-      pusher.unsubscribe(channelName);
+      pusherInstance.unsubscribe(channelName);
       channelCache.delete(channelName);
-      pusher.connection.unbind("error", errorHandler);
+      pusherInstance.connection.unbind("error", errorHandler);
     };
   };
 }
@@ -176,8 +181,6 @@ function normalizeStringList(
   }
   return value.map((entry) => getRequiredString(entry, label));
 }
-
-// ENTFERNT: createResponseError, normalizeApplicationError, isAbortError (alle ungenutzt laut Lint)
 
 function createApplicationError(message: string, status: number): ApplicationError {
   const error = new Error(message) as ApplicationError;
