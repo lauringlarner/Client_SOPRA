@@ -135,6 +135,16 @@ const channelCache = new Map<string, Channel>();
 
 function getPusher() {
   if (!pusher) {
+
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
+    console.log("🔥 PUSHER DEBUG", {
+      keyLength: key?.length,
+      keyStart: key?.slice(0, 6),
+      cluster,
+    });
+
     pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY! , {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
     });
