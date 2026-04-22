@@ -76,6 +76,7 @@ export default function LoginPage() {
               placeholder="Enter username"
               required
               disabled={isSubmitting}
+              maxLength={20}
             />
           </label>
 
@@ -88,6 +89,8 @@ export default function LoginPage() {
               placeholder="Enter password"
               required
               disabled={isSubmitting}
+              minLength={12}
+              maxLength={30}
             />
           </label>
 
