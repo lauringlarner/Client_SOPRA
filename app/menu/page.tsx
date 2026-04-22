@@ -83,47 +83,7 @@ export default function MenuPage() {
 
   return (
     <div className="app-shell">
-      <main className="phone-frame screen-gradient" style={{ position: 'relative' }}>
-        
-        {/* CSS: Overlays klein halten & im Frame einsperren */}
-        <style jsx>{`
-          .overlay-backdrop {
-            position: absolute; /* Bleibt im phone-frame */
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: grid;
-            place-items: center;
-            z-index: 1000;
-          }
-
-          .overlay-card {
-            width: 88%;
-            max-height: 85%;
-            background: var(--vq-aquamarine, #48c9b0);
-            border-radius: 24px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-          }
-
-          .rules-content {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .rules-section {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 12px;
-            border-radius: 12px;
-          }
-        `}</style>
-
+      <main className="phone-frame screen-gradient">
         <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
             <span key={i} className="rain-item">BINGO</span>

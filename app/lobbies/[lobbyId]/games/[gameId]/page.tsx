@@ -300,9 +300,10 @@ export default function GameBoardPage() {
        {/* RULES OVERLAY */}
       {showRules && (
         <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
-          <div className="overlay-card is-rules-large" onClick={(e) => e.stopPropagation()}>
+          <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
             <div className="rules-content">
               <h2 className="overlay-title">Game Rules</h2>
+              
               <div className="rules-section">
                 <ul className="rules-bullet-list">
                   <li><strong>Find:</strong> Locate an item listed on the bingo board in the real world.</li>
