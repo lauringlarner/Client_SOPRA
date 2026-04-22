@@ -38,8 +38,8 @@ const channelCache = new Map<string, Channel>();
 
 function getPusher() {
   if (!pusher) {
-    pusher = new Pusher("5ecf3b7d78089be3782f", {
-      cluster: "eu",
+    pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
     });
   }
   return pusher;
