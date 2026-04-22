@@ -10,7 +10,7 @@ import {
   StartLobbyResult,
 } from "@/types/lobby";
 import Pusher, { Channel } from "pusher-js";
-import process from "node:process";
+
 
 /**
  * HINWEIS: Kein "import process from 'node:process'" nötig. 

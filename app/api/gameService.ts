@@ -2,7 +2,7 @@ import { ApiService } from "@/api/apiService";
 import { ApplicationError } from "@/types/error";
 import { GameDetails, GameStatus, GameTile, GameTileStatus } from "@/types/game";
 import Pusher, { Channel } from "pusher-js";
-import process from "node:process";
+
 
 /**
  * HINWEIS: Kein "import process from 'node:process'" nötig. 
