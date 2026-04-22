@@ -1,6 +1,8 @@
+import { ApiService } from "@/api/apiService";
 import { ApplicationError } from "@/types/error";
 import { GameDetails, GameStatus, GameTile, GameTileStatus } from "@/types/game";
 import { getApiDomain } from "@/utils/domain";
+import Pusher, { Channel } from "pusher-js";
 
 type SubscribeToGame = (
   gameId: string,
@@ -10,114 +12,96 @@ type SubscribeToGame = (
 
 interface GameClient {
   subscribeToGame: SubscribeToGame;
+  getGame: (gameId: string) => Promise<GameDetails>;
 }
 
 interface CreateGameClientOptions {
+  api: ApiService;
   token: string;
 }
 
 export function createGameClient(options: CreateGameClientOptions): GameClient {
+  const { api, token } = options;
+
   return {
     subscribeToGame: createRemoteGameSubscriber(options.token),
+    async getGame(gameId: string): Promise<GameDetails> {
+          const payload = await api.get<GameDetails>(`/games/${gameId}`,
+            token,);
+          return normalizeGameDetails(payload)
+        },
   };
 }
+
+let pusher: Pusher | null = null;
+const channelCache = new Map<string, Channel>();
+
+function getPusher() {
+  if (!pusher) {
+    pusher = new Pusher("5ecf3b7d78089be3782f", {
+      cluster: "eu",
+    });
+  }
+  return pusher;
+}
+
+
 
 function createRemoteGameSubscriber(token: string): SubscribeToGame {
   return (gameId, onUpdate, onError) => {
-    const controller = new AbortController();
+    const pusher = getPusher();
+    const channelName = `game-${gameId}`;
+    const eventName = "GameUpdate";
 
-    void (async () => {
+    // Prevent duplicate subscriptions (React Strict Mode safe)
+    if (channelCache.has(channelName)) {
+      const existingChannel = channelCache.get(channelName)!;
+
+      const handler = (data: unknown) => {
+        try {
+          const game = normalizeGameDetails(data);
+          onUpdate(game);
+        } catch {
+          onError(createApplicationError("Invalid game update", 500));
+        }
+      };
+
+      existingChannel.bind(eventName, handler);
+
+      return () => {
+        existingChannel.unbind(eventName, handler);
+      };
+    }
+
+    const channel = pusher.subscribe(channelName);
+    channelCache.set(channelName, channel);
+
+    const handler = (data: unknown) => {
       try {
-        const response = await fetch(`${getApiDomain()}/games/${gameId}/stream`, {
-          method: "GET",
-          headers: {
-            Accept: "text/event-stream",
-            Authorization: `Bearer ${token}`,
-          },
-          signal: controller.signal,
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          onError(await createResponseError(
-            response,
-            "Unable to subscribe to the game.",
-          ));
-          return;
-        }
-
-        if (!response.body) {
-          onError(createApplicationError(
-            "The game stream is not available yet.",
-            500,
-          ));
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (!controller.signal.aborted) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true }).replaceAll("\r\n", "\n");
-          
-          let boundary;
-          while ((boundary = buffer.indexOf("\n\n")) !== -1) {
-            const rawEvent = buffer.slice(0, boundary);
-            buffer = buffer.slice(boundary + 2);
-
-            const nextGame = parseGameSseEvent(rawEvent);
-            if (nextGame) {
-              onUpdate(nextGame);
-            }
-          }
-        }
-
-        if (!controller.signal.aborted) {
-          onError(createApplicationError("The game connection was closed.", 500));
-        }
-      } catch (error) {
-        if (isAbortError(error)) {
-          return;
-        }
-
-        onError(normalizeApplicationError(error));
+        const game = normalizeGameDetails(data);
+        onUpdate(game);
+      } catch {
+        onError(createApplicationError("Invalid game update", 500));
       }
-    })();
+    };
 
-    return () => controller.abort();
+    channel.bind(eventName, handler);
+
+    const errorHandler = () => {
+      onError(createApplicationError("Pusher connection error", 500));
+    };
+
+    pusher.connection.bind("error", errorHandler);
+
+    return () => {
+      channel.unbind(eventName, handler);
+      pusher.unsubscribe(channelName);
+      channelCache.delete(channelName);
+      pusher.connection.unbind("error", errorHandler);
+    };
   };
 }
 
-function parseGameSseEvent(segment: string): GameDetails | null {
-  let eventName: string | null = null;
-
-  const lines = segment.split("\n");
-  const dataLines: string[] = [];
-
-  for (const line of lines) {
-    if (line.startsWith("event:")) {
-      eventName = line.slice(6).trim();
-    }
-    if (line.startsWith("data:")) {
-      dataLines.push(line.slice(5).trimStart());
-    }
-  }
-
-  if (eventName !== "gameUpdate") {
-    return null;
-  }
-
-  const data = dataLines.join("\n").trim();
-  if (!data) return null;
-
-  return normalizeGameDetails(JSON.parse(data));
-}
 
 function normalizeGameDetails(value: unknown): GameDetails {
   if (!isRecord(value)) {

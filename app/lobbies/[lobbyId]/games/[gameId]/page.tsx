@@ -39,7 +39,7 @@ export default function GameBoardPage() {
   const [showRules, setShowRules] = useState(false);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
-  const gameClient = useMemo(() => createGameClient({ token }), [token]);
+  const gameClient = useMemo(() => createGameClient({ api, token }), [token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
   // --- Timer Logik ---
@@ -84,31 +84,66 @@ export default function GameBoardPage() {
 
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
-    setConnectionState("connecting");
-    return gameClient.subscribeToGame(
-      gameId,
-      (details) => {
-        setGame(details);
-        setConnectionState("live");
-      },
-      (error) => {
-        setGame(null);
+
+    let unsubscribe: (() => void) | undefined;
+
+    const init = async () => {
+      try {
+        setConnectionState("connecting");
+        setPageMessage(null);
+
+        // ✅ INITIAL GAME FETCH (missing in your code)
+        const initial = await gameClient.getGame(gameId); 
+        // OR api call if you don't have it yet
+
+        if (initial) {
+          setGame(initial);
+          setConnectionState("live");
+        }
+
+        unsubscribe = gameClient.subscribeToGame(
+          gameId,
+          (details) => {
+            setGame(details);
+            setConnectionState("live");
+          },
+          (error) => {
+            setGame(null);
+            setConnectionState("error");
+            setPageMessage(
+              getGameErrorMessage(error, "Unable to load this game.")
+            );
+          },
+        );
+      } catch (error) {
         setConnectionState("error");
-        setPageMessage(getGameErrorMessage(error, "Unable to load this game."));
-      },
-    );
-  }, [gameClient, gameId, isAuthenticated, loaded]);
+        setPageMessage(
+          getGameErrorMessage(error, "Unable to load this game.")
+        );
+      }
+    };
+
+    void init();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [loaded, isAuthenticated, gameClient, gameId]);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated || userId.trim() === "") return;
-    return lobbyClient.subscribeToLobby(
-      lobbyId,
-      (details) => {
-        const currentPlayer = details.lobbyPlayers.find((p) => p.user.id === userId) ?? null;
-        setMyTeamName(normalizeBackendTeamName(currentPlayer?.team ?? null));
-      },
-      () => {}
-    );
+
+    (async () => {
+      const currentLobby = await lobbyClient.getLobby(lobbyId);
+
+      const currentPlayer = currentLobby.lobbyPlayers.find(
+        (p) => p.user.id === userId
+      );
+
+      setMyTeamName(
+        normalizeBackendTeamName(currentPlayer?.team ?? null)
+      );
+    })();
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
   useEffect(() => {
