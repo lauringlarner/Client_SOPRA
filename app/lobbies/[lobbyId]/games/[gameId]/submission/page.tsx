@@ -21,6 +21,7 @@ function CameraContent() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   useEffect(() => {
     if (!loaded) return;
@@ -165,11 +166,17 @@ function CameraContent() {
                 playsInline
                 muted
                 className="camera-video-element"
+                onLoadedMetadata={() => setIsCameraReady(true)} 
               />
               <div className="camera-actions-frame">
-                <button type="button" className="camera-button-capture" onClick={handleCapture}>
-                  Capture
-                </button>
+              <button 
+                type="button" 
+                className="camera-button-capture" 
+                onClick={handleCapture}
+                disabled={!isCameraReady} 
+              >
+                Capture
+              </button>
                 <button type="button" className="camera-button-cancel" onClick={() => router.back()}>
                   Cancel
                 </button>

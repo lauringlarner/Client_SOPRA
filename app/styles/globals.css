@@ -1206,11 +1206,22 @@ background-color: var(--vq-aquamarine);
 }
 
 .bingo-submission-note {
-  margin: 6px 8px 0;
-  color: rgba(34, 49, 58, 0.74);
+  margin: 12px 8px 0;         
+  padding: 10px 15px;         
+  
+  /* Text-Styling */
+  color: #b91c1c;               
   font-size: 0.9rem;
-  line-height: 1.35;
+  line-height: 1.4;
   text-align: center;
+  font-weight: 500;             
+
+  /* Der Kasten */
+  background-color: #fef2f2;    
+  border: 1px solid #fecaca;   
+  border-radius: 8px;           
+  
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .bingo-card{
@@ -1421,9 +1432,6 @@ background: var(--vq-aquamarine);
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  
-  /* Prevent Scrolling */
-  height: 100vh;  
   overflow-x: hidden; 
   overflow-y: auto; 
   position: relative; 
@@ -1482,6 +1490,13 @@ background: var(--vq-aquamarine);
   font-weight: 700;
   text-transform: uppercase;
   cursor: pointer;
+}
+
+/* In deinem Stylesheet */
+.camera-button-capture:disabled {
+  background-color: #ccc;   
+  color: #888;             
+  opacity: 0.6;            
 }
 
 .camera-button-cancel {
@@ -1934,4 +1949,27 @@ background: var(--vq-aquamarine);
 
 .bingo-field-button.is-claimed-enemy {
   animation: tile-claim-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+
+
+/*Hiding scrollbar from screen*/
+
+.rules-content::-webkit-scrollbar { /*Chrome, Safari*/
+  display: none;
+}
+
+.rules-content {
+  -ms-overflow-style: none;  /* Internet Explorer und Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+
+.phone-frame::-webkit-scrollbar { /*Chrome, Safari*/
+  display: none;
+}
+
+.phone-frame {
+  -ms-overflow-style: none;  /* Internet Explorer und Edge */
+  scrollbar-width: none;     /* Firefox */
 }
