@@ -50,7 +50,7 @@ export default function MenuPage() {
       const createdLobby = await lobbyClient.createLobby();
       setStoredLobbyId(userId, createdLobby.lobbyId);
       router.push(`/lobbies/${createdLobby.lobbyId}`);
-    } catch (error) {
+    } catch (_error) { // Gefixt: Unterstrich hinzugefügt
       setMenuMessage("Unable to create a lobby.");
     } finally {
       setPendingAction(null);
@@ -63,12 +63,11 @@ export default function MenuPage() {
     setPendingAction("join");
     try {
       const joinedLobby = await lobbyClient.joinLobby(joinCode);
-      // Stabilitäts-Fix: ID speichern und SOFORT mit der API-ID navigieren
       if (joinedLobby && joinedLobby.lobbyId) {
         setStoredLobbyId(userId, joinedLobby.lobbyId);
         router.push(`/lobbies/${joinedLobby.lobbyId}`);
       }
-    } catch (error) {
+    } catch (_error) { // Gefixt: Unterstrich hinzugefügt
       setOverlayError("Invalid join code. Please enter a valid code!");
     } finally {
       setPendingAction(null);
@@ -83,47 +82,7 @@ export default function MenuPage() {
 
   return (
     <div className="app-shell">
-      <main className="phone-frame screen-gradient" style={{ position: 'relative' }}>
-        
-        {/* CSS: Overlays klein halten & im Frame einsperren */}
-        <style jsx>{`
-          .overlay-backdrop {
-            position: absolute; /* Bleibt im phone-frame */
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: grid;
-            place-items: center;
-            z-index: 1000;
-          }
-
-          .overlay-card {
-            width: 88%;
-            max-height: 85%;
-            background: var(--vq-aquamarine, #48c9b0);
-            border-radius: 24px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-          }
-
-          .rules-content {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .rules-section {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 12px;
-            border-radius: 12px;
-          }
-        `}</style>
-
+      <main className="phone-frame screen-gradient">
         <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
             <span key={i} className="rain-item">BINGO</span>
@@ -147,7 +106,7 @@ export default function MenuPage() {
 
           {menuMessage && <div className="menu-status-card is-error">{menuMessage}</div>}
 
-          <section className={`menu-secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
+          <section className={`secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
             {activeLobbyId && (
               <button className="vq-button menu-secondary-btn" onClick={() => router.push(`/lobbies/${activeLobbyId}`)}>Return to Lobby</button>
             )}

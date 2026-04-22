@@ -113,12 +113,12 @@ export default function UserProfilePage() {
         </section>
 
         <section className="user-profile-nav-card">
-          <button type="button" className="vq-button btn-confirm btn-profile-full" onClick={() => router.push("/menu")}>
+          <button type="button" className="vq-button btn-confirm" onClick={() => router.push("/menu")}>
             Back to Menu
           </button>
           <button
             type="button"
-            className="vq-button btn-profile-full logout-btn-style"
+            className="vq-button menu-secondary-btn logout"
             onClick={() => { logout(); router.replace("/"); }}
           >
             Logout
