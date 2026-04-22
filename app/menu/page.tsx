@@ -107,7 +107,7 @@ export default function MenuPage() {
 
           {menuMessage && <div className="menu-status-card is-error">{menuMessage}</div>}
 
-          <section className={`menu-secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
+          <section className={`secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
             {activeLobbyId && (
               <button className="vq-button menu-secondary-btn" onClick={() => router.push(`/lobbies/${activeLobbyId}`)}>Return to Lobby</button>
             )}

@@ -83,6 +83,25 @@ export default function LobbyPage() {
     }
   }, [isAuthenticated, loaded, router]);
 
+  // Heartbeat Check: Stellt sicher, dass gelöschte Lobbies bemerkt werden
+  useEffect(() => {
+    if (!loaded || !isAuthenticated || !lobbyId) return;
+
+    const checkLobbyExists = async () => {
+      try {
+        await lobbyClient.getLobby(lobbyId);
+      } catch (error: any) {
+        if (error.status === 404 || error.status === 403) {
+          clearStoredLobbyId(userId, lobbyId);
+          router.replace("/menu");
+        }
+      }
+    };
+
+    const interval = setInterval(checkLobbyExists, 1000);
+    return () => clearInterval(interval);
+  }, [loaded, isAuthenticated, lobbyId, lobbyClient, userId, router]);
+
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
 
@@ -93,14 +112,12 @@ export default function LobbyPage() {
         setConnectionState("connecting");
         setPageMessage(null);
 
-        // 🔥 1. FETCH INITIAL STATE (THIS WAS MISSING)
         const response = await lobbyClient.getLobby(lobbyId)
 
         setStoredLobbyId(userId, response.id);
         setLobby(response);
         setConnectionState("live");
 
-        // 🔥 2. THEN subscribe to updates
         unsubscribe = lobbyClient.subscribeToLobby(
           lobbyId,
           (details) => {
@@ -110,9 +127,10 @@ export default function LobbyPage() {
           },
           (error) => {
             console.error("PUSHER ERROR:", error);
-
-            if (error.status === 403 || error.status === 404) {
+            if (error.status === 404 || error.status === 403) {
               clearStoredLobbyId(userId, lobbyId);
+              router.replace("/menu");
+              return;
             }
 
             setConnectionState("error");
@@ -122,9 +140,12 @@ export default function LobbyPage() {
             });
           }
         );
-      } catch (error) {
+      } catch (error: any) {
         console.error("INITIAL FETCH FAILED:", error);
-
+        if (error.status === 404) {
+          router.replace("/menu");
+          return;
+        }
         setConnectionState("error");
         setPageMessage({
           text: getLobbyErrorMessage(error, "Unable to load lobby."),
@@ -138,29 +159,20 @@ export default function LobbyPage() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId, api, token]);
+  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId, router]);
 
   useEffect(() => {
-    if (!lobby) {
-      return;
-    }
-
+    if (!lobby) return;
     setDurationDraft(String(lobby.gameDuration));
   }, [lobby?.gameDuration]);
 
   useEffect(() => {
-    if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) {
-      return;
-    }
-
+    if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return;
     globalThis.localStorage.removeItem("teamName");
   }, []);
 
   useEffect(() => {
-    if (!lobby?.gameId) {
-      return;
-    }
-
+    if (!lobby?.gameId) return;
     clearStoredLobbyId(userId, lobbyId);
     router.replace(`/lobbies/${lobbyId}/games/${lobby.gameId}`);
   }, [lobby?.gameId, lobbyId, router, userId]);
@@ -169,12 +181,10 @@ export default function LobbyPage() {
     if (!canAutoStart) {
       autoStartSent.current = false;
     }
-  }, [canAutoStart, lobbyId]);
+  }, [canAutoStart]);
 
   useEffect(() => {
-    if (!lobby || !isHost || !canAutoStart || autoStartSent.current || pendingAction !== null) {
-      return;
-    }
+    if (!lobby || !isHost || !canAutoStart || autoStartSent.current || pendingAction !== null) return;
 
     autoStartSent.current = true;
     setPendingAction("start");
@@ -233,20 +243,14 @@ export default function LobbyPage() {
   };
 
   const handleUpdateTeam = async (team: LobbySelectableTeam): Promise<void> => {
-    if (!currentPlayer) {
-      return;
-    }
-
+    if (!currentPlayer) return;
     await runLobbyAction(`team-${team}`, async () => {
       await lobbyClient.updatePlayerTeam(lobbyId, currentPlayer.id, team);
     });
   };
 
   const handleToggleReady = async (): Promise<void> => {
-    if (!currentPlayer) {
-      return;
-    }
-
+    if (!currentPlayer) return;
     await runLobbyAction("ready", async () => {
       await lobbyClient.updatePlayerReady(
         lobbyId,
@@ -254,33 +258,11 @@ export default function LobbyPage() {
         !currentPlayer.isReady,
       );
     });
-
-    if (!currentPlayer.isReady) {
-      if (playerCount < 2) {
-        setPageMessage({
-          text: "At least 2 players are required before the game can start.",
-          tone: "error",
-        });
-        return;
-      }
-
-      if (!bothTeamsHavePlayers) {
-        setPageMessage({
-          text: "Each team needs at least one player before the game can start.",
-          tone: "error",
-        });
-      }
-    }
   };
 
   const handleSaveSettings = async (): Promise<void> => {
     const parsedDuration = Number.parseInt(durationDraft, 10);
-
-    if (
-      !Number.isInteger(parsedDuration) ||
-      parsedDuration < MIN_GAME_DURATION ||
-      parsedDuration > MAX_GAME_DURATION
-    ) {
+    if (!Number.isInteger(parsedDuration) || parsedDuration < MIN_GAME_DURATION || parsedDuration > MAX_GAME_DURATION) {
       setPageMessage({
         text: `Round duration must be between ${MIN_GAME_DURATION} and ${MAX_GAME_DURATION} minutes.`,
         tone: "error",
@@ -567,12 +549,8 @@ function formatJoinCode(value: string): string {
 function getConnectionLabel(
   state: "connecting" | "live" | "error",
 ): string {
-  if (state === "live") {
-    return "Live";
-  }
-  if (state === "error") {
-    return "Issue";
-  }
+  if (state === "live") return "Live";
+  if (state === "error") return "Issue";
   return "Connecting";
 }
 
@@ -581,48 +559,21 @@ function getLobbyErrorMessage(
   fallback: string,
 ): string {
   const applicationError = error as ApplicationError | undefined;
-
-  if (applicationError?.status === 403) {
-    return applicationError.message;
-  }
-
-  if (applicationError?.status === 404) {
-    return "This lobby could not be found anymore.";
-  }
-
-  if (applicationError?.status === 409) {
-    return applicationError.message;
-  }
-
-  if (applicationError instanceof Error && applicationError.message.trim() !== "") {
-    return applicationError.message;
-  }
-
+  if (applicationError?.status === 403) return applicationError.message;
+  if (applicationError?.status === 404) return "This lobby could not be found anymore.";
+  if (applicationError?.status === 409) return applicationError.message;
+  if (applicationError instanceof Error && applicationError.message.trim() !== "") return applicationError.message;
   return fallback;
 }
 
 function setStoredLobbyId(userId: string, lobbyId: string): void {
-  if (
-    typeof globalThis === "undefined" ||
-    !("localStorage" in globalThis) ||
-    userId.trim() === "" ||
-    lobbyId.trim() === ""
-  ) {
-    return;
-  }
-
+  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "" || lobbyId.trim() === "") return;
   globalThis.localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
 }
 
 function clearStoredLobbyId(userId: string, lobbyId: string): void {
-  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "") {
-    return;
-  }
-
+  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "") return;
   const key = `vq.activeLobbyId.${userId}`;
-  if (globalThis.localStorage.getItem(key) !== lobbyId) {
-    return;
-  }
-
+  if (globalThis.localStorage.getItem(key) !== lobbyId) return;
   globalThis.localStorage.removeItem(key);
 }
