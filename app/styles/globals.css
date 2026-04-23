@@ -1439,35 +1439,6 @@ background: var(--vq-aquamarine);
   transition: width 1s linear;
 }
 
-
-
-[x-apple-data-detectors] {
-  color: inherit !important;
-  text-decoration: none !important;
-  font-size: inherit !important;
-  font-family: inherit !important;
-  font-weight: inherit !important;
-  line-height: inherit !important;
-}
-
-a[href^="tel"], 
-a[href^="mailto"],
-a[href^="sms"] {
-  color: inherit !important;
-  text-decoration: none !important;
-}
-
-
-.camera-target-badge,
-.camera-target-badge strong,
-.tile-text,
-.menu-username {
-
-  -webkit-text-fill-color: currentcolor !important; 
-  color: inherit !important;
-  text-decoration: none !important;
-}
-
 /*CAMERA SCREEN -----------------------------------------*/
 
 
@@ -2019,4 +1990,29 @@ a[href^="sms"] {
 .overlay-backdrop {
   -ms-overflow-style: none;  /* Internet Explorer und Edge */
   scrollbar-width: none;     /* Firefox */
+}
+
+[x-apple-data-detectors] {
+  color: #000000 !important;
+  text-decoration: none !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+}
+
+a[href^="tel"], 
+a[href^="mailto"],
+a[href^="sms"] {
+  color: #000000 !important;
+  text-decoration: none !important;
+}
+
+.camera-target-badge,
+.camera-target-badge strong,
+.tile-text,
+.menu-username {
+  -webkit-text-fill-color: #000000 !important; 
+  color: #000000 !important;
+  text-decoration: none !important;
 }
