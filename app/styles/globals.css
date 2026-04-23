@@ -548,6 +548,8 @@ textarea {
 .rules-content {
   flex-direction: column;
   gap: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .rules-section {
@@ -1424,102 +1426,57 @@ background: var(--vq-aquamarine);
   transition: width 1s linear;
 }
 
+/*CAMERA SCREEN -----------------------------------------*/
 
 .camera-frame-layout {
-  padding: clamp(44px, 5vh, 188px) 20px max(20px, env(safe-area-inset-bottom));
-  gap: 14px;
+  /* Nutzt svh, um sicherzustellen, dass die Searchbar/Adressleiste nichts verdeckt */
+  height: 100svh; 
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  overflow-x: hidden; 
-  overflow-y: auto; 
-  position: relative; 
+  overflow: hidden; /* Kamera soll nicht scrollen */
+  background: #000; /* Standardmäßig schwarz für Kamera-Feeling */
+
 }
 
 .camera-container {
-  position: relative; /* Crucial: Acts as the anchor for the video */
+  position: relative;
+  flex: 1; /* Füllt den vertikalen Platz */
+  
+  /* FIX: width: auto sorgt dafür, dass margins die Breite einhalten */
+  width: auto; 
+  align-self: stretch; /* Dehnt sich aus, respektiert aber das margin */
+  
   display: flex;
-  height: 743px;
-  padding: 10px 20px;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 10px;
-  flex-shrink: 0;
-  align-self: stretch;
-  border: 6px solid #FFF;
-  background: #000;
-  overflow: hidden; /* Crucial: Clips the video to the container's edges */
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  
+  border: 4px solid #FFF; 
+  margin: 10px; /* Jetzt bleibt dieser Abstand innerhalb des Frames */
+  border-radius: 24px;
+  overflow: hidden;
+  background: #1a1a1a;
 }
 
 .camera-video-element {
-  position: absolute; /* Takes it out of the flex flow */
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Ensures it fills the frame vertically without distortion */
-  z-index: 1; /* Sits behind your buttons */
+  object-fit: cover; /* WICHTIG: Füllt den Rahmen ohne Verzerrung */
+  z-index: 1;
 }
-
-.camera-actions-frame {
-  position: relative;
-  z-index: 2; 
-  width: 100%;
-  display: flex;
-  /* Changed to row for horizontal layout */
-  flex-direction: row; 
-  /* Spreads buttons evenly; use 'center' if you want them bunched together */
-  justify-content: space-between; 
-  align-items: center;
-  gap: 12px;
-  padding: 0 20px 20px 20px; /* Added side padding so they don't touch the white border */
-  box-sizing: border-box;
-}
-
-.camera-button-capture {
-  flex: 1;
-  height: 48px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 12px;
-  border: none;
-  background: #FFF;
-  color: #000;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-/* In deinem Stylesheet */
-.camera-button-capture:disabled {
-  background-color: #ccc;   
-  color: #888;             
-  opacity: 0.6;            
-}
-
-.camera-button-cancel {
-  flex: 1;
-  height: 48px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  background: rgba(0, 0, 0, 0.4);
-  color: #FFF;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
 .camera-target-badge {
   position: absolute;
-  top: 20px;
+  top: 20px; /* Abstand vom oberen weißen Rand */
   left: 50%;
   transform: translateX(-50%);
-  z-index: 10;
+  
+  /* Wichtig: Höher als das Video (z-index 1) */
+  z-index: 10; 
+  
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   color: #fff;
@@ -1528,17 +1485,31 @@ background: var(--vq-aquamarine);
   border: 1px solid rgba(255, 255, 255, 0.3);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 14px;
   white-space: nowrap;
+  pointer-events: none; /* Klicks gehen durch den Badge aufs Video/Kamera */
 }
 
-.camera-feedback-card {
-  position: absolute;
-  top: 72px;
-  left: 16px;
-  right: 16px;
-  z-index: 10;
+.camera-actions-frame {
+  position: relative;
+  z-index: 2; 
+  width: 100%;
+  padding: 20px;
+  display: flex;
+  flex-direction: row; 
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  /* Ein leichter Gradient unten hilft, dass Buttons vor hellem Hintergrund lesbar bleiben */
+  background: linear-gradient(transparent, rgba(0,0,0,0.4));
+}
+
+.camera-button-capture, .camera-button-cancel {
+  flex: 1;
+  max-width: 160px; /* Verhindert, dass Buttons auf Tablets zu riesig werden */
+  height: 54px; /* Etwas höher für bessere Touch-Bedienung */
+  border-radius: 100px; /* Pill-Shape wirkt moderner */
+  font-size: 14px;
+  font-weight: 800;
 }
 
 /* --- PROFIL LAYOUT & LAYER SYSTEM --- */
