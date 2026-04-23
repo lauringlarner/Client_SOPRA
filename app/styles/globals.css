@@ -953,10 +953,23 @@ textarea {
 @media (max-width: 420px) {
   .lobby-code-header,
   .lobby-settings-heading,
-  .lobby-me-header,
   .lobby-team-header {
     flex-direction: column;
     align-items: stretch;
+  }
+  .lobby-me-header {
+    flex-direction: row !important; 
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .lobby-me-header > div {
+    flex: 1; 
+  }
+
+  .lobby-me-header .lobby-player-badge {
+    margin-top: 0;
+    flex-shrink: 0; 
   }
 
   .lobby-code-box {
@@ -1426,7 +1439,37 @@ background: var(--vq-aquamarine);
   transition: width 1s linear;
 }
 
+
+
+[x-apple-data-detectors] {
+  color: inherit !important;
+  text-decoration: none !important;
+  font-size: inherit !important;
+  font-family: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+}
+
+a[href^="tel"], 
+a[href^="mailto"],
+a[href^="sms"] {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+
+.camera-target-badge,
+.camera-target-badge strong,
+.tile-text,
+.menu-username {
+
+  -webkit-text-fill-color: currentcolor !important; 
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
 /*CAMERA SCREEN -----------------------------------------*/
+
 
 .camera-frame-layout {
   /* Nutzt svh, um sicherzustellen, dass die Searchbar/Adressleiste nichts verdeckt */
@@ -1524,7 +1567,6 @@ background: var(--vq-aquamarine);
   text-align: center;
 }
 
-/* --- PROFIL CARDS --- */
 .user-profile-card {
   background-color: var(--vq-aquamarine); 
   border-radius: var(--vq-radius);
@@ -1575,28 +1617,33 @@ background: var(--vq-aquamarine);
   text-transform: capitalize;
 }
 
-/* --- OVERLAY SYSTEM (STRICT WIDTH LIMIT) --- */
+/* --- OVERLAY SYSTEM --- */
 .overlay-backdrop {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
+  z-index: 100;
+
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 2000;
-  padding: 20px; 
+  align-items: center;
+  
+  overflow-y: auto;
+  padding: 40px 20px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .overlay-card {
-
-  width: 100%;
-  max-width: 320; 
   background: var(--vq-aquamarine);
+  width: 100%;
+  max-width: 340px;
   border-radius: var(--vq-radius);
   padding: 24px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  position: absolute;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  margin: auto; 
+  flex-shrink: 0;
 }
 
 .overlay-title {
@@ -1906,16 +1953,35 @@ background: var(--vq-aquamarine);
 }
 
 
-/* Animation für das erfolgreiche Claimen */
+/* Animation claim tile */
 @keyframes tile-claim-pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); filter: brightness(1.3); }
-  100% { transform: scale(1); }
+  0% { 
+    transform: scale(1); 
+  }
+  20% { 
+    transform: scale(0.9); /* Antizipation: Zieht sich kurz zusammen */
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(1.25); /* Kraftvoller Pop */
+    filter: brightness(1.5) saturate(1.5); /* Glüht richtig auf */
+  }
+  75% {
+    transform: scale(0.95); /* Overshoot: Schwingt zurück */
+  }
+  100% { 
+    transform: scale(1); 
+    filter: brightness(1);
+  }
+}
+
+.bingo-field-button.is-claimed {
+  animation: tile-claim-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .bingo-field-button.is-claimed-friendly {
   animation: tile-claim-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  
 }
 
 .bingo-field-button.is-claimed-enemy {
@@ -1941,6 +2007,16 @@ background: var(--vq-aquamarine);
 }
 
 .phone-frame {
+  -ms-overflow-style: none;  /* Internet Explorer und Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+
+.overlay-backdrop::-webkit-scrollbar { /*Chrome, Safari*/
+  display: none;
+}
+
+.overlay-backdrop {
   -ms-overflow-style: none;  /* Internet Explorer und Edge */
   scrollbar-width: none;     /* Firefox */
 }
