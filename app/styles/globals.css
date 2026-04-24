@@ -1519,11 +1519,14 @@ background: var(--vq-aquamarine);
 
 .camera-button-capture, .camera-button-cancel {
   flex: 1;
-  max-width: 160px; /* Verhindert, dass Buttons auf Tablets zu riesig werden */
-  height: 54px; /* Etwas höher für bessere Touch-Bedienung */
-  border-radius: 100px; /* Pill-Shape wirkt moderner */
+  max-width: 160px;
+  height: 54px; 
+  border-radius: 100px; 
   font-size: 14px;
   font-weight: 800;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important; 
+  opacity: 1;
 }
 
 /* --- PROFIL LAYOUT & LAYER SYSTEM --- */
