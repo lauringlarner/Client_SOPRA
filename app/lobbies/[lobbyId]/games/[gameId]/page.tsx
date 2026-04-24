@@ -20,7 +20,11 @@ import {
   clearLastSubmissionWord,
   getLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { getStoredLobbyTeam, setStoredLobbyTeam } from "@/utils/lobbySession";
+import {
+  getStoredLobbyTeam,
+  setStoredActiveLobbyId,
+  setStoredLobbyTeam,
+} from "@/utils/lobbySession";
 
 export default function GameBoardPage() {
   const api = useApi();
@@ -91,10 +95,13 @@ export default function GameBoardPage() {
       router.replace("/");
       return;
     }
+
+    setStoredActiveLobbyId(userId, lobbyId);
+
     if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
       globalThis.localStorage.removeItem("teamName");
     }
-  }, [isAuthenticated, loaded, router]);
+  }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;

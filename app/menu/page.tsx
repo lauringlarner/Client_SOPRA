@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { ApplicationError } from "@/types/error";
+import {
+  clearStoredActiveLobbyId,
+  getStoredActiveLobbyId,
+  setStoredActiveLobbyId,
+} from "@/utils/lobbySession";
 
 export default function MenuPage() {
   const router = useRouter();
@@ -16,7 +22,7 @@ export default function MenuPage() {
   const [joinCode, setJoinCode] = useState("");
   const [menuMessage, setMenuMessage] = useState<string | null>(null);
   const [overlayError, setOverlayError] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<"create" | "join" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"create" | "join" | "resume" | null>(null);
 
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
@@ -34,7 +40,7 @@ export default function MenuPage() {
   // Lade gespeicherte Lobby nur wenn User Daten da sind
   useEffect(() => {
     if (loaded && isAuthenticated && userId && userId.trim() !== "") {
-      const id = getStoredLobbyId(userId);
+      const id = getStoredActiveLobbyId(userId);
       setActiveLobbyId(id);
     }
   }, [isAuthenticated, loaded, userId]);
@@ -48,7 +54,7 @@ export default function MenuPage() {
     setPendingAction("create");
     try {
       const createdLobby = await lobbyClient.createLobby();
-      setStoredLobbyId(userId, createdLobby.lobbyId);
+      setStoredActiveLobbyId(userId, createdLobby.lobbyId);
       router.push(`/lobbies/${createdLobby.lobbyId}`);
     } catch (_error) { // Gefixt: Unterstrich hinzugefügt
       setMenuMessage("Unable to create a lobby.");
@@ -64,11 +70,43 @@ export default function MenuPage() {
     try {
       const joinedLobby = await lobbyClient.joinLobby(joinCode);
       if (joinedLobby && joinedLobby.lobbyId) {
-        setStoredLobbyId(userId, joinedLobby.lobbyId);
+        setStoredActiveLobbyId(userId, joinedLobby.lobbyId);
         router.push(`/lobbies/${joinedLobby.lobbyId}`);
       }
     } catch (_error) { // Gefixt: Unterstrich hinzugefügt
       setOverlayError("Invalid join code. Please enter a valid code!");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleResumeSession = async () => {
+    if (!activeLobbyId) {
+      return;
+    }
+
+    setMenuMessage(null);
+    setPendingAction("resume");
+    try {
+      const currentLobby = await lobbyClient.getLobby(activeLobbyId);
+      setStoredActiveLobbyId(userId, currentLobby.id);
+
+      if (currentLobby.gameId) {
+        router.push(`/lobbies/${currentLobby.id}/games/${currentLobby.gameId}`);
+        return;
+      }
+
+      router.push(`/lobbies/${currentLobby.id}`);
+    } catch (error) {
+      const applicationError = error as ApplicationError | undefined;
+      if (applicationError?.status === 403 || applicationError?.status === 404) {
+        clearStoredActiveLobbyId(userId, activeLobbyId);
+        setActiveLobbyId("");
+        setMenuMessage("Your last lobby is no longer available.");
+        return;
+      }
+
+      setMenuMessage("Unable to reconnect to your current lobby right now.");
     } finally {
       setPendingAction(null);
     }
@@ -91,16 +129,16 @@ export default function MenuPage() {
 
         <div className="menu-layout">
           <section className="menu-panel">
-            <button className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
-            <button className="menu-profile" onClick={() => router.push(`/users/${userId}`)}>
+            <button type="button" className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
+            <button type="button" className="menu-profile" onClick={() => router.push(`/users/${userId}`)}>
               <span className="menu-avatar">{avatarInitial}</span>
               <span className="menu-username">{username || "User"}</span>
             </button>
             <div className="menu-main-actions">
-              <button className="vq-button menu-main-btn" onClick={() => void handleCreateLobby()} disabled={pendingAction !== null}>
+              <button type="button" className="vq-button menu-main-btn" onClick={() => void handleCreateLobby()} disabled={pendingAction !== null}>
                 {pendingAction === "create" ? "Creating..." : "Create Lobby"}
               </button>
-              <button className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>Join Lobby</button>
+              <button type="button" className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>Join Lobby</button>
             </div>
           </section>
 
@@ -108,9 +146,16 @@ export default function MenuPage() {
 
           <section className={`secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
             {activeLobbyId && (
-              <button className="vq-button menu-secondary-btn" onClick={() => router.push(`/lobbies/${activeLobbyId}`)}>Return to Lobby</button>
+              <button
+                type="button"
+                className="vq-button menu-secondary-btn"
+                onClick={() => void handleResumeSession()}
+                disabled={pendingAction !== null}
+              >
+                {pendingAction === "resume" ? "Loading..." : "Take Me Back"}
+              </button>
             )}
-            <button className="vq-button menu-secondary-btn logout" onClick={() => { logout(); router.replace("/"); }}>Logout</button>
+            <button type="button" className="vq-button menu-secondary-btn logout" onClick={() => { logout(); router.replace("/"); }}>Logout</button>
           </section>
         </div>
 
@@ -139,8 +184,9 @@ export default function MenuPage() {
                     }}
                   />
                   <div className="overlay-actions">
-                    <button className="vq-button btn-cancel" onClick={closeOverlay}>Cancel</button>
+                    <button type="button" className="vq-button btn-cancel" onClick={closeOverlay}>Cancel</button>
                     <button 
+                      type="button"
                       className="vq-button btn-confirm" 
                       disabled={joinCode.length < 6 || pendingAction !== null} 
                       onClick={() => void handleJoinLobby()}
@@ -200,7 +246,7 @@ export default function MenuPage() {
                     </div>
                   </div>
                   <div className="overlay-actions overlay-actions-single">
-                    <button className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
+                    <button type="button" className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
                   </div>
                 </div>
               )}
@@ -210,14 +256,4 @@ export default function MenuPage() {
       </main>
     </div>
   );
-}
-
-function getStoredLobbyId(userId: string): string {
-  if (typeof window === "undefined" || !userId) return "";
-  return localStorage.getItem(`vq.activeLobbyId.${userId}`) ?? "";
-}
-
-function setStoredLobbyId(userId: string, lobbyId: string): void {
-  if (typeof window === "undefined" || !userId) return;
-  localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
 }

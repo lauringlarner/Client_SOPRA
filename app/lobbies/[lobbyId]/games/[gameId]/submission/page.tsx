@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createGameClient } from "@/api/gameService";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
 
 const api = new ApiService();
@@ -13,7 +14,7 @@ function CameraContent() {
   const router = useRouter();
   const params = useParams<{ lobbyId: string; gameId: string }>();
   const searchParams = useSearchParams();
-  const { loaded, isAuthenticated, token } = useAuthSession();
+  const { loaded, isAuthenticated, token, userId } = useAuthSession();
   const lobbyId = params?.lobbyId as string;
   const gameId = params?.gameId as string;
   const tileWord = searchParams.get("tileWord");
@@ -32,6 +33,8 @@ function CameraContent() {
       router.replace("/");
       return;
     }
+
+    setStoredActiveLobbyId(userId, lobbyId);
 
     if (!capturedImage) {
       (async () => {
@@ -61,7 +64,7 @@ function CameraContent() {
         streamRef.current = null;
       }
     };
-  }, [isAuthenticated, loaded, router, capturedImage]);
+  }, [capturedImage, isAuthenticated, loaded, lobbyId, router, userId]);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated || !gameId) {

@@ -5,7 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { setStoredLobbyTeam } from "@/utils/lobbySession";
+import {
+  clearStoredActiveLobbyId,
+  setStoredActiveLobbyId,
+  setStoredLobbyTeam,
+} from "@/utils/lobbySession";
 import { ApplicationError } from "@/types/error";
 import {
   getLobbyTeamLabel,
@@ -95,7 +99,7 @@ export default function LobbyPage() {
         } catch (error: unknown) {
           const appError = error as ApplicationError;
           if (appError.status === 404 || appError.status === 403) {
-            clearStoredLobbyId(userId, lobbyId);
+            clearStoredActiveLobbyId(userId, lobbyId);
             router.replace("/menu");
           }
         }
@@ -120,7 +124,7 @@ export default function LobbyPage() {
       }
 
       latestLobbyRef.current = details;
-      setStoredLobbyId(userId, details.id);
+      setStoredActiveLobbyId(userId, details.id);
       setLobby(details);
       setConnectionState("live");
       setPageMessage(null);
@@ -133,7 +137,7 @@ export default function LobbyPage() {
 
       const message = getLobbyErrorMessage(error, fallback);
       if (isFatalApplicationError(error)) {
-        clearStoredLobbyId(userId, lobbyId);
+        clearStoredActiveLobbyId(userId, lobbyId);
         router.replace("/menu");
         return;
       }
@@ -190,7 +194,6 @@ export default function LobbyPage() {
 
   useEffect(() => {
     if (!lobby?.gameId) return;
-    clearStoredLobbyId(userId, lobbyId);
     router.replace(`/lobbies/${lobbyId}/games/${lobby.gameId}`);
   }, [lobby?.gameId, lobbyId, router, userId]);
 
@@ -214,7 +217,6 @@ export default function LobbyPage() {
       .startLobby(lobbyId)
       .then((result) => {
         if (result.gameId) {
-          clearStoredLobbyId(userId, lobbyId);
           router.replace(`/lobbies/${lobbyId}/games/${result.gameId}`);
           return;
         }
@@ -299,7 +301,7 @@ export default function LobbyPage() {
   const handleDeleteLobby = async (): Promise<void> => {
     await runLobbyAction("delete", async () => {
       await lobbyClient.deleteLobby(lobbyId);
-      clearStoredLobbyId(userId, lobbyId);
+      clearStoredActiveLobbyId(userId, lobbyId);
       router.replace("/menu");
     });
   };
@@ -307,7 +309,7 @@ export default function LobbyPage() {
   const handleLeaveLobby = async (): Promise<void> => {
     await runLobbyAction("leave", async () => {
       await lobbyClient.leaveLobby(lobbyId);
-      clearStoredLobbyId(userId, lobbyId);
+      clearStoredActiveLobbyId(userId, lobbyId);
       router.replace("/menu");
     });
   };
@@ -586,16 +588,4 @@ function getLobbyErrorMessage(
 function isFatalApplicationError(error: unknown): boolean {
   const applicationError = error as ApplicationError | undefined;
   return applicationError?.status === 403 || applicationError?.status === 404;
-}
-
-function setStoredLobbyId(userId: string, lobbyId: string): void {
-  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "" || lobbyId.trim() === "") return;
-  globalThis.localStorage.setItem(`vq.activeLobbyId.${userId}`, lobbyId);
-}
-
-function clearStoredLobbyId(userId: string, lobbyId: string): void {
-  if (typeof globalThis === "undefined" || !("localStorage" in globalThis) || userId.trim() === "") return;
-  const key = `vq.activeLobbyId.${userId}`;
-  if (globalThis.localStorage.getItem(key) !== lobbyId) return;
-  globalThis.localStorage.removeItem(key);
 }

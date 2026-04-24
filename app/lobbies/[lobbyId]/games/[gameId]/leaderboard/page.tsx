@@ -4,6 +4,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import {
+  clearStoredActiveLobbyId,
+  setStoredActiveLobbyId,
+} from "@/utils/lobbySession";
 
 interface LeaderboardGetDTO {
   gameId: string;
@@ -32,6 +36,8 @@ export default function LeaderboardPage() {
   useEffect(() => {
     if (!loaded || !isAuthenticated || !lobbyId || !gameId) return;
 
+    setStoredActiveLobbyId(userId, lobbyId);
+
     async function fetchLeaderboard() {
       try {
         setLoading(true);
@@ -47,10 +53,10 @@ export default function LeaderboardPage() {
       }
     }
     fetchLeaderboard();
-  }, [loaded, isAuthenticated, token, lobbyId, gameId, getCleanToken]);
+  }, [gameId, getCleanToken, isAuthenticated, loaded, lobbyId, token, userId]);
 
   const confirmLeave = () => {
-    if (userId) localStorage.removeItem(`vq.activeLobbyId.${userId}`);
+    clearStoredActiveLobbyId(userId, lobbyId);
     setIsLeaving(true);
     router.push("/menu");
   };
