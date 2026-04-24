@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState, Suspense } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { createGameClient } from "@/api/gameService";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
@@ -10,11 +11,13 @@ const api = new ApiService();
 
 function CameraContent() {
   const router = useRouter();
-  const params = useParams();
+  const params = useParams<{ lobbyId: string; gameId: string }>();
   const searchParams = useSearchParams();
   const { loaded, isAuthenticated, token } = useAuthSession();
+  const lobbyId = params?.lobbyId as string;
   const gameId = params?.gameId as string;
   const tileWord = searchParams.get("tileWord");
+  const gameClient = useMemo(() => createGameClient({ api, token }), [token]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -59,6 +62,48 @@ function CameraContent() {
       }
     };
   }, [isAuthenticated, loaded, router, capturedImage]);
+
+  useEffect(() => {
+    if (!loaded || !isAuthenticated || !gameId) {
+      return;
+    }
+
+    let unsubscribe: (() => void) | undefined;
+
+    const redirectToLeaderboard = () => {
+      router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+    };
+
+    const init = async () => {
+      try {
+        const game = await gameClient.getGame(gameId);
+        if (game.status === "ENDED") {
+          redirectToLeaderboard();
+          return;
+        }
+
+        unsubscribe = gameClient.subscribeToGame(
+          gameId,
+          (details) => {
+            if (details.status === "ENDED") {
+              redirectToLeaderboard();
+            }
+          },
+          () => {},
+        );
+      } catch {
+        // Keep the current page state when the status lookup fails.
+      }
+    };
+
+    void init();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router]);
 
   const handleCapture = () => {
     const videoElement = videoRef.current;
@@ -111,6 +156,11 @@ function CameraContent() {
 
       router.back();
     } catch (error) {
+      if (isGameEndedError(error)) {
+        router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+        return;
+      }
+
       console.error("Submission error:", error);
       setSubmissionError(getSubmissionErrorMessage(error));
       setIsSubmitting(false);
@@ -209,4 +259,14 @@ function getSubmissionErrorMessage(error: unknown): string {
   }
 
   return "The submission could not be sent. Please try again.";
+}
+
+function isGameEndedError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof error.status === "number" &&
+    error.status === 409
+  );
 }

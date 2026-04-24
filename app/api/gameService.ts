@@ -163,8 +163,11 @@ function normalizeGameTile(value: unknown): GameTile {
 }
 
 function normalizeGameStatus(value: unknown): GameStatus {
-  if (value === "IN_PROGRESS" || value === "FINISHED") {
+  if (value === "IN_PROGRESS" || value === "ENDED") {
     return value;
+  }
+  if (value === "FINISHED") {
+    return "ENDED";
   }
   throw createApplicationError("The game status is missing from the response.", 500);
 }

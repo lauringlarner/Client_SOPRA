@@ -1,4 +1,4 @@
-export type GameStatus = "IN_PROGRESS" | "FINISHED";
+export type GameStatus = "IN_PROGRESS" | "ENDED";
 
 export type GameTileStatus =
   | "UNCLAIMED"

@@ -54,6 +54,10 @@ export default function GameBoardPage() {
       return null;
     }
 
+    if (game.status === "ENDED") {
+      return 0;
+    }
+
     const totalSeconds = game.gameDuration * 60;
     const startedAtMs = Date.parse(game.startedAt);
 
@@ -180,6 +184,15 @@ export default function GameBoardPage() {
       setSubmissionNotice("Your last submission was not recognized. You can try again.");
     }
   }, [game, myTeamName]);
+
+  useEffect(() => {
+    if (game?.status !== "ENDED") {
+      return;
+    }
+
+    clearLastSubmissionWord();
+    router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+  }, [game?.status, gameId, lobbyId, router]);
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
