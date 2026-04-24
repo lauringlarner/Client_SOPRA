@@ -1,12 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
-import { createLobbyClient } from "@/api/lobbyService";
-import { useApi } from "@/hooks/useApi";
-import { LobbyPlayer } from "@/types/lobby";
 import {
   clearStoredActiveLobbyId,
   setStoredActiveLobbyId,
@@ -20,18 +17,12 @@ interface LeaderboardGetDTO {
 
 export default function LeaderboardPage() {
   const router = useRouter();
-  const rawApi = useApi();
   const { loaded, isAuthenticated, token, userId } = useAuthSession();
   const params = useParams();
   const lobbyId = params?.lobbyId as string;
   const gameId = params?.gameId as string;
   const api = new ApiService();
   
-  const lobbyClient = useMemo(() => createLobbyClient({ 
-    api: rawApi, 
-    token 
-  }), [rawApi, token]);
-
   const [data, setData] = useState<LeaderboardGetDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -64,65 +55,10 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
   }, [gameId, getCleanToken, isAuthenticated, loaded, lobbyId, token, userId]);
 
-  /**
-   * PURGE ALL SESSION DATA
-   * Clears Pusher transport preferences and team selections to prevent
-   * stale data from interfering with the next game handshake.
-   */
-  const purgeAllSessionData = useCallback(() => {
-    if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return;
-
-    // Remove Pusher transport cache
-    globalThis.localStorage.removeItem("pusherTransportTLS");
-
-    // Remove specific Team Selection: vq.lobbyTeam.{userid}.{lobbyid}
-    if (userId && lobbyId) {
-      globalThis.localStorage.removeItem(`vq.lobbyTeam.${userId}.${lobbyId}`);
-    }
-    
-    // Clear Session identifiers
+  const confirmLeave = () => {
     clearStoredActiveLobbyId(userId, lobbyId);
-    globalThis.localStorage.removeItem("teamName");
-    globalThis.localStorage.removeItem("activeGameId");
-
-    console.log("Deep session purge complete.");
-  }, [userId, lobbyId]);
-
-  const confirmLeave = async () => {
     setIsLeaving(true);
-    try {
-      const currentLobby = await lobbyClient.getLobby(lobbyId);
-      const lobbyPlayers = currentLobby.lobbyPlayers ?? [];
-      const currentPlayer = lobbyPlayers.find((p: LobbyPlayer) => p.user.id === userId);
-      const isHost = currentPlayer?.isHost ?? false;
-
-      if (isHost) {
-        await lobbyClient.deleteLobby(lobbyId);
-      } else {
-        await lobbyClient.leaveLobby(lobbyId);
-      }
-
-      purgeAllSessionData();
-      
-      // Force hard refresh to kill Pusher/Sockets before returning to menu
-      window.location.href = "/menu";
-    } catch (error) {
-      console.error("Cleanup/Exit failed:", error);
-      purgeAllSessionData();
-      window.location.href = "/menu";
-    }
-  };
-
-  const handleGoToLobby = () => {
-    // Crucial: Clear team selection so they can re-choose/re-ready fresh
-    if (userId && lobbyId && typeof globalThis !== "undefined") {
-      globalThis.localStorage.removeItem(`vq.lobbyTeam.${userId}.${lobbyId}`);
-    }
-    
-    // HARD REDIRECT: This is mandatory for the "Same Lobby" bug.
-    // It destroys the current Pusher connection/memory state and 
-    // ensures the next game starts with a clean handshake.
-    window.location.href = `/lobbies/${lobbyId}`;
+    router.push("/menu");
   };
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
@@ -139,29 +75,18 @@ export default function LeaderboardPage() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient leaderboard-layout">
         
+        {/* RECTANGULAR POP-UP OVERLAY */}
         {showConfirm && (
           <div className="confirm-overlay">
             <div className="confirm-card theme-dark-teal">
-              <h2 className="confirm-title">Exit Game</h2>
-              <p className="confirm-text">
-                Are you sure? This session will end.
-              </p>
+              <h2 className="confirm-title">Leaving Lobby</h2>
+              <p className="confirm-text">Are you sure you want to exit the game results?</p>
               <div className="confirm-actions">
-                <button 
-                  type="button" 
-                  className="confirm-btn cancel" 
-                  onClick={() => setShowConfirm(false)}
-                  disabled={isLeaving}
-                >
+                <button type="button" className="confirm-btn cancel" onClick={() => setShowConfirm(false)}>
                   Stay
                 </button>
-                <button 
-                  type="button" 
-                  className="confirm-btn leave" 
-                  onClick={confirmLeave}
-                  disabled={isLeaving}
-                >
-                  {isLeaving ? "Exiting..." : "Exit"}
+                <button type="button" className="confirm-btn leave" onClick={confirmLeave}>
+                  Exit
                 </button>
               </div>
             </div>
@@ -203,20 +128,10 @@ export default function LeaderboardPage() {
         </section>
 
         <footer className="leaderboard-action-bar">
-          <button 
-            type="button" 
-            className="leaderboard-action-btn" 
-            onClick={() => setShowConfirm(true)} 
-            disabled={isLeaving}
-          >
+          <button type="button" className="leaderboard-action-btn" onClick={() => setShowConfirm(true)} disabled={isLeaving}>
             Leave
           </button>
-          <button 
-            type="button" 
-            className="leaderboard-action-btn" 
-            onClick={handleGoToLobby} 
-            disabled={isLeaving}
-          >
+          <button type="button" className="leaderboard-action-btn" onClick={() => router.push(`/lobbies/${lobbyId}`)} disabled={isLeaving}>
             To Lobby
           </button>
         </footer>
