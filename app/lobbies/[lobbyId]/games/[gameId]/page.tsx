@@ -35,27 +35,35 @@ export default function GameBoardPage() {
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [showRules, setShowRules] = useState(false);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const gameClient = useMemo(() => createGameClient({ api, token }), [token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
-  // --- Timer Logik ---
   useEffect(() => {
-    if (game && remainingSeconds === null) {
-      setRemainingSeconds(game.gameDuration * 60);
-    }
-  }, [game, remainingSeconds]);
-
-  useEffect(() => {
-    if (remainingSeconds === null || remainingSeconds <= 0) return;
     const interval = setInterval(() => {
-      setRemainingSeconds((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+      setNowMs(Date.now());
     }, 1000);
     return () => clearInterval(interval);
-  }, [remainingSeconds]);
+  }, []);
+
+  const remainingSeconds = useMemo(() => {
+    if (!game) {
+      return null;
+    }
+
+    const totalSeconds = game.gameDuration * 60;
+    const startedAtMs = Date.parse(game.startedAt);
+
+    if (Number.isNaN(startedAtMs)) {
+      return totalSeconds;
+    }
+
+    const elapsedSeconds = Math.floor((nowMs - startedAtMs) / 1000);
+    return Math.max(0, totalSeconds - elapsedSeconds);
+  }, [game, nowMs]);
 
   const progressWidth = useMemo(() => {
     if (!game || remainingSeconds === null) return "100%";
@@ -351,7 +359,7 @@ export default function GameBoardPage() {
               </div>
 
               <div className="overlay-actions overlay-actions-single">
-                <button className="btn-rules-confirm" onClick={() => setShowRules(false)}>
+                <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>
                   Got it!
                 </button>
               </div>

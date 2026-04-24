@@ -19,6 +19,7 @@ export interface GameDetails {
   lobbyId: string;
   score_1: number;
   score_2: number;
+  startedAt: string;
   status: GameStatus;
   tileGrid: GameTile[][];
   wordList: string[];

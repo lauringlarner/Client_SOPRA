@@ -42,8 +42,8 @@ const channelCache = new Map<string, Channel>();
 
 function getPusher() {
   if (!pusher) {
-    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    const key = getRuntimeEnv("NEXT_PUBLIC_PUSHER_KEY");
+    const cluster = getRuntimeEnv("NEXT_PUBLIC_PUSHER_CLUSTER");
 
     if (!key || !cluster) {
       throw createApplicationError(
@@ -58,6 +58,16 @@ function getPusher() {
     });
   }
   return pusher;
+}
+
+function getRuntimeEnv(key: string): string | undefined {
+  const processRef = (
+    globalThis as typeof globalThis & {
+      process?: { env?: Record<string, string | undefined> };
+    }
+  ).process;
+
+  return processRef?.env?.[key];
 }
 
 function createRemoteGameSubscriber(_token: string): SubscribeToGame {
@@ -119,6 +129,7 @@ function normalizeGameDetails(value: unknown): GameDetails {
     lobbyId: getRequiredString(value.lobbyId, "lobby id"),
     score_1: getRequiredNumber(value.score_1, "team 1 score"),
     score_2: getRequiredNumber(value.score_2, "team 2 score"),
+    startedAt: getRequiredString(value.startedAt, "game started at"),
     status: normalizeGameStatus(value.status),
     tileGrid,
     wordList: normalizeStringList(value.wordList, "word list", tileGrid.flat().map((tile) => tile.word)),
