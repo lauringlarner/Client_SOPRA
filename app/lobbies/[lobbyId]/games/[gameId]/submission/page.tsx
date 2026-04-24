@@ -179,7 +179,7 @@ function CameraContent() {
           
           {tileWord && (
             <div className="camera-target-badge">
-              Target: <strong>{tileWord}</strong>
+              <strong>Target: {tileWord}</strong>
             </div>
           )}
 

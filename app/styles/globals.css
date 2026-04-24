@@ -2008,8 +2008,14 @@ a[href^="sms"] {
   text-decoration: none !important;
 }
 
-.camera-target-badge,
-.camera-target-badge strong,
+.camera-target-badge{
+  background-color: #ffffff !important;
+}
+
+.camera-target-badge strong{
+  color: black;
+}
+
 .tile-text,
 .menu-username {
   -webkit-text-fill-color: #000000 !important; 
