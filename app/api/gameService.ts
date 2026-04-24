@@ -25,6 +25,11 @@ interface CreateGameClientOptions {
   token: string;
 }
 
+interface CachedChannel {
+  channel: Channel;
+  subscribers: number;
+}
+
 export function createGameClient(options: CreateGameClientOptions): GameClient {
   const { api, token } = options;
 
@@ -38,12 +43,14 @@ export function createGameClient(options: CreateGameClientOptions): GameClient {
 }
 
 let pusher: Pusher | null = null;
-const channelCache = new Map<string, Channel>();
+const channelCache = new Map<string, CachedChannel>();
 
 function getPusher() {
   if (!pusher) {
-    const key = getRuntimeEnv("NEXT_PUBLIC_PUSHER_KEY");
-    const cluster = getRuntimeEnv("NEXT_PUBLIC_PUSHER_CLUSTER");
+    // deno-lint-ignore no-process-global
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    // deno-lint-ignore no-process-global
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
     if (!key || !cluster) {
       throw createApplicationError(
@@ -58,16 +65,6 @@ function getPusher() {
     });
   }
   return pusher;
-}
-
-function getRuntimeEnv(key: string): string | undefined {
-  const processRef = (
-    globalThis as typeof globalThis & {
-      process?: { env?: Record<string, string | undefined> };
-    }
-  ).process;
-
-  return processRef?.env?.[key];
 }
 
 function createRemoteGameSubscriber(_token: string): SubscribeToGame {
@@ -96,22 +93,35 @@ function createRemoteGameSubscriber(_token: string): SubscribeToGame {
       onError(createApplicationError("Pusher connection error", 500));
     };
 
-    let channel: Channel;
-    if (channelCache.has(channelName)) {
-      channel = channelCache.get(channelName)!;
+    let channelEntry = channelCache.get(channelName);
+    if (channelEntry) {
+      channelEntry.subscribers += 1;
     } else {
-      channel = pusherInstance.subscribe(channelName);
-      channelCache.set(channelName, channel);
+      channelEntry = {
+        channel: pusherInstance.subscribe(channelName),
+        subscribers: 1,
+      };
+      channelCache.set(channelName, channelEntry);
     }
+    const channel = channelEntry.channel;
 
     channel.bind(eventName, handler);
     pusherInstance.connection.bind("error", errorHandler);
 
     return () => {
       channel.unbind(eventName, handler);
-      pusherInstance.unsubscribe(channelName);
-      channelCache.delete(channelName);
       pusherInstance.connection.unbind("error", errorHandler);
+
+      const activeChannelEntry = channelCache.get(channelName);
+      if (!activeChannelEntry) {
+        return;
+      }
+
+      activeChannelEntry.subscribers -= 1;
+      if (activeChannelEntry.subscribers <= 0) {
+        pusherInstance.unsubscribe(channelName);
+        channelCache.delete(channelName);
+      }
     };
   };
 }

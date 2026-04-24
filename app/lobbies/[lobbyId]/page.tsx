@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { setStoredLobbyTeam } from "@/utils/lobbySession";
 import { ApplicationError } from "@/types/error";
 import {
   getLobbyTeamLabel,
@@ -38,6 +39,7 @@ export default function LobbyPage() {
     tone: "info" | "error";
   } | null>(null);
   const autoStartSent = useRef(false);
+  const latestLobbyRef = useRef<LobbyDetails | null>(null);
 
   const lobbyClient = useMemo(() => createLobbyClient({
     api,
@@ -106,62 +108,69 @@ export default function LobbyPage() {
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
 
-    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    latestLobbyRef.current = null;
+    setLobby(null);
+    setConnectionState("connecting");
+    setPageMessage(null);
 
-    const init = async () => {
-      try {
-        setConnectionState("connecting");
-        setPageMessage(null);
-
-        const response = await lobbyClient.getLobby(lobbyId)
-
-        setStoredLobbyId(userId, response.id);
-        setLobby(response);
-        setConnectionState("live");
-
-        unsubscribe = lobbyClient.subscribeToLobby(
-          lobbyId,
-          (details) => {
-            setStoredLobbyId(userId, details.id);
-            setLobby(details);
-            setConnectionState("live");
-          },
-          (error) => {
-            console.error("PUSHER ERROR:", error);
-            if (error.status === 404 || error.status === 403) {
-              clearStoredLobbyId(userId, lobbyId);
-              router.replace("/menu");
-              return;
-            }
-
-            setConnectionState("error");
-            setPageMessage({
-              text: getLobbyErrorMessage(error, "Realtime connection failed."),
-              tone: "error",
-            });
-          }
-        );
-      } catch (error: unknown) {
-        console.error("INITIAL FETCH FAILED:", error);
-          
-          if (error && typeof error === "object" && "status" in error) {
-            if ((error as { status: number }).status === 404) {
-              router.replace("/menu");
-              return;
-            }
-          }
-        setConnectionState("error");
-        setPageMessage({
-          text: getLobbyErrorMessage(error, "Unable to load lobby."),
-          tone: "error",
-        });
+    const applyLobbyDetails = (details: LobbyDetails) => {
+      if (cancelled) {
+        return;
       }
+
+      latestLobbyRef.current = details;
+      setStoredLobbyId(userId, details.id);
+      setLobby(details);
+      setConnectionState("live");
+      setPageMessage(null);
     };
 
-    void init();
+    const handleLobbyError = (error: unknown, fallback: string) => {
+      if (cancelled) {
+        return;
+      }
+
+      const message = getLobbyErrorMessage(error, fallback);
+      if (isFatalApplicationError(error)) {
+        clearStoredLobbyId(userId, lobbyId);
+        router.replace("/menu");
+        return;
+      }
+
+      if (latestLobbyRef.current) {
+        setPageMessage({
+          text: message,
+          tone: "error",
+        });
+        return;
+      }
+
+      setConnectionState("connecting");
+      setPageMessage({
+        text: message,
+        tone: "error",
+      });
+    };
+
+    const unsubscribe = lobbyClient.subscribeToLobby(
+      lobbyId,
+      applyLobbyDetails,
+      (error) => {
+        handleLobbyError(error, "Realtime connection failed. Waiting for the live lobby state.");
+      },
+    );
+
+    void lobbyClient
+      .getLobby(lobbyId)
+      .then(applyLobbyDetails)
+      .catch((error: unknown) => {
+        handleLobbyError(error, "Unable to load the lobby yet. Waiting for the live lobby state.");
+      });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      cancelled = true;
+      unsubscribe();
     };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId, router]);
 
@@ -169,6 +178,10 @@ export default function LobbyPage() {
     if (!lobby) return;
     setDurationDraft(String(lobby.gameDuration));
   }, [lobby?.gameDuration]);
+
+  useEffect(() => {
+    setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
+  }, [currentPlayer?.team, lobbyId, userId]);
 
   useEffect(() => {
     if (typeof globalThis === "undefined" || !("localStorage" in globalThis)) return;
@@ -568,6 +581,11 @@ function getLobbyErrorMessage(
   if (applicationError?.status === 409) return applicationError.message;
   if (applicationError instanceof Error && applicationError.message.trim() !== "") return applicationError.message;
   return fallback;
+}
+
+function isFatalApplicationError(error: unknown): boolean {
+  const applicationError = error as ApplicationError | undefined;
+  return applicationError?.status === 403 || applicationError?.status === 404;
 }
 
 function setStoredLobbyId(userId: string, lobbyId: string): void {

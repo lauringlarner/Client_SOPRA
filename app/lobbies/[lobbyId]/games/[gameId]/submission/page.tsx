@@ -154,7 +154,7 @@ function CameraContent() {
 
       setLastSubmissionWord(tileWord);
 
-      router.back();
+      router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
     } catch (error) {
       if (isGameEndedError(error)) {
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);

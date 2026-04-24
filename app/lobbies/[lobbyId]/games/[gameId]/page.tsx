@@ -20,6 +20,7 @@ import {
   clearLastSubmissionWord,
   getLastSubmissionWord,
 } from "@/utils/submissionFeedback";
+import { getStoredLobbyTeam, setStoredLobbyTeam } from "@/utils/lobbySession";
 
 export default function GameBoardPage() {
   const api = useApi();
@@ -39,7 +40,8 @@ export default function GameBoardPage() {
   const [showRules, setShowRules] = useState(false);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
-  const gameClient = useMemo(() => createGameClient({ api, token }), [token]);
+  const latestGameRef = useRef<GameDetails | null>(null);
+  const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
   useEffect(() => {
@@ -97,65 +99,103 @@ export default function GameBoardPage() {
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
 
-    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    latestGameRef.current = null;
+    setGame(null);
+    setConnectionState("connecting");
+    setPageMessage(null);
 
-    const init = async () => {
-      try {
-        setConnectionState("connecting");
-        setPageMessage(null);
-
-        // ✅ INITIAL GAME FETCH (missing in your code)
-        const initial = await gameClient.getGame(gameId); 
-        // OR api call if you don't have it yet
-
-        if (initial) {
-          setGame(initial);
-          setConnectionState("live");
-        }
-
-        unsubscribe = gameClient.subscribeToGame(
-          gameId,
-          (details) => {
-            setGame(details);
-            setConnectionState("live");
-          },
-          (error) => {
-            setGame(null);
-            setConnectionState("error");
-            setPageMessage(
-              getGameErrorMessage(error, "Unable to load this game.")
-            );
-          },
-        );
-      } catch (error) {
-        setConnectionState("error");
-        setPageMessage(
-          getGameErrorMessage(error, "Unable to load this game.")
-        );
+    const applyGameDetails = (details: GameDetails) => {
+      if (cancelled) {
+        return;
       }
+
+      latestGameRef.current = details;
+      setGame(details);
+      setConnectionState("live");
+      setPageMessage(null);
     };
 
-    void init();
+    const handleGameError = (error: unknown, fallback: string) => {
+      if (cancelled) {
+        return;
+      }
+
+      const message = getGameErrorMessage(error, fallback);
+      if (latestGameRef.current) {
+        setPageMessage(message);
+        return;
+      }
+
+      setConnectionState(isFatalApplicationError(error) ? "error" : "connecting");
+      setPageMessage(message);
+    };
+
+    const unsubscribe = gameClient.subscribeToGame(
+      gameId,
+      applyGameDetails,
+      (error) => {
+        handleGameError(
+          error,
+          "Realtime connection failed. Waiting for the live game state.",
+        );
+      },
+    );
+
+    void gameClient
+      .getGame(gameId)
+      .then(applyGameDetails)
+      .catch((error) => {
+        handleGameError(
+          error,
+          "Unable to load this game yet. Waiting for the live game state.",
+        );
+      });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      cancelled = true;
+      unsubscribe();
     };
   }, [loaded, isAuthenticated, gameClient, gameId]);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated || userId.trim() === "") return;
 
-    (async () => {
-      const currentLobby = await lobbyClient.getLobby(lobbyId);
+    let cancelled = false;
+    setMyTeamName(normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId)));
 
-      const currentPlayer = currentLobby.lobbyPlayers.find(
-        (p) => p.user.id === userId
-      );
+    void (async () => {
+      try {
+        const currentLobby = await lobbyClient.getLobby(lobbyId);
+        if (cancelled) {
+          return;
+        }
 
-      setMyTeamName(
-        normalizeBackendTeamName(currentPlayer?.team ?? null)
-      );
+        const currentPlayer = currentLobby.lobbyPlayers.find(
+          (p) => p.user.id === userId,
+        );
+
+        setMyTeamName(
+          normalizeBackendTeamName(currentPlayer?.team ?? null),
+        );
+        setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setPageMessage(
+          getGameErrorMessage(
+            error,
+            "Unable to confirm your team from the lobby.",
+          ),
+        );
+      }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
   useEffect(() => {
@@ -199,6 +239,14 @@ export default function GameBoardPage() {
   const teamScores: TeamScoreViewModel[] = game && myTeamName
     ? buildTeamScores(myTeamName, game.score_1, game.score_2)
     : [];
+  const loadingTitle = !game
+    ? connectionState === "error"
+      ? "Game unavailable"
+      : "Connecting..."
+    : "Resolving your team";
+  const loadingMessage = !game
+    ? pageMessage ?? "Waiting for the first live game state."
+    : pageMessage ?? "Loading your player team from the lobby.";
 
   return (
     <div className="app-shell">
@@ -242,8 +290,9 @@ export default function GameBoardPage() {
         {(!game || !myTeamName) && (
           <section className="lobby-card lobby-loading-card">
             <h2 className="lobby-section-title">
-              {connectionState === "error" ? "Game unavailable" : "Connecting..."}
+              {loadingTitle}
             </h2>
+            <p className="lobby-muted-note">{loadingMessage}</p>
             <button type="button" className="vq-button" onClick={() => router.replace(`/lobbies/${lobbyId}`)}>
               Back to Lobby
             </button>
@@ -416,5 +465,11 @@ function isFriendlyProcessing(status: GameTileStatus, myTeamName: BackendTeamNam
 function getGameErrorMessage(error: unknown, fallback: string): string {
   const applicationError = error as ApplicationError | undefined;
   if (applicationError?.status === 403) return applicationError.message;
+  if (applicationError?.status === 404) return "This game could not be found anymore.";
   return fallback;
+}
+
+function isFatalApplicationError(error: unknown): boolean {
+  const applicationError = error as ApplicationError | undefined;
+  return applicationError?.status === 403 || applicationError?.status === 404;
 }
