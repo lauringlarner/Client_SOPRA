@@ -80,7 +80,7 @@ export default function GameBoardPage() {
     const totalSeconds = game.gameDuration * 60;
     const percentage = (remainingSeconds / totalSeconds) * 100;
     return `${Math.max(0, Math.min(100, percentage))}%`;
-  }, [remainingSeconds, game?.gameDuration]);
+  }, [game, remainingSeconds]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -144,7 +144,7 @@ export default function GameBoardPage() {
       (error) => {
         handleGameError(
           error,
-          "Realtime connection failed. Waiting for the live game state.",
+          "Unable to load this game yet. Waiting for the live game state.",
         );
       },
     );
@@ -471,12 +471,28 @@ function isFriendlyProcessing(status: GameTileStatus, myTeamName: BackendTeamNam
 
 function getGameErrorMessage(error: unknown, fallback: string): string {
   const applicationError = error as ApplicationError | undefined;
+  if (applicationError?.status === 401) return "Your session is no longer valid. Please sign in again.";
   if (applicationError?.status === 403) return applicationError.message;
   if (applicationError?.status === 404) return "This game could not be found anymore.";
+  if (applicationError?.status === 409 && applicationError.message) {
+    return applicationError.message;
+  }
+  if (shouldExposeLocalErrorDetails() && applicationError?.message) {
+    return `${fallback} (${applicationError.message})`;
+  }
   return fallback;
 }
 
 function isFatalApplicationError(error: unknown): boolean {
   const applicationError = error as ApplicationError | undefined;
-  return applicationError?.status === 403 || applicationError?.status === 404;
+  return applicationError?.status === 401 || applicationError?.status === 403 || applicationError?.status === 404;
+}
+
+function shouldExposeLocalErrorDetails(): boolean {
+  if (typeof window === "undefined") {
+    return process.env.NODE_ENV !== "production";
+  }
+
+  return window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
 }

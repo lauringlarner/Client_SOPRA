@@ -71,7 +71,6 @@ function createRemoteLobbyClient(
   options: CreateLobbyClientOptions,
 ): LobbyClient {
   const { api, token } = options;
-
   return {
     async getLobby(lobbyId: string): Promise<LobbyDetails> {
       const payload = await api.get<LobbyDetails>(`/lobbies/${lobbyId}`, token);
@@ -135,7 +134,7 @@ function createRemoteLobbyClient(
     async leaveLobby(lobbyId: string): Promise<void> {
       await api.delete<void>(`/lobbies/${lobbyId}/players/me`, token);
     },
-    subscribeToLobby: createRemoteLobbySubscriber(token),
+    subscribeToLobby: createRemoteLobbySubscriber(),
   };
 }
 
@@ -164,7 +163,7 @@ function getPusher() {
   return pusher;
 }
 
-function createRemoteLobbySubscriber(_token: string): SubscribeToLobby {
+function createRemoteLobbySubscriber(): SubscribeToLobby {
   return (lobbyId, onUpdate, onError) => {
     let pusherInstance: Pusher;
     try {
@@ -180,7 +179,7 @@ function createRemoteLobbySubscriber(_token: string): SubscribeToLobby {
       try {
         const lobby = normalizeLobbyDetails(data);
         onUpdate(lobby);
-      } catch (_err) {
+      } catch {
         onError(createApplicationError("Invalid lobby update", 500));
       }
     };

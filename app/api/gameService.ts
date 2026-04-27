@@ -34,7 +34,7 @@ export function createGameClient(options: CreateGameClientOptions): GameClient {
   const { api, token } = options;
 
   return {
-    subscribeToGame: createRemoteGameSubscriber(token), 
+    subscribeToGame: createRemoteGameSubscriber(),
     async getGame(gameId: string): Promise<GameDetails> {
       const payload = await api.get<GameDetails>(`/games/${gameId}`, token);
       return normalizeGameDetails(payload);
@@ -67,7 +67,7 @@ function getPusher() {
   return pusher;
 }
 
-function createRemoteGameSubscriber(_token: string): SubscribeToGame {
+function createRemoteGameSubscriber(): SubscribeToGame {
   return (gameId, onUpdate, onError) => {
     let pusherInstance: Pusher;
     try {

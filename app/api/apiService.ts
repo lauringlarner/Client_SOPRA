@@ -82,6 +82,7 @@ export class ApiService {
 
     const res = await fetch(url, {
       method: "GET",
+      cache: "no-store",
       headers: this.createHeaders(token),
     });
 
@@ -107,6 +108,7 @@ export class ApiService {
     const isFormData = data instanceof FormData;
     const request: RequestInit = {
       method: "POST",
+      cache: "no-store",
       headers: this.createHeaders(token, !isFormData),
     };
     if (data !== undefined) {
@@ -138,6 +140,7 @@ export class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "PUT",
+      cache: "no-store",
       headers: this.createHeaders(token),
       body: JSON.stringify(data),
     });
@@ -157,6 +160,7 @@ export class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "DELETE",
+      cache: "no-store",
       headers: this.createHeaders(token),
     });
     return this.processResponse<T>(
