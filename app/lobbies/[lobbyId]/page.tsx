@@ -18,6 +18,7 @@ import {
   LobbyPlayer,
   LobbySelectableTeam,
   LobbyTeam,
+  LobbyListType, 
 } from "@/types/lobby";
 
 const MIN_GAME_DURATION = 5;
@@ -34,6 +35,7 @@ export default function LobbyPage() {
 
   const [lobby, setLobby] = useState<LobbyDetails | null>(null);
   const [durationDraft, setDurationDraft] = useState("10");
+  const [listTypeDraft, setListTypeDraft] = useState<LobbyListType>("all");
   const [connectionState, setConnectionState] = useState<
     "connecting" | "live" | "error"
   >("connecting");
@@ -184,6 +186,10 @@ export default function LobbyPage() {
   }, [lobby?.gameDuration]);
 
   useEffect(() => {
+    if (lobby?.listType) setListTypeDraft(lobby.listType);
+  }, [lobby?.listType]);
+
+  useEffect(() => {
     setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
   }, [currentPlayer?.team, lobbyId, userId]);
 
@@ -290,7 +296,7 @@ export default function LobbyPage() {
     }
 
     await runLobbyAction("settings", async () => {
-      await lobbyClient.updateSettings(lobbyId, parsedDuration);
+      await lobbyClient.updateSettings(lobbyId, parsedDuration, listTypeDraft);
       setPageMessage({
         text: "Lobby settings updated.",
         tone: "info",
@@ -440,7 +446,24 @@ export default function LobbyPage() {
                   onChange={(event) => setDurationDraft(event.target.value)}
                 />
               </label>
-
+                            <label className="lobby-settings-field">
+                  <span className="lobby-settings-label">
+                    What kind of objects do you want to collect?
+                  </span>
+                  <select
+                    name="selectedListType"
+                    className="lobby-settings-select"
+                    value={listTypeDraft}
+                    disabled={!isHost || pendingAction === "settings" || pendingAction === "start"}
+                    onChange={(event) =>
+                      setListTypeDraft(event.target.value as LobbyListType)
+                    }
+                  >
+                    <option value="all">Outdoor and Indoor objects</option>
+                    <option value="outside">Outdoor objects</option>
+                    <option value="inside">Indoor objects</option>
+                  </select>
+                </label>
               {isHost ? (
                 <button
                   type="button"

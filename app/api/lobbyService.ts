@@ -3,6 +3,7 @@ import { ApplicationError } from "@/types/error";
 import {
   JoinLobbyResult,
   LobbyDetails,
+  LobbyListType,
   LobbyPlayer,
   LobbySelectableTeam,
   LobbyTeam,
@@ -37,7 +38,7 @@ interface LobbyClient {
     playerId: string,
     isReady: boolean,
   ) => Promise<void>;
-  updateSettings: (lobbyId: string, gameDuration: number) => Promise<void>;
+  updateSettings: (lobbyId: string, gameDuration: number, listType: LobbyListType) => Promise<void>;
   startLobby: (lobbyId: string) => Promise<StartLobbyResult>;
   deleteLobby: (lobbyId: string) => Promise<void>;
   leaveLobby: (lobbyId: string) => Promise<void>;
@@ -110,10 +111,10 @@ function createRemoteLobbyClient(
         token,
       );
     },
-    async updateSettings(lobbyId: string, gameDuration: number): Promise<void> {
+    async updateSettings(lobbyId: string, gameDuration: number, listType: LobbyListType): Promise<void> {
       await api.put<void>(
         `/lobbies/${lobbyId}/settings`,
-        { gameDuration },
+        { gameDuration, listType },
         token,
       );
     },
@@ -267,8 +268,14 @@ export function normalizeLobbyDetails(value: unknown): LobbyDetails {
     gameId: getOptionalIdentifier(value.gameId),
     id,
     joinCode,
+    listType: normalizeLobbyListType(value.listType),
     lobbyPlayers,
   };
+}
+
+function normalizeLobbyListType(value: unknown): LobbyListType {
+  if (value === "outside" || value === "inside" || value === "all") return value;
+  return "all";
 }
 
 function normalizeLobbyPlayer(value: unknown): LobbyPlayer {
