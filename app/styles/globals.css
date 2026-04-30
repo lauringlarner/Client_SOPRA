@@ -1646,6 +1646,40 @@ textarea {
   opacity: 1;
 }
 
+.countdown-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 20px;
+  padding: 20px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  text-align: center;
+}
+
+.countdown-text {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.countdown-number {
+  color: #ffffff;
+  font-size: 36px;
+  font-weight: 800;
+}
+
 /* --- PROFIL LAYOUT & LAYER SYSTEM --- */
 
 .user-profile-title {

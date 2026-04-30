@@ -26,6 +26,10 @@ function CameraContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  
+  // Neuer State für den Countdown
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!loaded) return;
@@ -65,6 +69,38 @@ function CameraContent() {
       }
     };
   }, [capturedImage, isAuthenticated, loaded, lobbyId, router, userId]);
+
+  // Automatische Handhabung nach dem Capture für den Countdown
+  useEffect(() => {
+    if (capturedImage) {
+      setCountdown(5); // 5 Sekunden Countdown
+      
+      countdownTimerRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            if (countdownTimerRef.current) {
+              clearInterval(countdownTimerRef.current);
+            }
+            // Sobald der Timer 0 erreicht, direkt absenden
+            void handleSubmit();
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+      setCountdown(null);
+    }
+
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+    };
+  }, [capturedImage]);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated || !gameId) {
@@ -140,7 +176,6 @@ function CameraContent() {
     }
 
     try {
-      // Bild für den Upload vorbereiten
       const fetchRes = await fetch(capturedImage);
       const blob = await fetchRes.blob();
 
@@ -148,7 +183,6 @@ function CameraContent() {
       formData.append("image", blob, "submission.jpg");
       formData.append("object", tileWord);
 
-      // The backend accepts the upload immediately and finishes analysis asynchronously.
       await api.post<void>(
         `/games/${gameId}/submission`,
         formData,
@@ -168,6 +202,12 @@ function CameraContent() {
       setSubmissionError(getSubmissionErrorMessage(error));
       setIsSubmitting(false);
     }
+  };
+
+  // Hilfsfunktion: Zurück zur Bingo-Seite und `router.back()` triggern
+  const handleCancel = () => {
+    // Verhindert das erneute Laden der vorherigen Seite, indem wir die Navigations-Historie nutzen
+    router.back();
   };
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
@@ -192,12 +232,19 @@ function CameraContent() {
           {capturedImage ? (
             <>
               <img src={capturedImage} alt="Captured" className="camera-video-element" />
+
+              {/* Countdown Overlay in der Bildmitte inklusive Text */}
+              <div className="countdown-overlay">
+                <span className="countdown-text">Sending in</span>
+                <span className="countdown-number">{countdown}</span>
+              </div>
+
               <div className="camera-actions-frame">
                 <button 
                   type="button" 
                   className="camera-button-capture" 
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !capturedImage}
                 >
                   {isSubmitting ? "Uploading..." : "Submit"}
                 </button>
@@ -222,15 +269,15 @@ function CameraContent() {
                 onLoadedMetadata={() => setIsCameraReady(true)} 
               />
               <div className="camera-actions-frame">
-              <button 
-                type="button" 
-                className="camera-button-capture" 
-                onClick={handleCapture}
-                disabled={!isCameraReady} 
-              >
-                Capture
-              </button>
-                <button type="button" className="camera-button-cancel" onClick={() => router.back()}>
+                <button 
+                  type="button" 
+                  className="camera-button-capture" 
+                  onClick={handleCapture}
+                  disabled={!isCameraReady} 
+                >
+                  Capture
+                </button>
+                <button type="button" className="camera-button-cancel" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>
