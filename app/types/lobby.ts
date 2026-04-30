@@ -1,5 +1,7 @@
 export type LobbySelectableTeam = "Team1" | "Team2";
 
+export type LobbyListType = "all" | "outside" | "inside";
+
 export type LobbyTeam = LobbySelectableTeam | null;
 
 export const LOBBY_TEAMS: LobbySelectableTeam[] = ["Team1", "Team2"];
@@ -31,6 +33,8 @@ export interface LobbyDetails {
   id: string;
   joinCode: string;
   lobbyPlayers: LobbyPlayer[];
+  listType?: LobbyListType;
+
 }
 
 export interface JoinLobbyResult {
