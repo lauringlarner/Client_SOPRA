@@ -7,14 +7,22 @@ import { createGameClient } from "@/api/gameService";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { ApplicationError } from "@/types/error"; // Import Name aus alter Version
 import { GameDetails, GameTileStatus, GameTile } from "@/types/game";
 import {
   BackendTeamName,
   buildTeamScores,
   getTilePerspective,
   normalizeBackendTeamName,
+  TeamPerspective,
+  TeamScoreViewModel,
 } from "@/utils/gamePerspective";
 import {
+  clearLastSubmissionWord,
+  getLastSubmissionWord,
+} from "@/utils/submissionFeedback";
+import {
+  getStoredLobbyTeam,
   setStoredActiveLobbyId,
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
@@ -24,15 +32,19 @@ export default function GameBoardPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, token, userId } = useAuthSession();
   const params = useParams<{ lobbyId: string; gameId: string }>();
-  const { lobbyId, gameId } = params;
+  const lobbyId = params.lobbyId;
+  const gameId = params.gameId;
 
+  // --- States (Kombiniert aus alt & neu) ---
   const [game, setGame] = useState<GameDetails | null>(null);
   const [myTeamName, setMyTeamName] = useState<BackendTeamName | null>(null);
-  // Lint-Fix: Unterstrich für ungenutzte Variable
-  const [_connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
+  const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
+  const [pageMessage, setPageMessage] = useState<string | null>(null);
+  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
-  const [activeOverlay, setActiveOverlay] = useState<"rules" | null>(null);
+  // UI States für neue Features
+  const [showRules, setShowRules] = useState(false);
   const [shakingTile, setShakingTile] = useState<string | null>(null);
   const [showBingoBanner, setShowBingoBanner] = useState(false);
   const [activeBingoTiles, setActiveBingoTiles] = useState<Set<string>>(new Set());
@@ -45,6 +57,7 @@ export default function GameBoardPage() {
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
+  // Timer
   useEffect(() => {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
@@ -63,27 +76,39 @@ export default function GameBoardPage() {
     return `${Math.max(0, Math.min(100, (remainingSeconds / (game.gameDuration * 60)) * 100))}%`;
   }, [game, remainingSeconds]);
 
+  // Auth & Session Handling (Exakt wie Alt)
   useEffect(() => {
-    if (game && remainingSeconds <= 0) {
-      router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+    if (!loaded) return;
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
     }
-  }, [remainingSeconds, game, router, lobbyId, gameId]);
-
-  useEffect(() => {
-    if (!loaded || !isAuthenticated) { if (loaded) router.replace("/"); return; }
     setStoredActiveLobbyId(userId, lobbyId);
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
+  // Team Fetching (Exakt wie Alt)
   useEffect(() => {
-    if (!loaded || !isAuthenticated || !userId) return;
-    lobbyClient.getLobby(lobbyId).then(l => {
-      const p = l.lobbyPlayers.find(x => x.user.id === userId);
-      const team = normalizeBackendTeamName(p?.team ?? null);
-      setMyTeamName(team);
-      setStoredLobbyTeam(userId, lobbyId, p?.team ?? null);
-    });
+    if (!loaded || !isAuthenticated || userId.trim() === "") return;
+    let cancelled = false;
+    setMyTeamName(normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId)));
+
+    void (async () => {
+      try {
+        const currentLobby = await lobbyClient.getLobby(lobbyId);
+        if (cancelled) return;
+        const currentPlayer = currentLobby.lobbyPlayers.find(p => p.user.id === userId);
+        const team = normalizeBackendTeamName(currentPlayer?.team ?? null);
+        setMyTeamName(team);
+        setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
+      } catch (error) {
+        if (cancelled) return;
+        setPageMessage(getGameErrorMessage(error, "Unable to confirm your team from the lobby."));
+      }
+    })();
+    return () => { cancelled = true; };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
+  // Game Data & Subscription (Exakt wie Alt)
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
     let cancelled = false;
@@ -92,89 +117,112 @@ export default function GameBoardPage() {
       latestGameRef.current = details;
       setGame(details);
       setConnectionState("live");
-      
-      if (details.status === "ENDED") {
-        router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
-      }
+      setPageMessage(null);
     };
-    // Lint-Fix: Unterstrich für ungenutztes 'err'
-    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (_err) => {
-      if (!latestGameRef.current) setConnectionState("error");
-    });
-    gameClient.getGame(gameId).then(applyGameDetails).catch(() => setConnectionState("error"));
-    return () => { cancelled = true; unsubscribe(); };
-  }, [loaded, isAuthenticated, gameClient, gameId, lobbyId, router]);
 
+    const handleGameError = (error: unknown, fallback: string) => {
+      if (cancelled) return;
+      const message = getGameErrorMessage(error, fallback);
+      if (latestGameRef.current) {
+        setPageMessage(message);
+        return;
+      }
+      setConnectionState(isFatalApplicationError(error) ? "error" : "connecting");
+      setPageMessage(message);
+    };
+
+    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (error) => {
+      handleGameError(error, "Unable to load this game yet. Waiting for the live game state.");
+    });
+
+    gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {
+      handleGameError(error, "Unable to load this game yet. Waiting for the live game state.");
+    });
+
+    return () => { cancelled = true; unsubscribe(); };
+  }, [loaded, isAuthenticated, gameClient, gameId]);
+
+  // Bingo & Submission Logic
   useEffect(() => {
     if (!game || !myTeamName) return;
 
+    // 1. Neue Bingo Detektion
     const bingoDetails = getDetailedBingos(game.tileGrid, myTeamName);
     const currentBingoIds = bingoDetails.map(b => b.id);
-
     if (isFirstLoad.current) {
       celebratedBingos.current = currentBingoIds;
       isFirstLoad.current = false;
-      return;
+    } else {
+      const newBingos = bingoDetails.filter(b => !celebratedBingos.current.includes(b.id));
+      if (newBingos.length > 0) {
+        const newTilesToAnimate = new Set<string>();
+        newBingos.forEach(b => b.tiles.forEach(t => newTilesToAnimate.add(t)));
+        celebratedBingos.current = [...celebratedBingos.current, ...newBingos.map(b => b.id)];
+        setActiveBingoTiles(newTilesToAnimate);
+        setShowBingoBanner(true);
+        setTimeout(() => { setShowBingoBanner(false); setActiveBingoTiles(new Set()); }, 5000);
+        
+        // Confetti
+        const end = Date.now() + 2000;
+        const frame = () => {
+          confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FFD700', '#95D6A2'] });
+          confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#95D6A2'] });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        };
+        frame();
+      }
     }
 
-    const newBingos = bingoDetails.filter(b => !celebratedBingos.current.includes(b.id));
-
-    if (newBingos.length > 0) {
-      const newTilesToAnimate = new Set<string>();
-      newBingos.forEach(b => b.tiles.forEach(t => newTilesToAnimate.add(t)));
-
-      celebratedBingos.current = [...celebratedBingos.current, ...newBingos.map(b => b.id)];
-      
-      setActiveBingoTiles(newTilesToAnimate);
-      setShowBingoBanner(true);
-
-      setTimeout(() => {
-        setShowBingoBanner(false);
-        setActiveBingoTiles(new Set()); 
-      }, 5000);
-
-      const end = Date.now() + 2000;
-      const frame = () => {
-        confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FFD700', '#95D6A2'] });
-        confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#95D6A2'] });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      };
-      frame();
-    }
-  }, [game, myTeamName]);
-
-  useEffect(() => {
-    if (!game || !myTeamName) return;
+    // 2. Submission Feedback & Shaking (Alt Logik integriert)
     const nextStatuses = new Map<string, GameTileStatus>();
+    const lastWord = getLastSubmissionWord();
+    let failedSubmission = false;
 
     game.tileGrid.forEach((row, r) => {
       row.forEach((tile, c) => {
         const key = `${r}-${c}`;
         const prev = previousStatuses.current.get(key);
-
-        if (prev && isProcessingStatus(prev) && isClaimedStatus(tile.status) && getTilePerspective(tile.status, myTeamName) === "own") {
-          const bingoDetails = getDetailedBingos(game.tileGrid, myTeamName);
-          const isPartOfNewBingo = bingoDetails.some(b => !celebratedBingos.current.includes(b.id));
-          
-          if (!isPartOfNewBingo) {
-            setShakingTile(key);
-            setTimeout(() => {
-              setShakingTile(null);
-              confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 }, colors: ["#95D6A2", "#FFFFFF", "#76c486"] });
-            }, 600);
+        
+        // Fehler-Feedback Logik aus alter Version
+        if (lastWord === tile.word && prev && isFriendlyProcessing(prev, myTeamName)) {
+          if (tile.status === "UNCLAIMED") {
+            failedSubmission = true;
+            clearLastSubmissionWord();
+          } else if (isClaimedStatus(tile.status)) {
+            clearLastSubmissionWord();
           }
+        }
+
+        // Erfolg-Shake Logik
+        if (prev && isFriendlyProcessing(prev, myTeamName) && isClaimedStatus(tile.status)) {
+            const isPartOfNewBingo = bingoDetails.some(b => !celebratedBingos.current.includes(b.id));
+            if (!isPartOfNewBingo) {
+                setShakingTile(key);
+                setTimeout(() => {
+                    setShakingTile(null);
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 }, colors: ["#95D6A2", "#FFFFFF", "#76c486"] });
+                }, 600);
+            }
         }
         nextStatuses.set(key, tile.status);
       });
     });
     previousStatuses.current = nextStatuses;
+    if (failedSubmission) setSubmissionNotice("Your last submission was not recognized. You can try again.");
   }, [game, myTeamName]);
 
-  const closeOverlay = () => setActiveOverlay(null);
+  // Auto-Redirect wenn Spiel vorbei
+  useEffect(() => {
+    if (game?.status !== "ENDED") return;
+    clearLastSubmissionWord();
+    router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+  }, [game?.status, gameId, lobbyId, router]);
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
-  const teamScores = game && myTeamName ? buildTeamScores(myTeamName, game.score_1, game.score_2) : [];
+  const teamScores: TeamScoreViewModel[] = game && myTeamName
+    ? buildTeamScores(myTeamName, game.score_1, game.score_2)
+    : [];
 
   return (
     <div className="app-shell">
@@ -186,15 +234,32 @@ export default function GameBoardPage() {
       )}
 
       <main className="phone-frame screen-gradient bingo-frame-layout">
+        
+        {/* Rules Trigger */}
         {game && myTeamName && (
-          <button type="button" className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
+          <button type="button" className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+        )}
+
+        {/* Loading State */}
+        {(!game || !myTeamName) && (
+          <section className="lobby-card lobby-loading-card">
+            <h2 className="lobby-section-title">{!game ? (connectionState === "error" ? "Game unavailable" : "Connecting...") : "Resolving team"}</h2>
+            <p className="lobby-muted-note">{pageMessage ?? "Waiting for the first live game state."}</p>
+            <button type="button" className="vq-button" onClick={() => router.replace(`/lobbies/${lobbyId}`)}>Back to Lobby</button>
+          </section>
         )}
 
         {game && myTeamName && (
           <>
+            {pageMessage && (
+              <section className="lobby-card lobby-feedback-card is-error">
+                <p className="lobby-feedback-text">{pageMessage}</p>
+              </section>
+            )}
+            
             <section className="bingo-team-points-container">
               {teamScores.map((score) => (
-                <div key={score.label} className={`bingo-team-points-card ${score.perspective === "own" ? "is-friendly" : "is-enemy"}`}>
+                <div key={score.label} className={`bingo-team-points-card ${getPerspectiveCardClass(score.perspective)}`}>
                   <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
                   <span className="bingo-team-points-card-points">{score.totalPoints}</span>
                 </div>
@@ -202,7 +267,9 @@ export default function GameBoardPage() {
             </section>
 
             <div className="bingo-time-bar-container">
-              <div className="bingo-time-bar-label">Time: {Math.floor(remainingSeconds/60)}:{(remainingSeconds%60).toString().padStart(2,"0")}</div>
+              <div className="bingo-time-bar-label">
+                Time: {Math.floor(remainingSeconds/60)}:{(remainingSeconds%60).toString().padStart(2,"0")}
+              </div>
               <div className="bingo-time-bar-track">
                 <div className="bingo-time-bar-fill" style={{ width: progressWidth, transition: "width 1s linear" }} />
               </div>
@@ -231,7 +298,7 @@ export default function GameBoardPage() {
                           onClick={() => router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`)}
                         >
                           {isProcessing ? (
-                            <div className={`loader ${getTilePerspective(tile.status, myTeamName) === "own" ? "is-friendly" : "is-enemy"}`}></div>
+                            <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>
                           ) : isClaimed ? (
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
                               <path d="M20 6L9 17l-5-5" />
@@ -246,71 +313,124 @@ export default function GameBoardPage() {
                 ))}
               </div>
             </section>
+
+            {submissionNotice && <p className="bingo-submission-note">{submissionNotice}</p>}
           </>
         )}
+      </main>
 
-                 {/* RULES OVERLAY */}
-        {activeOverlay === "rules" && (
-          <div className="overlay-backdrop" onClick={closeOverlay}>
-            <div className="overlay-card is-rules-large" onClick={(e) => e.stopPropagation()}>
-              <div className="rules-content">
-                <h2 className="overlay-title">Game Rules</h2>
-                <div className="rules-section">
-                  <ul className="rules-bullet-list">
-                    <li><strong>Find:</strong> Locate an item listed on the bingo board in the real world.</li>
-                    <li><strong>Capture:</strong> Tap the tile to open the camera and snap a photo of that item.</li>
-                    <li><strong>Submission:</strong> Once submitted, our AI will validate the image to ensure it matches the item on the tile.</li>
-                    <li><strong>Win:</strong> Earn points for every captured tile, plus bonus points for completing rows, columns, or diagonals.</li>
-                  </ul>
-                </div>
+{/* RULES OVERLAY */}
+{showRules && (
+  <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
+    <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+      <div className="rules-content">
+        <h2 className="overlay-title">Game Rules</h2>
+        <div className="rules-section">
+          <ul className="rules-bullet-list">
+            <li><strong>Find:</strong> Locate an item listed on the bingo board in the real world.</li>
+            <li><strong>Capture:</strong> Tap the tile to open the camera and snap a photo of that item.</li>
+            <li><strong>Submission:</strong> Once submitted, our AI will validate the image to ensure it matches the item on the tile.</li>
+            <li><strong>Win:</strong> Earn points for every captured tile, plus bonus points for completing rows, columns, or diagonals.</li>
+          </ul>
+        </div>
 
-                <div className="rules-section">
-                  <h3 className="rules-subtitle">Tile Examples</h3>
-                  <div className="rules-tile-grid">
-                    <div className="rules-tile-item">
-                      <div className="bingo-field-button">
-                        <span className="tile-text">Tree</span>
-                      </div>
-                      <span>Unclaimed</span>
-                    </div>
-                    <div className="rules-tile-item">
-                      <div className="bingo-field-button is-processing-friendly is-analyzing">
-                        <div className="loader is-friendly"></div>
-                      </div>
-                      <span>In Validation</span>
-                    </div>
-                    <div className="rules-tile-item">
-                      <div className="bingo-field-button is-claimed is-claimed-friendly">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </div>
-                      <span>Claimed Team 1</span>
-                    </div>
-                    <div className="rules-tile-item">
-                      <div className="bingo-field-button is-claimed is-claimed-enemy">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </div>
-                      <span>Claimed Team 2</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="overlay-actions-single">
-                  <button type="button" className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
-                </div>
-              </div>
+        <div className="rules-section">
+          <h3 className="rules-subtitle">Tile Examples</h3>
+          <div className="rules-tile-grid">
+            <div className="rules-tile-item">
+              <button type="button" className="bingo-field-button">
+                <span className="tile-text">Tree</span>
+              </button>
+              <span>Unclaimed</span>
+            </div>
+
+            <div className="rules-tile-item">
+              <button type="button" className="bingo-field-button is-processing-friendly is-analyzing" disabled>
+                <div className="loader is-friendly"></div>
+              </button>
+              <span>In Validation</span>
+            </div>
+
+            <div className="rules-tile-item">
+              <button type="button" className="bingo-field-button is-claimed is-claimed-friendly" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </button>
+              <span>Claimed Team 1</span>
+            </div>
+
+            <div className="rules-tile-item">
+              <button type="button" className="bingo-field-button is-claimed is-claimed-enemy" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </button>
+              <span>Claimed Team 2</span>
             </div>
           </div>
-        )}
-      </main>
+        </div>
+        
+        <div className="overlay-actions overlay-actions-single">
+          <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>Got it!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
 
-// --- HELPER (Lint-Fixed: const statt let für Arrays) ---
+// --- Helpers (Exakt wie Alt) ---
+function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
+  if (status === "UNCLAIMED") return "";
+  if (isClaimedStatus(status)) return getTilePerspective(status, myTeamName) === "own" ? "is-claimed is-claimed-friendly" : "is-claimed is-claimed-enemy";
+  if (isProcessingStatus(status)) return getTilePerspective(status, myTeamName) === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
+  return "";
+}
+
+function getTileLoaderClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
+  if (!isProcessingStatus(status)) return "";
+  return getTilePerspective(status, myTeamName) === "own" ? "is-friendly" : "is-enemy";
+}
+
+function getPerspectiveCardClass(perspective: TeamPerspective): string {
+  return perspective === "own" ? "is-friendly" : "is-enemy";
+}
+
+function isClaimedStatus(status: GameTileStatus): boolean {
+  return status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2";
+}
+
+function isProcessingStatus(status: GameTileStatus): boolean {
+  return status === "PROCESSING_TEAM1" || status === "PROCESSING_TEAM2";
+}
+
+function isFriendlyProcessing(status: GameTileStatus, myTeamName: BackendTeamName): boolean {
+  return isProcessingStatus(status) && getTilePerspective(status, myTeamName) === "own";
+}
+
+function getGameErrorMessage(error: unknown, fallback: string): string {
+  const applicationError = error as ApplicationError | undefined;
+  if (applicationError?.status === 401) return "Your session is no longer valid.";
+  if (applicationError?.status === 403) return applicationError.message;
+  if (applicationError?.status === 404) return "This game could not be found anymore.";
+  if (shouldExposeLocalErrorDetails() && applicationError?.message) return `${fallback} (${applicationError.message})`;
+  return fallback;
+}
+
+function isFatalApplicationError(error: unknown): boolean {
+  const applicationError = error as ApplicationError | undefined;
+  return applicationError?.status === 401 || applicationError?.status === 403 || applicationError?.status === 404;
+}
+
+function shouldExposeLocalErrorDetails(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+}
+
+// Bingo Detektions-Logik (Hilfsfunktion)
 function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   const size = grid.length;
   const results: { id: string; tiles: string[] }[] = [];
@@ -319,43 +439,17 @@ function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   grid.forEach((row, r) => {
     if (row.every(isF)) results.push({ id: `row-${r}`, tiles: row.map((_, c) => `${r}-${c}`) });
   });
-
   for (let c = 0; c < size; c++) {
     let match = true;
     const tiles: string[] = []; 
-    for (let r = 0; r < size; r++) {
-      if (!isF(grid[r][c])) match = false;
-      tiles.push(`${r}-${c}`);
-    }
+    for (let r = 0; r < size; r++) { if (!isF(grid[r][c])) match = false; tiles.push(`${r}-${c}`); }
     if (match) results.push({ id: `col-${c}`, tiles });
   }
-
-  let d1Match = true;
-  const d1Tiles: string[] = []; 
-  for (let i = 0; i < size; i++) {
-    if (!isF(grid[i][i])) d1Match = false;
-    d1Tiles.push(`${i}-${i}`);
-  }
+  let d1Match = true, d1Tiles: string[] = [];
+  for (let i = 0; i < size; i++) { if (!isF(grid[i][i])) d1Match = false; d1Tiles.push(`${i}-${i}`); }
   if (d1Match) results.push({ id: "diag-1", tiles: d1Tiles });
-
-  let d2Match = true;
-  const d2Tiles: string[] = []; 
-  for (let i = 0; i < size; i++) {
-    if (!isF(grid[i][size - 1 - i])) d2Match = false;
-    d2Tiles.push(`${i}-${size - 1 - i}`);
-  }
+  let d2Match = true, d2Tiles: string[] = [];
+  for (let i = 0; i < size; i++) { if (!isF(grid[i][size - 1 - i])) d2Match = false; d2Tiles.push(`${i}-${size - 1 - i}`); }
   if (d2Match) results.push({ id: "diag-2", tiles: d2Tiles });
-
   return results;
 }
-
-function getTileStateClass(s: GameTileStatus, t: BackendTeamName) {
-  if (s === "UNCLAIMED") return "";
-  const p = getTilePerspective(s, t);
-  if (isClaimedStatus(s)) return p === "own" ? "is-claimed is-claimed-friendly" : "is-claimed is-claimed-enemy";
-  if (isProcessingStatus(s)) return p === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
-  return "";
-}
-
-function isClaimedStatus(s: GameTileStatus) { return s === "CLAIMED_TEAM1" || s === "CLAIMED_TEAM2"; }
-function isProcessingStatus(s: GameTileStatus) { return s === "PROCESSING_TEAM1" || s === "PROCESSING_TEAM2"; }
