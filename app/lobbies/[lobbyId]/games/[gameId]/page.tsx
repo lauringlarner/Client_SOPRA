@@ -28,14 +28,13 @@ export default function GameBoardPage() {
 
   const [game, setGame] = useState<GameDetails | null>(null);
   const [myTeamName, setMyTeamName] = useState<BackendTeamName | null>(null);
-  const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
+  // Lint-Fix: Unterstrich für ungenutzte Variable
+  const [_connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
   const [activeOverlay, setActiveOverlay] = useState<"rules" | null>(null);
   const [shakingTile, setShakingTile] = useState<string | null>(null);
   const [showBingoBanner, setShowBingoBanner] = useState(false);
-  
-  // Neu: Tracking der Kacheln, die AKTUELL leuchten sollen
   const [activeBingoTiles, setActiveBingoTiles] = useState<Set<string>>(new Set());
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
@@ -64,7 +63,6 @@ export default function GameBoardPage() {
     return `${Math.max(0, Math.min(100, (remainingSeconds / (game.gameDuration * 60)) * 100))}%`;
   }, [game, remainingSeconds]);
 
-  // Redirect bei Zeitablauf
   useEffect(() => {
     if (game && remainingSeconds <= 0) {
       router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
@@ -99,14 +97,14 @@ export default function GameBoardPage() {
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
       }
     };
-    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (err) => {
+    // Lint-Fix: Unterstrich für ungenutztes 'err'
+    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (_err) => {
       if (!latestGameRef.current) setConnectionState("error");
     });
     gameClient.getGame(gameId).then(applyGameDetails).catch(() => setConnectionState("error"));
     return () => { cancelled = true; unsubscribe(); };
   }, [loaded, isAuthenticated, gameClient, gameId, lobbyId, router]);
 
-  // --- BINGO LOGIK: NUR NEUE BINGOS LEUCHTEN ---
   useEffect(() => {
     if (!game || !myTeamName) return;
 
@@ -130,7 +128,6 @@ export default function GameBoardPage() {
       setActiveBingoTiles(newTilesToAnimate);
       setShowBingoBanner(true);
 
-      // Animation & Glow nach 5 Sekunden entfernen
       setTimeout(() => {
         setShowBingoBanner(false);
         setActiveBingoTiles(new Set()); 
@@ -146,7 +143,6 @@ export default function GameBoardPage() {
     }
   }, [game, myTeamName]);
 
-  // --- TILE STATUS MONITORING ---
   useEffect(() => {
     if (!game || !myTeamName) return;
     const nextStatuses = new Map<string, GameTileStatus>();
@@ -253,7 +249,7 @@ export default function GameBoardPage() {
           </>
         )}
 
-                {/* RULES OVERLAY */}
+                 {/* RULES OVERLAY */}
         {activeOverlay === "rules" && (
           <div className="overlay-backdrop" onClick={closeOverlay}>
             <div className="overlay-card is-rules-large" onClick={(e) => e.stopPropagation()}>
@@ -314,7 +310,7 @@ export default function GameBoardPage() {
   );
 }
 
-// --- HELPER ---
+// --- HELPER (Lint-Fixed: const statt let für Arrays) ---
 function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   const size = grid.length;
   const results: { id: string; tiles: string[] }[] = [];
@@ -326,7 +322,7 @@ function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
 
   for (let c = 0; c < size; c++) {
     let match = true;
-    let tiles: string[] = [];
+    const tiles: string[] = []; 
     for (let r = 0; r < size; r++) {
       if (!isF(grid[r][c])) match = false;
       tiles.push(`${r}-${c}`);
@@ -334,14 +330,16 @@ function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
     if (match) results.push({ id: `col-${c}`, tiles });
   }
 
-  let d1Match = true, d1Tiles: string[] = [];
+  let d1Match = true;
+  const d1Tiles: string[] = []; 
   for (let i = 0; i < size; i++) {
     if (!isF(grid[i][i])) d1Match = false;
     d1Tiles.push(`${i}-${i}`);
   }
   if (d1Match) results.push({ id: "diag-1", tiles: d1Tiles });
 
-  let d2Match = true, d2Tiles: string[] = [];
+  let d2Match = true;
+  const d2Tiles: string[] = []; 
   for (let i = 0; i < size; i++) {
     if (!isF(grid[i][size - 1 - i])) d2Match = false;
     d2Tiles.push(`${i}-${size - 1 - i}`);
