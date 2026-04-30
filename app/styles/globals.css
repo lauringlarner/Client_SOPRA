@@ -406,17 +406,39 @@ textarea {
   position: absolute;
   top: 15px;
   right: 15px;
-  width: 32px;
-  height: 32px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: 2px solid var(--vq-text-dark);
   background: transparent;
   color: var(--vq-text-dark);
-  font-weight: 900;
+  font-weight: bold;
+  font-size: larger;
   display: grid;
   place-items: center;
   cursor: pointer;
 }
+
+.menu-rules-trigger:hover {
+  background: var(--vq-text-dark);
+  color: white; /* Or whatever your "light" color is */
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+/* 2. Press state (Mobile & Mouse Click) */
+.menu-rules-trigger:active {
+  transform: scale(0.95);
+  background: var(--vq-text-dark); /* Ensures it stays filled when pressed */
+  opacity: 0.8;
+}
+
+/* 3. Focus state (Accessibility) */
+.menu-rules-trigger:focus-visible {
+  outline: 3px solid skyblue;
+  outline-offset: 2px;
+}
+
 
 
 
@@ -542,14 +564,38 @@ textarea {
 
 .overlay-card.is-rules-large {
   max-height: 85vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  /* Wichtig: overflow-y auf auto oder scroll setzen */
+  overflow-y: auto; 
+  background: var(--vq-aquamarine);
+  padding: 24px;
+  border-radius: var(--vq-radius);
+  width: 90%;
+  max-width: 400px;
+  position: relative;
+}
+
+/* Custom Scrollbar Styling für Webkit */
+.overlay-card.is-rules-large::-webkit-scrollbar {
+  width: 6px;
+  display: none; /* Stellt sicher, dass sie Platz einnimmt */
+}
+
+.overlay-card.is-rules-large::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+.overlay-card.is-rules-large::-webkit-scrollbar-thumb {
+  background-color: var(--vq-charcoal);
+  border-radius: 10px;
 }
 
 .rules-content {
+  display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 .rules-section {
@@ -1192,24 +1238,24 @@ textarea {
   }
 }
 
-.bingo-screen-card-container{
-display: flex;
-width: 402px;
-height: 619px;
-padding: 0 20px;
-flex-direction: column;
-justify-content: center;
-align-items: center;
-gap: 30px;
-flex-shrink: 0;
-background-color: var(--vq-aquamarine);
+/* --- LAYOUT & CONTAINER --- */
+.bingo-screen-card-container {
+  display: flex;
+  width: 402px;
+  height: 619px;
+  padding: 0 20px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  flex-shrink: 0;
+  background-color: var(--vq-aquamarine);
 }
 
 .bingo-frame-layout {
   padding: clamp(44px, 15vh, 188px) 20px max(20px, env(safe-area-inset-bottom));
   gap: 14px;
 }
-
 
 .bingo-panel {
   background: var(--vq-aquamarine);
@@ -1220,35 +1266,16 @@ background-color: var(--vq-aquamarine);
   gap: clamp(20px, 6vh, 41px);
 }
 
-.bingo-submission-note {
-  margin: 12px 8px 0;         
-  padding: 10px 15px;         
-  
-  /* Text-Styling */
-  color: #b91c1c;               
-  font-size: 0.9rem;
-  line-height: 1.4;
-  text-align: center;
-  font-weight: 500;             
-
-  /* Der Kasten */
-  background-color: #fef2f2;    
-  border: 1px solid #fecaca;   
-  border-radius: 8px;           
-  
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.bingo-card {
+  display: flex;
+  padding: 5px 0;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 8px;
+  background: var(--vq-aquamarine);
 }
 
-.bingo-card{
-display: flex;
-padding: 5px 0;
-flex-direction: column;
-align-items: center;
-border-radius: 8px;
-background: var(--vq-aquamarine);
-}
-
-.bingo-row-frame{
+.bingo-row-frame {
   display: flex;
   padding: 3px 6px;
   align-items: center;
@@ -1256,53 +1283,48 @@ background: var(--vq-aquamarine);
   align-self: stretch;
 }
 
+/* --- BUTTONS & FIELDS --- */
 .bingo-field-button {
   flex: 1;
-  /* 1. Force a square shape regardless of content */
-  aspect-ratio: 1 / 1; 
-  /* 2. Prevent the button from expanding horizontally */
-  min-width: 0; 
+  aspect-ratio: 1 / 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px; /* Room for the text */
-  
+  padding: 8px;
   background: #ffffff;
   border: 1px solid var(--vq-border);
   border-radius: 8px;
   cursor: pointer;
-  overflow: hidden; /* Safety net */
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 
-/* 1. Added Hover State (Desktop/Mouse) */
 .bingo-field-button:hover {
-  background-color: #f0fdfa; /* Subtle tint */
+  background-color: #c9c9c9;
   border-color: var(--vq-teal);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* 2. Added Active State (Mobile Tap feedback) */
 .bingo-field-button:active {
-  background-color: #f0fdfa; 
-  transform: scale(0.95); /* Shrinks slightly when pressed */
-  transition: all 0.05s;  /* Snappy response */
+  background-color: #c9c9c9;
+  transform: scale(0.95);
+  transition: all 0.05s;
 }
 
-/* THE CLAIMED STATE */
 .bingo-field-button:disabled,
 .bingo-field-button.is-claimed,
 .bingo-field-button.is-analyzing {
   cursor: default !important;
-  pointer-events: none; /* Disables all mouse/touch interactions */
+  pointer-events: none;
   box-shadow: none;
-  transform: none !important;
 }
 
-.bingo-field-button.is-claimed {
-  color: #ffffff;
+.bingo-field-button:disabled:not(.is-success-shake):not(.is-bingo-tile) {
+  transform: none;
 }
 
+/* --- TEAM FARBEN & STATES --- */
 .bingo-field-button.is-claimed-friendly {
   background-color: #95D6A2 !important;
   border-color: #95D6A2 !important;
@@ -1323,14 +1345,89 @@ background: var(--vq-aquamarine);
   border-color: #edc99a !important;
 }
 
-.bingo-field-button.is-analyzing {
-  color: #ffffff;
-}
-
-/* White text for better contrast on the green background */
 .bingo-field-button.is-claimed .tile-text {
   color: #ffffff !important;
   font-weight: 800;
+}
+
+/* --- BINGO SPEZIFISCH --- */
+
+/* Goldener Rand bleibt dauerhaft bei Bingo-Tiles */
+.is-bingo-tile {
+  position: relative;
+  z-index: 5;
+  border: 3px solid #FFD700 !important;
+}
+
+/* Der Glow wird nur getriggert, wenn animateBingo im Code auf true gesetzt wird */
+.is-animating-bingo {
+  animation: bingo-momentary-glow 1s ease-in-out infinite;
+}
+
+@keyframes bingo-momentary-glow {
+  0%, 100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+  50% { transform: scale(1.05); filter: brightness(1.2); box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+}
+
+/* BINGO BANNER OVERLAY */
+.bingo-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 215, 0, 0.95);
+  color: #1a1a1a;
+  padding: 30px 60px;
+  border-radius: 24px;
+  font-size: 3.5rem;
+  font-weight: 900;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 0 80px rgba(255, 215, 0, 0.6);
+  text-align: center;
+  line-height: 1.1;
+  text-transform: uppercase;
+  animation: bingo-popup-sequence 2.5s cubic-bezier(0.17, 0.89, 0.32, 1.27) forwards;
+}
+
+.bingo-overlay-sub {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+@keyframes bingo-popup-sequence {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  15% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  25% { transform: translate(-50%, -50%) scale(1); }
+  80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -150%) scale(0.8); opacity: 0; }
+}
+
+/* SUCCESS SHAKE (Kurz vor Explosion) */
+.is-success-shake {
+  animation: success-shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+  z-index: 10;
+}
+
+@keyframes success-shake {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  20% { transform: scale(1.1) rotate(-8deg); }
+  40% { transform: scale(1.1) rotate(8deg); }
+  60% { transform: scale(1.1) rotate(-8deg); }
+  80% { transform: scale(1.2) rotate(8deg); filter: brightness(1.2); }
+}
+
+.claimed-icon-svg {
+  width: 60%;
+  height: 60%;
+  animation: checkmark-appear 0.4s ease-out forwards;
+}
+
+@keyframes checkmark-appear {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .tile-text {
@@ -1925,43 +2022,6 @@ background: var(--vq-aquamarine);
 .confirm-btn:active {
   transform: scale(0.95);
 }
-
-
-/* Animation claim tile */
-@keyframes tile-claim-pop {
-  0% { 
-    transform: scale(1); 
-  }
-  20% { 
-    transform: scale(0.9); /* Antizipation: Zieht sich kurz zusammen */
-    filter: brightness(1);
-  }
-  50% { 
-    transform: scale(1.25); /* Kraftvoller Pop */
-    filter: brightness(1.5) saturate(1.5); /* Glüht richtig auf */
-  }
-  75% {
-    transform: scale(0.95); /* Overshoot: Schwingt zurück */
-  }
-  100% { 
-    transform: scale(1); 
-    filter: brightness(1);
-  }
-}
-
-.bingo-field-button.is-claimed {
-  animation: tile-claim-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.bingo-field-button.is-claimed-friendly {
-  animation: tile-claim-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  
-}
-
-.bingo-field-button.is-claimed-enemy {
-  animation: tile-claim-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
 
 
 /*Hiding scrollbar from screen*/

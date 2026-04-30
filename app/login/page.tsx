@@ -76,7 +76,7 @@ export default function LoginPage() {
               placeholder="Enter username"
               required
               disabled={isSubmitting}
-              maxLength={20}
+              maxLength={15}
             />
           </label>
 
