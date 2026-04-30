@@ -34,20 +34,17 @@ export default function GameBoardPage() {
   const [activeOverlay, setActiveOverlay] = useState<"rules" | null>(null);
   const [shakingTile, setShakingTile] = useState<string | null>(null);
   const [showBingoBanner, setShowBingoBanner] = useState(false);
-  const [animateBingo, setAnimateBingo] = useState(false);
+  
+  // Neu: Tracking der Kacheln, die AKTUELL leuchten sollen
+  const [activeBingoTiles, setActiveBingoTiles] = useState<Set<string>>(new Set());
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]); 
-  const isFirstLoad = useRef(true); // Verhindert Animation beim Reload
+  const isFirstLoad = useRef(true); 
   const latestGameRef = useRef<GameDetails | null>(null);
   
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
-
-  const winningTiles = useMemo(() => {
-    if (!game || !myTeamName) return new Set<string>();
-    return getBingoWinningTiles(game.tileGrid, myTeamName);
-  }, [game, myTeamName]);
 
   useEffect(() => {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
@@ -109,30 +106,35 @@ export default function GameBoardPage() {
     return () => { cancelled = true; unsubscribe(); };
   }, [loaded, isAuthenticated, gameClient, gameId, lobbyId, router]);
 
-  // --- BINGO LOGIK MIT RELOAD-SCHUTZ ---
+  // --- BINGO LOGIK: NUR NEUE BINGOS LEUCHTEN ---
   useEffect(() => {
     if (!game || !myTeamName) return;
 
-    const currentBingoIds = detectBingoRowIds(game.tileGrid, myTeamName);
+    const bingoDetails = getDetailedBingos(game.tileGrid, myTeamName);
+    const currentBingoIds = bingoDetails.map(b => b.id);
 
-    // Initialer Load: Wir markieren alle existierenden Bingos als "gefeiert", ohne Animation
     if (isFirstLoad.current) {
       celebratedBingos.current = currentBingoIds;
       isFirstLoad.current = false;
       return;
     }
 
-    // Normaler Spielverlauf: Nur feiern, wenn neue Bingo-IDs dazukommen
-    const newBingoIds = currentBingoIds.filter(id => !celebratedBingos.current.includes(id));
+    const newBingos = bingoDetails.filter(b => !celebratedBingos.current.includes(b.id));
 
-    if (newBingoIds.length > 0) {
-      celebratedBingos.current = [...celebratedBingos.current, ...newBingoIds];
-      setShowBingoBanner(true);
-      setAnimateBingo(true);
+    if (newBingos.length > 0) {
+      const newTilesToAnimate = new Set<string>();
+      newBingos.forEach(b => b.tiles.forEach(t => newTilesToAnimate.add(t)));
+
+      celebratedBingos.current = [...celebratedBingos.current, ...newBingos.map(b => b.id)];
       
-      // Animationen nach Zeit X beenden
-      setTimeout(() => setShowBingoBanner(false), 2500);
-      setTimeout(() => setAnimateBingo(false), 5000); 
+      setActiveBingoTiles(newTilesToAnimate);
+      setShowBingoBanner(true);
+
+      // Animation & Glow nach 5 Sekunden entfernen
+      setTimeout(() => {
+        setShowBingoBanner(false);
+        setActiveBingoTiles(new Set()); 
+      }, 5000);
 
       const end = Date.now() + 2000;
       const frame = () => {
@@ -155,9 +157,8 @@ export default function GameBoardPage() {
         const prev = previousStatuses.current.get(key);
 
         if (prev && isProcessingStatus(prev) && isClaimedStatus(tile.status) && getTilePerspective(tile.status, myTeamName) === "own") {
-          // Nur schütteln, wenn es KEIN neues Bingo ist (Bingo hat eigene Animation)
-          const currentBingoIds = detectBingoRowIds(game.tileGrid, myTeamName);
-          const isPartOfNewBingo = currentBingoIds.some(id => !celebratedBingos.current.includes(id));
+          const bingoDetails = getDetailedBingos(game.tileGrid, myTeamName);
+          const isPartOfNewBingo = bingoDetails.some(b => !celebratedBingos.current.includes(b.id));
           
           if (!isPartOfNewBingo) {
             setShakingTile(key);
@@ -219,7 +220,7 @@ export default function GameBoardPage() {
                       const key = `${r}-${c}`;
                       const isClaimed = isClaimedStatus(tile.status);
                       const isProcessing = isProcessingStatus(tile.status);
-                      const isBingo = winningTiles.has(key);
+                      const isBingoGlow = activeBingoTiles.has(key);
                       const isSuccessShaking = shakingTile === key;
 
                       return (
@@ -229,8 +230,7 @@ export default function GameBoardPage() {
                           className={`bingo-field-button 
                             ${getTileStateClass(tile.status, myTeamName)} 
                             ${isSuccessShaking ? "is-success-shake" : ""} 
-                            ${isBingo ? "is-bingo-tile" : ""} 
-                            ${isBingo && animateBingo ? "is-animating-bingo" : ""}`}
+                            ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
                           disabled={isClaimed || isProcessing}
                           onClick={() => router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`)}
                         >
@@ -253,7 +253,7 @@ export default function GameBoardPage() {
           </>
         )}
 
-        {/* RULES OVERLAY */}
+                {/* RULES OVERLAY */}
         {activeOverlay === "rules" && (
           <div className="overlay-backdrop" onClick={closeOverlay}>
             <div className="overlay-card is-rules-large" onClick={(e) => e.stopPropagation()}>
@@ -315,38 +315,40 @@ export default function GameBoardPage() {
 }
 
 // --- HELPER ---
-function detectBingoRowIds(grid: GameTile[][], team: BackendTeamName): string[] {
+function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   const size = grid.length;
-  const found: string[] = [];
+  const results: { id: string; tiles: string[] }[] = [];
   const isF = (t: GameTile) => isClaimedStatus(t.status) && getTilePerspective(t.status, team) === "own";
-  grid.forEach((row, r) => { if (row.every(isF)) found.push(`row-${r}`); });
-  for (let c = 0; c < size; c++) {
-    let m = true;
-    for (let r = 0; r < size; r++) if (!isF(grid[r][c])) m = false;
-    if (m) found.push(`col-${c}`);
-  }
-  let d1 = true; for (let i = 0; i < size; i++) if (!isF(grid[i][i])) d1 = false;
-  if (d1) found.push("diag-1");
-  let d2 = true; for (let i = 0; i < size; i++) if (!isF(grid[i][size - 1 - i])) d2 = false;
-  if (d2) found.push("diag-2");
-  return found;
-}
 
-function getBingoWinningTiles(grid: GameTile[][], team: BackendTeamName): Set<string> {
-  const set = new Set<string>();
-  const size = grid.length;
-  const isF = (t: GameTile) => isClaimedStatus(t.status) && getTilePerspective(t.status, team) === "own";
-  grid.forEach((row, r) => { if (row.every(isF)) row.forEach((_, c) => set.add(`${r}-${c}`)); });
+  grid.forEach((row, r) => {
+    if (row.every(isF)) results.push({ id: `row-${r}`, tiles: row.map((_, c) => `${r}-${c}`) });
+  });
+
   for (let c = 0; c < size; c++) {
-    let m = true;
-    for (let r = 0; r < size; r++) if (!isF(grid[r][c])) m = false;
-    if (m) for (let r = 0; r < size; r++) set.add(`${r}-${c}`);
+    let match = true;
+    let tiles: string[] = [];
+    for (let r = 0; r < size; r++) {
+      if (!isF(grid[r][c])) match = false;
+      tiles.push(`${r}-${c}`);
+    }
+    if (match) results.push({ id: `col-${c}`, tiles });
   }
-  let d1 = true; for (let i = 0; i < size; i++) if (!isF(grid[i][i])) d1 = false;
-  if (d1) for (let i = 0; i < size; i++) set.add(`${i}-${i}`);
-  let d2 = true; for (let i = 0; i < size; i++) if (!isF(grid[i][size-1-i])) d2 = false;
-  if (d2) for (let i = 0; i < size; i++) set.add(`${i}-${size-1-i}`);
-  return set;
+
+  let d1Match = true, d1Tiles: string[] = [];
+  for (let i = 0; i < size; i++) {
+    if (!isF(grid[i][i])) d1Match = false;
+    d1Tiles.push(`${i}-${i}`);
+  }
+  if (d1Match) results.push({ id: "diag-1", tiles: d1Tiles });
+
+  let d2Match = true, d2Tiles: string[] = [];
+  for (let i = 0; i < size; i++) {
+    if (!isF(grid[i][size - 1 - i])) d2Match = false;
+    d2Tiles.push(`${i}-${size - 1 - i}`);
+  }
+  if (d2Match) results.push({ id: "diag-2", tiles: d2Tiles });
+
+  return results;
 }
 
 function getTileStateClass(s: GameTileStatus, t: BackendTeamName) {
