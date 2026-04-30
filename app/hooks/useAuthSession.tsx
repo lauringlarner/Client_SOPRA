@@ -33,10 +33,8 @@ export function useAuthSession(): AuthSession {
   }, [tokenStorage.set, userIdStorage.set, usernameStorage.set]);
 
   const logout = useCallback((): void => {
-    tokenStorage.clear();
-    userIdStorage.clear();
-    usernameStorage.clear(); 
-  }, [tokenStorage.clear, userIdStorage.clear, usernameStorage.clear]);
+    localStorage.clear()
+  }, []);
 
   return {
     token: tokenStorage.value,

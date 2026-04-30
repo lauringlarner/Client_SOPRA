@@ -13,6 +13,7 @@
     "@ant-design/nextjs-registry": "^1.0.2",
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "antd": "^6.0.0",
+    "canvas-confetti": "^1.9.4",
     "next": "^15.5.7",
     "node-localstorage": "^3.0.5",
     "process": "^0.11.10",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.0",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.13.5",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",

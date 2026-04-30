@@ -86,7 +86,7 @@ export default function RegisterPage() {
               className="field-input"
               placeholder="Enter username"
               required
-              maxLength={20}
+              maxLength={15}
             />
           </label>
 
