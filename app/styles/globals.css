@@ -1630,7 +1630,6 @@ textarea {
   justify-content: center;
   align-items: center;
   gap: 16px;
-  /* Ein leichter Gradient unten hilft, dass Buttons vor hellem Hintergrund lesbar bleiben */
   background: linear-gradient(transparent, rgba(0,0,0,0.4));
 }
 
@@ -1644,6 +1643,17 @@ textarea {
   color: #000000 !important;
   -webkit-text-fill-color: #000000 !important; 
   opacity: 1;
+}
+
+.camera-button-capture:hover, 
+.camera-button-cancel:hover {
+  background-color: #979797; /* Ein neutraler Grauton */
+}
+
+/* Deaktivierte Buttons sollen ihre eigene Farbe behalten */
+.camera-button-capture:disabled:hover, 
+.camera-button-cancel:disabled:hover {
+  background-color: inherit;
 }
 
 .countdown-overlay {

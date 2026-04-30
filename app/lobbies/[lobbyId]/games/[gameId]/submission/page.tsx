@@ -7,10 +7,23 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
-// Falls Sie ein separates CSS-Modul oder eine globale CSS-Datei nutzen möchten:
-// import "./cameraPage.css"; 
 
 const api = new ApiService();
+
+interface Tile {
+  word: string;
+  value: number;
+  status: string;
+}
+
+interface GameDetails {
+  status: string;
+  submittedTiles?: string[];
+  usedTiles?: string[];
+  tiles?: string[];
+  completedTiles?: string[];
+  board?: Tile[][];
+}
 
 function CameraContent() {
   const router = useRouter();
@@ -29,20 +42,14 @@ function CameraContent() {
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
 
-  // Eigener State für das Overlay
   const [claimedOverlayMessage, setClaimedOverlayMessage] = useState<string | null>(null);
   
-  // Flag, um doppelte Aufrufe zu unterbinden
   const isRedirecting = useRef(false);
 
-  // Countdown State
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Automatischer Redirect-Timer für das Overlay
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Automatische Umleitung ohne Button
   useEffect(() => {
     if (claimedOverlayMessage) {
       redirectTimerRef.current = setTimeout(() => {
@@ -98,7 +105,6 @@ function CameraContent() {
     };
   }, [capturedImage, isAuthenticated, loaded, lobbyId, router, userId]);
 
-  // Automatische Handhabung nach dem Capture für den Countdown
   useEffect(() => {
     if (capturedImage) {
       setCountdown(5);
@@ -129,13 +135,10 @@ function CameraContent() {
     };
   }, [capturedImage]);
 
-  // Überprüfung, ob das Zielwort bereits geclaimed wurde
   useEffect(() => {
     if (!loaded || !isAuthenticated || !gameId) {
       return;
     }
-
-    let unsubscribe: (() => void) | undefined;
 
     const redirectToLeaderboard = () => {
       router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
@@ -143,29 +146,30 @@ function CameraContent() {
 
     const checkAndRedirect = async () => {
       try {
-        const game = await gameClient.getGame(gameId);
+        const game = await gameClient.getGame(gameId) as GameDetails;
         if (game.status === "ENDED") {
           redirectToLeaderboard();
           return;
         }
 
-        const rawGame = game as any;
         let isClaimed = false;
 
-        const possibleProperties = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
+        const possibleProperties: (keyof GameDetails)[] = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
         for (const prop of possibleProperties) {
-          if (Array.isArray(rawGame[prop])) {
-            if (tileWord && rawGame[prop].includes(tileWord)) {
+          const propertyVal = game[prop];
+          if (Array.isArray(propertyVal) && propertyVal.every((item) => typeof item === "string")) {
+            const stringArray = propertyVal as string[];
+            if (tileWord && stringArray.includes(tileWord)) {
               isClaimed = true;
               break;
             }
           }
         }
 
-        if (!isClaimed && Array.isArray(rawGame.board)) {
-          for (const row of rawGame.board) {
+        if (!isClaimed && Array.isArray(game.board)) {
+          for (const row of game.board) {
             if (Array.isArray(row)) {
-              const found = row.find((t: any) => t.word === tileWord && t.status === "CLAIMED");
+              const found = row.find((t: Tile) => t.word === tileWord && t.status === "CLAIMED");
               if (found) {
                 isClaimed = true;
                 break;
@@ -185,31 +189,32 @@ function CameraContent() {
 
     void checkAndRedirect();
 
-    unsubscribe = gameClient.subscribeToGame(
+    const unsubscribe = gameClient.subscribeToGame(
       gameId,
-      (details) => {
+      (details: GameDetails) => {
         if (details.status === "ENDED") {
           redirectToLeaderboard();
           return;
         }
 
-        const rawDetails = details as any;
         let isClaimedLive = false;
 
-        const possibleProperties = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
+        const possibleProperties: (keyof GameDetails)[] = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
         for (const prop of possibleProperties) {
-          if (Array.isArray(rawDetails[prop])) {
-            if (tileWord && rawDetails[prop].includes(tileWord)) {
+          const propertyVal = details[prop];
+          if (Array.isArray(propertyVal) && propertyVal.every((item) => typeof item === "string")) {
+            const stringArray = propertyVal as string[];
+            if (tileWord && stringArray.includes(tileWord)) {
               isClaimedLive = true;
               break;
             }
           }
         }
 
-        if (!isClaimedLive && Array.isArray(rawDetails.board)) {
-          for (const row of rawDetails.board) {
+        if (!isClaimedLive && Array.isArray(details.board)) {
+          for (const row of details.board) {
             if (Array.isArray(row)) {
-              const found = row.find((t: any) => t.word === tileWord && t.status === "CLAIMED");
+              const found = row.find((t: Tile) => t.word === tileWord && t.status === "CLAIMED");
               if (found) {
                 isClaimedLive = true;
                 break;
@@ -226,9 +231,7 @@ function CameraContent() {
     );
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      unsubscribe();
     };
   }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router, tileWord]);
 
@@ -307,11 +310,10 @@ function CameraContent() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient camera-frame-layout">
         
-        {/* Overlay, das angezeigt wird, wenn das Tile bereits belegt ist */}
         {claimedOverlayMessage && (
           <div className="custom-overlay-backdrop">
             <div className="custom-overlay-card">
-              <h2 className="custom-overlay-title">Tile already claimed</h2>
+              <h2 className="custom-overlay-title">Tile Unavailable</h2>
               <p className="custom-overlay-text">{claimedOverlayMessage}</p>
               <p className="custom-overlay-subtext">Redirecting to game screen...</p>
             </div>
@@ -380,6 +382,18 @@ function CameraContent() {
                   onClick={handleCapture}
                   disabled={!isCameraReady}
                 >
+                  {/* Hinzugefügtes Kamera-Symbol */}
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    strokeWidth={2} 
+                    stroke="currentColor" 
+                    className="button-icon"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 5.5H3.814A2.31 2.31 0 0 0 2 7.814v8.372A2.31 2.31 0 0 0 3.814 18h16.372A2.31 2.31 0 0 0 22 16.186V7.814A2.31 2.31 0 0 0 20.186 5.5h-1.372a2.31 2.31 0 0 1-1.641-.675l-1.079-1.092A2.31 2.31 0 0 0 14.656 3.5H9.344a2.31 2.31 0 0 0-1.641.675l-1.076 1.092Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.5 11.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" />
+                  </svg>
                   Capture
                 </button>
                 <button
@@ -394,6 +408,73 @@ function CameraContent() {
           )}
         </section>
       </main>
+
+      <style jsx global>{`
+        .custom-overlay-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.75);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          backdrop-filter: blur(4px);
+        }
+        .custom-overlay-card {
+          background: #1a1a1a;
+          border: 1px solid #333;
+          border-radius: 12px;
+          padding: 24px;
+          max-width: 320px;
+          width: 90%;
+          text-align: center;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+          color: #fff;
+        }
+        .custom-overlay-title {
+          font-size: 1.25rem;
+          margin-bottom: 8px;
+          color: #ef4444;
+          font-weight: bold;
+        }
+        .custom-overlay-text {
+          font-size: 0.9rem;
+          color: #d4d4d8;
+          margin-bottom: 24px;
+          line-height: 1.4;
+        }
+        .custom-overlay-subtext {
+          font-size: 0.8rem;
+          color: #a1a1aa;
+        }
+        
+        /* Button Symbol Styling */
+        .camera-button-capture {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px; /* Abstand zwischen Icon und Text */
+          transition: background-color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .camera-button-capture:hover, .camera-button-cancel:hover {
+          background-color: #4b5563;
+          opacity: 0.9;
+        }
+        
+        .camera-button-capture:disabled:hover, .camera-button-cancel:disabled:hover {
+          background-color: inherit;
+          opacity: 0.6;
+        }
+
+        .button-icon {
+          width: 1.2rem;
+          height: 1.2rem;
+        }
+      `}</style>
     </div>
   );
 }
