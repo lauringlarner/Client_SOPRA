@@ -7,6 +7,8 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
+// Falls Sie ein separates CSS-Modul oder eine globale CSS-Datei nutzen möchten:
+// import "./cameraPage.css"; 
 
 const api = new ApiService();
 
@@ -26,10 +28,36 @@ function CameraContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+
+  // Eigener State für das Overlay
+  const [claimedOverlayMessage, setClaimedOverlayMessage] = useState<string | null>(null);
   
-  // Neuer State für den Countdown
+  // Flag, um doppelte Aufrufe zu unterbinden
+  const isRedirecting = useRef(false);
+
+  // Countdown State
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Automatischer Redirect-Timer für das Overlay
+  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Automatische Umleitung ohne Button
+  useEffect(() => {
+    if (claimedOverlayMessage) {
+      redirectTimerRef.current = setTimeout(() => {
+        if (!isRedirecting.current) {
+          isRedirecting.current = true;
+          router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
+        }
+      }, 2000);
+    }
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, [claimedOverlayMessage, lobbyId, gameId, router]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -44,14 +72,14 @@ function CameraContent() {
       (async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { 
+            video: {
               facingMode: "environment",
-              width: { ideal: 4096 }, 
-              height: { ideal: 2160 }
+              width: { ideal: 4096 },
+              height: { ideal: 2160 },
             },
             audio: false,
           });
-          
+
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
             streamRef.current = stream;
@@ -64,7 +92,7 @@ function CameraContent() {
 
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
     };
@@ -73,15 +101,14 @@ function CameraContent() {
   // Automatische Handhabung nach dem Capture für den Countdown
   useEffect(() => {
     if (capturedImage) {
-      setCountdown(5); // 5 Sekunden Countdown
-      
+      setCountdown(5);
+
       countdownTimerRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev === null || prev <= 1) {
             if (countdownTimerRef.current) {
               clearInterval(countdownTimerRef.current);
             }
-            // Sobald der Timer 0 erreicht, direkt absenden
             void handleSubmit();
             return null;
           }
@@ -102,6 +129,7 @@ function CameraContent() {
     };
   }, [capturedImage]);
 
+  // Überprüfung, ob das Zielwort bereits geclaimed wurde
   useEffect(() => {
     if (!loaded || !isAuthenticated || !gameId) {
       return;
@@ -113,7 +141,7 @@ function CameraContent() {
       router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
     };
 
-    const init = async () => {
+    const checkAndRedirect = async () => {
       try {
         const game = await gameClient.getGame(gameId);
         if (game.status === "ENDED") {
@@ -121,28 +149,88 @@ function CameraContent() {
           return;
         }
 
-        unsubscribe = gameClient.subscribeToGame(
-          gameId,
-          (details) => {
-            if (details.status === "ENDED") {
-              redirectToLeaderboard();
+        const rawGame = game as any;
+        let isClaimed = false;
+
+        const possibleProperties = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
+        for (const prop of possibleProperties) {
+          if (Array.isArray(rawGame[prop])) {
+            if (tileWord && rawGame[prop].includes(tileWord)) {
+              isClaimed = true;
+              break;
             }
-          },
-          () => {},
-        );
+          }
+        }
+
+        if (!isClaimed && Array.isArray(rawGame.board)) {
+          for (const row of rawGame.board) {
+            if (Array.isArray(row)) {
+              const found = row.find((t: any) => t.word === tileWord && t.status === "CLAIMED");
+              if (found) {
+                isClaimed = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (tileWord && isClaimed) {
+          setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed by another team.`);
+          return;
+        }
       } catch {
-        // Keep the current page state when the status lookup fails.
+        // Bei Netzwerkfehlern den Status beibehalten.
       }
     };
 
-    void init();
+    void checkAndRedirect();
+
+    unsubscribe = gameClient.subscribeToGame(
+      gameId,
+      (details) => {
+        if (details.status === "ENDED") {
+          redirectToLeaderboard();
+          return;
+        }
+
+        const rawDetails = details as any;
+        let isClaimedLive = false;
+
+        const possibleProperties = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
+        for (const prop of possibleProperties) {
+          if (Array.isArray(rawDetails[prop])) {
+            if (tileWord && rawDetails[prop].includes(tileWord)) {
+              isClaimedLive = true;
+              break;
+            }
+          }
+        }
+
+        if (!isClaimedLive && Array.isArray(rawDetails.board)) {
+          for (const row of rawDetails.board) {
+            if (Array.isArray(row)) {
+              const found = row.find((t: any) => t.word === tileWord && t.status === "CLAIMED");
+              if (found) {
+                isClaimedLive = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (tileWord && isClaimedLive) {
+          setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed by another team.`);
+        }
+      },
+      () => {},
+    );
 
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
     };
-  }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router]);
+  }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router, tileWord]);
 
   const handleCapture = () => {
     const videoElement = videoRef.current;
@@ -161,6 +249,8 @@ function CameraContent() {
   };
 
   const handleSubmit = async () => {
+    if (claimedOverlayMessage || isRedirecting.current) return;
+
     if (!capturedImage || !tileWord) {
       setSubmissionError("The target word or captured image is missing.");
       return;
@@ -183,14 +273,9 @@ function CameraContent() {
       formData.append("image", blob, "submission.jpg");
       formData.append("object", tileWord);
 
-      await api.post<void>(
-        `/games/${gameId}/submission`,
-        formData,
-        token,
-      );
+      await api.post<void>(`/games/${gameId}/submission`, formData, token);
 
       setLastSubmissionWord(tileWord);
-
       router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
     } catch (error) {
       if (isGameEndedError(error)) {
@@ -198,15 +283,21 @@ function CameraContent() {
         return;
       }
 
+      const errorMsg = getSubmissionErrorMessage(error);
+
+      if (errorMsg.toLowerCase().includes("already taken")) {
+        setClaimedOverlayMessage(`The tile "${tileWord}" is already claimed by a team!`);
+        setIsSubmitting(false);
+        return;
+      }
+
       console.error("Submission error:", error);
-      setSubmissionError(getSubmissionErrorMessage(error));
+      setSubmissionError(errorMsg);
       setIsSubmitting(false);
     }
   };
 
-  // Hilfsfunktion: Zurück zur Bingo-Seite und `router.back()` triggern
   const handleCancel = () => {
-    // Verhindert das erneute Laden der vorherigen Seite, indem wir die Navigations-Historie nutzen
     router.back();
   };
 
@@ -215,8 +306,19 @@ function CameraContent() {
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient camera-frame-layout">
+        
+        {/* Overlay, das angezeigt wird, wenn das Tile bereits belegt ist */}
+        {claimedOverlayMessage && (
+          <div className="custom-overlay-backdrop">
+            <div className="custom-overlay-card">
+              <h2 className="custom-overlay-title">Tile already claimed</h2>
+              <p className="custom-overlay-text">{claimedOverlayMessage}</p>
+              <p className="custom-overlay-subtext">Redirecting to game screen...</p>
+            </div>
+          </div>
+        )}
+
         <section className="camera-container">
-          
           {tileWord && (
             <div className="camera-target-badge">
               <strong>Target: {tileWord}</strong>
@@ -231,26 +333,29 @@ function CameraContent() {
 
           {capturedImage ? (
             <>
-              <img src={capturedImage} alt="Captured" className="camera-video-element" />
+              <img
+                src={capturedImage}
+                alt="Captured"
+                className="camera-video-element"
+              />
 
-              {/* Countdown Overlay in der Bildmitte inklusive Text */}
               <div className="countdown-overlay">
                 <span className="countdown-text">Sending in</span>
                 <span className="countdown-number">{countdown}</span>
               </div>
 
               <div className="camera-actions-frame">
-                <button 
-                  type="button" 
-                  className="camera-button-capture" 
+                <button
+                  type="button"
+                  className="camera-button-capture"
                   onClick={handleSubmit}
                   disabled={isSubmitting || !capturedImage}
                 >
                   {isSubmitting ? "Uploading..." : "Submit"}
                 </button>
-                <button 
-                  type="button" 
-                  className="camera-button-cancel" 
+                <button
+                  type="button"
+                  className="camera-button-cancel"
                   onClick={() => setCapturedImage(null)}
                   disabled={isSubmitting}
                 >
@@ -266,18 +371,22 @@ function CameraContent() {
                 playsInline
                 muted
                 className="camera-video-element"
-                onLoadedMetadata={() => setIsCameraReady(true)} 
+                onLoadedMetadata={() => setIsCameraReady(true)}
               />
               <div className="camera-actions-frame">
-                <button 
-                  type="button" 
-                  className="camera-button-capture" 
+                <button
+                  type="button"
+                  className="camera-button-capture"
                   onClick={handleCapture}
-                  disabled={!isCameraReady} 
+                  disabled={!isCameraReady}
                 >
                   Capture
                 </button>
-                <button type="button" className="camera-button-cancel" onClick={handleCancel}>
+                <button
+                  type="button"
+                  className="camera-button-cancel"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
