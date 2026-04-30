@@ -1298,6 +1298,9 @@ textarea {
   cursor: pointer;
   overflow: hidden;
   transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  border-color: black;
 }
 
 .bingo-field-button:hover {
@@ -1431,19 +1434,36 @@ textarea {
 }
 
 .tile-text {
-  /* 3. Typography settings for wrapping */
-  font-size: 11px;
-  line-height: 1.2;
-  font-weight: 600;
-  text-align: center;
-  
-  /* 4. The "Paragraph" logic */
-  display: block;
+  /* 1. Layout: Perfect Centering */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  word-wrap: break-word;   /* Breaks long words if they literally won't fit */
-  overflow-wrap: break-word;
-  white-space: normal;     /* Allows text to wrap to new lines like a paragraph */
+  height: 100%;
+  padding: 4px; 
+
+  /* 2. Professional Typography */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: 700; 
+  text-align: center;
+  text-transform: uppercase; 
+  letter-spacing: 0.02em;    
+  color: #FFFFFF;
+
+  /* 3. Modern Wrap Logic */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
+  /* 4. UI Protection */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none; 
 }
+  
 
 .bingo-team-points-container {
   display: flex;
