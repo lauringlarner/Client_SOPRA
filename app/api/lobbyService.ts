@@ -9,6 +9,7 @@ import {
   LobbyTeam,
   LobbyUser,
   StartLobbyResult,
+  SinglPlayereMode,
 } from "@/types/lobby";
 import Pusher, { Channel } from "pusher-js";
 
@@ -39,7 +40,7 @@ interface LobbyClient {
     isReady: boolean,
   ) => Promise<void>;
   updateSettings: (lobbyId: string, gameDuration: number, listType: LobbyListType) => Promise<void>;
-  startLobby: (lobbyId: string) => Promise<StartLobbyResult>;
+  startLobby: (lobbyId: string, isSinglePlayer: SinglPlayereMode) => Promise<StartLobbyResult>;
   deleteLobby: (lobbyId: string) => Promise<void>;
   leaveLobby: (lobbyId: string) => Promise<void>;
   subscribeToLobby: SubscribeToLobby;
@@ -118,11 +119,12 @@ function createRemoteLobbyClient(
         token,
       );
     },
-    async startLobby(lobbyId: string): Promise<StartLobbyResult> {
+    async startLobby(lobbyId: string, isSinglePlayer: SinglPlayereMode): Promise<StartLobbyResult> {
       const payload = await api.post<Response | Record<string, unknown>>(
         `/lobbies/${lobbyId}/start`,
-        undefined,
+        { isSinglePlayer },
         token,
+    
       );
 
       return {

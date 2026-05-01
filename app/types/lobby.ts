@@ -2,6 +2,8 @@ export type LobbySelectableTeam = "Team1" | "Team2";
 
 export type LobbyListType = "all" | "outside" | "inside";
 
+export type SinglPlayereMode = 0 | 1;
+
 export type LobbyTeam = LobbySelectableTeam | null;
 
 export const LOBBY_TEAMS: LobbySelectableTeam[] = ["Team1", "Team2"];

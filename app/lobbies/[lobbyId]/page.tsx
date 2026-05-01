@@ -19,6 +19,8 @@ import {
   LobbySelectableTeam,
   LobbyTeam,
   LobbyListType, 
+  SinglPlayereMode,
+
 } from "@/types/lobby";
 
 const MIN_GAME_DURATION = 5;
@@ -36,6 +38,8 @@ export default function LobbyPage() {
   const [lobby, setLobby] = useState<LobbyDetails | null>(null);
   const [durationDraft, setDurationDraft] = useState("10");
   const [listTypeDraft, setListTypeDraft] = useState<LobbyListType>("all");
+  const [isSinglePlayerDraft, setIsSinglePlayerDraft] = useState<SinglPlayereMode>(0);
+  const [isSinglePlayer, setIsSinglePlayer] = useState<SinglPlayereMode>(0);
   const [connectionState, setConnectionState] = useState<
     "connecting" | "live" | "error"
   >("connecting");
@@ -60,9 +64,13 @@ export default function LobbyPage() {
   const allPlayersReady =
     lobbyPlayers.length > 0 &&
     lobbyPlayers.every((player: LobbyPlayer) => player.isReady);
-  const bothTeamsHavePlayers = LOBBY_TEAMS.every((team: LobbySelectableTeam) =>
-    lobbyPlayers.some((player: LobbyPlayer) => player.team === team),
-  );
+  const bothTeamsHavePlayers = isSinglePlayer === 1
+    ? LOBBY_TEAMS.some((team: LobbySelectableTeam) =>
+        lobbyPlayers.some((player: LobbyPlayer) => player.team === team),
+      )
+    : LOBBY_TEAMS.every((team: LobbySelectableTeam) =>
+        lobbyPlayers.some((player: LobbyPlayer) => player.team === team),
+      );
   const canAutoStart = allPlayersReady && bothTeamsHavePlayers;
   const connectionSubtitle =
     connectionState === "error"
@@ -220,7 +228,7 @@ export default function LobbyPage() {
     });
 
     void lobbyClient
-      .startLobby(lobbyId)
+      .startLobby(lobbyId, isSinglePlayer)
       .then((result) => {
         if (result.gameId) {
           router.replace(`/lobbies/${lobbyId}/games/${result.gameId}`);
@@ -233,7 +241,6 @@ export default function LobbyPage() {
         });
       })
       .catch((error) => {
-        autoStartSent.current = false;
         setPageMessage({
           text: getLobbyErrorMessage(error, "The lobby action could not be completed."),
           tone: "error",
@@ -297,6 +304,7 @@ export default function LobbyPage() {
 
     await runLobbyAction("settings", async () => {
       await lobbyClient.updateSettings(lobbyId, parsedDuration, listTypeDraft);
+      setIsSinglePlayer(isSinglePlayerDraft);
       setPageMessage({
         text: "Lobby settings updated.",
         tone: "info",
@@ -464,6 +472,22 @@ export default function LobbyPage() {
                     <option value="inside">Indoor objects</option>
                   </select>
                 </label>
+             
+<div className="lobby-settings-field">
+  <span className="lobby-settings-label">Enable singleplayer</span>
+  <label className="lobby-toggle-switch">
+    <input
+      type="checkbox"
+      checked={isSinglePlayerDraft === 1}
+      disabled={!isHost || pendingAction === "settings" || pendingAction === "start"}
+      onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
+    />
+    <span className="lobby-toggle-label">
+      {isSinglePlayerDraft === 1 ? "Singleplayer" : "Multiplayer"}
+    </span>
+    <span className="lobby-toggle-track" />
+  </label>
+</div>
               {isHost ? (
                 <button
                   type="button"

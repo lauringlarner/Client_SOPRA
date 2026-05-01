@@ -859,6 +859,61 @@ textarea {
   gap: 8px;
 }
 
+.lobby-toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.lobby-toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.lobby-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background: rgb(255 255 255 / 30%);
+  border-radius: 12px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.lobby-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+}
+
+.lobby-toggle-switch input:checked ~ .lobby-toggle-track {
+  background: #1d3e4d;
+}
+
+.lobby-toggle-switch input:checked ~ .lobby-toggle-track::after {
+  transform: translateX(20px);
+}
+
+.lobby-toggle-switch input:disabled ~ .lobby-toggle-track {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lobby-toggle-label {
+  color: var(--vq-text-dark);
+  font-size: 15px;
+}
+
 .lobby-settings-label {
   color: var(--vq-text-dark);
   font-size: 15px;
