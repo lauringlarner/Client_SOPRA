@@ -4,11 +4,6 @@ import { GameDetails, GameStatus, GameTile, GameTileStatus } from "@/types/game"
 import Pusher, { Channel } from "pusher-js";
 
 
-/**
- * HINWEIS: Kein "import process from 'node:process'" nötig. 
- * Next.js injiziert process.env automatisch im Browser.
- */
-
 type SubscribeToGame = (
   gameId: string,
   onUpdate: (details: GameDetails) => void,

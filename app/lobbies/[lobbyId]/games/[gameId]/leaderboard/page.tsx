@@ -42,7 +42,7 @@ export default function LeaderboardPage() {
       try {
         setLoading(true);
         const response = await api.get<LeaderboardGetDTO>(
-          `/lobbies/${lobbyId}/games/${gameId}/leaderboard`, 
+          `/games/${gameId}/leaderboard`, 
           getCleanToken(token)
         );
         setData(response); 
