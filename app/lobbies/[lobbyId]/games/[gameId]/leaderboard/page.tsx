@@ -8,6 +8,7 @@ import {
   clearStoredActiveLobbyId,
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
+import { ApplicationError } from "@/types/error";
 
 interface LeaderboardGetDTO {
   gameId: string;
@@ -15,6 +16,8 @@ interface LeaderboardGetDTO {
   team2Score: number;
 }
 
+// We assume a basic player/lobby details object could be fetched to determine host status,
+// or we can attempt to delete the lobby and fall back to the player-leave endpoint if forbidden (403/409).
 export default function LeaderboardPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, token, userId } = useAuthSession();
@@ -55,10 +58,25 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
   }, [gameId, getCleanToken, isAuthenticated, loaded, lobbyId, token, userId]);
 
-  const confirmLeave = () => {
-    clearStoredActiveLobbyId(userId, lobbyId);
+  const confirmLeave = async () => {
     setIsLeaving(true);
-    router.push("/menu");
+    const cleanToken = getCleanToken(token);
+
+    try {
+      // Attempt 1: Try to delete the lobby (acts as host-delete)
+      await api.delete(`/lobbies/${lobbyId}`, cleanToken);
+    } catch (error) {
+      // If the user isn't the host and receives a Forbidden/Conflict response, fall back to player deletion
+      try {
+        await api.delete(`/lobbies/${lobbyId}/players/me`, cleanToken);
+      } catch (innerError) {
+        console.error("Failed to leave lobby:", innerError);
+      }
+    } finally {
+      clearStoredActiveLobbyId(userId, lobbyId);
+      setIsLeaving(false);
+      router.push("/menu");
+    }
   };
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
@@ -80,13 +98,13 @@ export default function LeaderboardPage() {
           <div className="confirm-overlay">
             <div className="confirm-card theme-dark-teal">
               <h2 className="confirm-title">Leaving Lobby</h2>
-              <p className="confirm-text">Are you sure you want to exit the game results?</p>
+              <p className="confirm-text">Are you sure you want to exit the lobby?</p>
               <div className="confirm-actions">
+                <button type="button" className="confirm-btn leave" onClick={() => void confirmLeave()}>
+                  Exit
+                </button>
                 <button type="button" className="confirm-btn cancel" onClick={() => setShowConfirm(false)}>
                   Stay
-                </button>
-                <button type="button" className="confirm-btn leave" onClick={confirmLeave}>
-                  Exit
                 </button>
               </div>
             </div>
