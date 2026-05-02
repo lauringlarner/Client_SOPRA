@@ -1658,6 +1658,31 @@ textarea {
   margin-bottom: 24px;
   line-height: 1.4;
 }
+
+.custom-overlay-subtext {
+  font-size: 0.8rem;
+  color: #a1a1aa;
+}
+
+.camera-button-capture {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.camera-button-capture:hover, 
+.camera-button-cancel:hover {
+  background-color: #4b5563;
+  opacity: 0.9;
+}
+
+
+.button-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
 /* --- PROFIL LAYOUT & LAYER SYSTEM --- */
 
 .user-profile-title {
