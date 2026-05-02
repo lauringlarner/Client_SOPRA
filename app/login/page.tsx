@@ -15,20 +15,67 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Block invalid characters as the user tries to type
-  const handleBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
+  // Validation States for Dynamic Helper Text
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  // Block special characters and spaces only for username
+  const handleUsernameBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
     const char = (event.nativeEvent as InputEvent).data;
     if (char) {
-      if (/\s|[;$"'\\/<>.,]/.test(char)) {
+      if (/[^a-zA-Z0-9]|\s/.test(char)) {
         event.preventDefault();
+        setUsernameError("Special characters are not allowed in the username.");
       }
     }
   };
 
-  // Completely block the spacebar character from being registered
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleUsernameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === " ") {
       event.preventDefault();
+      setUsernameError("Special characters are not allowed in the username.");
+    }
+  };
+
+  // Block specific restricted special characters for the password field
+  const handlePasswordBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
+    const char = (event.nativeEvent as InputEvent).data;
+    if (char) {
+      if (/[<>\/\\;.,:""&|()\[\]{}]/.test(char)) {
+        event.preventDefault();
+        setPasswordError(`Special character "${char}" is not allowed in password.`);
+      }
+    }
+  };
+
+  const handlePasswordKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === " ") {
+      event.preventDefault();
+      setPasswordError("Spaces are not allowed in the password.");
+    }
+  };
+
+  const validateField = (name: string, value: string) => {
+    if (name === "username") {
+      if (value.length > 0 && /^\d/.test(value)) {
+        setUsernameError("Username must start with a letter, not a number.");
+      } else if (value.length > 0 && /[^a-zA-Z0-9]/.test(value)) {
+        setUsernameError("Special characters are not allowed in the username.");
+      } else {
+        setUsernameError("");
+      }
+    } else if (name === "password") {
+      if (/\s/.test(value)) {
+        setPasswordError("Spaces are not allowed in the password.");
+      } else if (value.length > 0 && /[<>\/\\;.,:""&|()\[\]{}]/.test(value)) {
+        setPasswordError("Contains forbidden special characters.");
+      } else if (value.length > 0 && !/\d/.test(value)) {
+        setPasswordError("Password must contain at least one digit!");
+      } else if (value.length > 0 && value.length < 12) {
+        setPasswordError("Password must be at least 12 characters.");
+      } else {
+        setPasswordError("");
+      }
     }
   };
 
@@ -49,10 +96,25 @@ export default function LoginPage() {
       return;
     }
 
-    // Basic SQL/NoSQL injection payload check
-    const injectionRegex = /[;$"'\\/]/;
-    if (injectionRegex.test(username) || injectionRegex.test(password)) {
-      setError("Invalid characters detected.");
+    // Username validation check
+    const usernameInjectionRegex = /[;$"'\\/]/;
+    if (usernameInjectionRegex.test(username)) {
+      setError("Special characters are not allowed in the username.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Password validation check
+    const passwordInjectionRegex = /[<>\/\\;.,:""&|()\[\]{}`']/;
+    if (passwordInjectionRegex.test(password)) {
+      setError("Invalid characters in password: < > / \\ ; . , : \" \" & | ( ) [ ] { }");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Digit validation check
+    if (!/\d/.test(password)) {
+      setError("Password must contain at least one digit!");
       setIsSubmitting(false);
       return;
     }
@@ -101,7 +163,11 @@ export default function LoginPage() {
         <h1 className="auth-title">Login &amp; Play</h1>
 
         <form className="auth-form-card" onSubmit={handleLogin}>
-          {error && <div className="error-template">{error}</div>}
+          {error && (
+            <div className="error-template">
+              {error}
+            </div>
+          )}
 
           <label className="field-group">
             <span className="field-label">Username</span>
@@ -112,11 +178,17 @@ export default function LoginPage() {
               required
               disabled={isSubmitting}
               maxLength={15}
-              onBeforeInput={handleBeforeInput}
-              onKeyDown={handleKeyDown}
-              pattern="[a-zA-Z0-9]+"
-              title="Username cannot contain spaces or special characters"
+              onBeforeInput={handleUsernameBeforeInput}
+              onKeyDown={handleUsernameKeyDown}
+              onChange={(e) => validateField("username", e.target.value)}
+              pattern="[a-zA-Z][a-zA-Z0-9]*"
+              title="Username must start with a letter and contain only alphanumeric characters without spaces"
             />
+            {usernameError && (
+              <span style={{ fontSize: "0.75rem", color: "#cc0000", marginTop: "0.25rem", display: "block" }}>
+                {usernameError}
+              </span>
+            )}
           </label>
 
           <label className="field-group">
@@ -131,10 +203,9 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 minLength={12}
                 maxLength={30}
-                onBeforeInput={handleBeforeInput}
-                onKeyDown={handleKeyDown}
-                pattern="^\S+$"
-                title="Password cannot contain spaces"
+                onBeforeInput={handlePasswordBeforeInput}
+                onKeyDown={handlePasswordKeyDown}
+                onChange={(e) => validateField("password", e.target.value)}
                 style={{ paddingRight: "3.5rem" }}
               />
               <button
@@ -156,7 +227,6 @@ export default function LoginPage() {
                 }}
               >
                 {showPassword ? (
-                  // Closed Eye (Sleek Contour / ID: closed-eye-contour)
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
                     width="20" 
@@ -172,7 +242,6 @@ export default function LoginPage() {
                     <path d="M2 12s3.75 6 10 6 10-6 10-6" />
                   </svg>
                 ) : (
-                  // Open Eye
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
                     width="20" 
@@ -191,6 +260,11 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+            {passwordError && (
+              <span style={{ fontSize: "0.75rem", color: "#cc0000", marginTop: "0.25rem", display: "block" }}>
+                {passwordError}
+              </span>
+            )}
           </label>
 
           <button 
