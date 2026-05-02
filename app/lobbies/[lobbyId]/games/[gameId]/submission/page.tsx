@@ -50,6 +50,17 @@ function CameraContent() {
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Stop camera stream safely
+  const stopCameraStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
   useEffect(() => {
     if (claimedOverlayMessage) {
       redirectTimerRef.current = setTimeout(() => {
@@ -75,14 +86,14 @@ function CameraContent() {
 
     setStoredActiveLobbyId(userId, lobbyId);
 
-    if (!capturedImage) {
+    if (!capturedImage && !streamRef.current) {
       (async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: {
               facingMode: "environment",
-              width: { ideal: 4096 },
-              height: { ideal: 2160 },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
             },
             audio: false,
           });
@@ -93,15 +104,13 @@ function CameraContent() {
           }
         } catch (err) {
           console.error("Camera access error:", err);
+          setSubmissionError("Failed to open camera. Please check permissions.");
         }
       })();
     }
 
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
+      stopCameraStream();
     };
   }, [capturedImage, isAuthenticated, loaded, lobbyId, router, userId]);
 
@@ -269,6 +278,8 @@ function CameraContent() {
     }
 
     try {
+      stopCameraStream();
+
       const fetchRes = await fetch(capturedImage);
       const blob = await fetchRes.blob();
 
@@ -301,6 +312,7 @@ function CameraContent() {
   };
 
   const handleCancel = () => {
+    stopCameraStream();
     router.back();
   };
 
@@ -382,7 +394,6 @@ function CameraContent() {
                   onClick={handleCapture}
                   disabled={!isCameraReady}
                 >
-                  {/* Hinzugefügtes Kamera-Symbol */}
                   <svg 
                     xmlns="http://www.w3.org/2000/svg" 
                     fill="none" 
@@ -408,73 +419,6 @@ function CameraContent() {
           )}
         </section>
       </main>
-
-      <style jsx global>{`
-        .custom-overlay-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: rgba(0, 0, 0, 0.75);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 9999;
-          backdrop-filter: blur(4px);
-        }
-        .custom-overlay-card {
-          background: #1a1a1a;
-          border: 1px solid #333;
-          border-radius: 12px;
-          padding: 24px;
-          max-width: 320px;
-          width: 90%;
-          text-align: center;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-          color: #fff;
-        }
-        .custom-overlay-title {
-          font-size: 1.25rem;
-          margin-bottom: 8px;
-          color: #ef4444;
-          font-weight: bold;
-        }
-        .custom-overlay-text {
-          font-size: 0.9rem;
-          color: #d4d4d8;
-          margin-bottom: 24px;
-          line-height: 1.4;
-        }
-        .custom-overlay-subtext {
-          font-size: 0.8rem;
-          color: #a1a1aa;
-        }
-        
-        /* Button Symbol Styling */
-        .camera-button-capture {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px; /* Abstand zwischen Icon und Text */
-          transition: background-color 0.2s ease, opacity 0.2s ease;
-        }
-
-        .camera-button-capture:hover, .camera-button-cancel:hover {
-          background-color: #4b5563;
-          opacity: 0.9;
-        }
-        
-        .camera-button-capture:disabled:hover, .camera-button-cancel:disabled:hover {
-          background-color: inherit;
-          opacity: 0.6;
-        }
-
-        .button-icon {
-          width: 1.2rem;
-          height: 1.2rem;
-        }
-      `}</style>
     </div>
   );
 }
