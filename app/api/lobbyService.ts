@@ -13,12 +13,6 @@ import {
 } from "@/types/lobby";
 import Pusher, { Channel } from "pusher-js";
 
-
-/**
- * HINWEIS: Kein "import process from 'node:process'" nötig. 
- * Next.js injiziert process.env automatisch im Browser für NEXT_PUBLIC_ Variablen.
- */
-
 type SubscribeToLobby = (
   lobbyId: string,
   onUpdate: (details: LobbyDetails) => void,
