@@ -251,12 +251,22 @@ export default function GameBoardPage() {
               ))}
             </section>
 
-            <div className="bingo-time-bar-container">
+           <div className="bingo-time-bar-container">
               <div className="bingo-time-bar-label">
                 Time: {Math.floor(remainingSeconds/60)}:{(remainingSeconds%60).toString().padStart(2,"0")}
               </div>
               <div className="bingo-time-bar-track">
-                <div className="bingo-time-bar-fill" style={{ width: progressWidth, transition: "width 1s linear" }} />
+                <div 
+                  className={`bingo-time-bar-fill ${
+                    remainingSeconds > 0 && remainingSeconds <= (game.gameDuration * 60) * 0.15
+                      ? "is-warning-pulse"
+                      : ""
+                  }`}
+                  style={{ 
+                    width: progressWidth, 
+                    transition: "width 1s linear"
+                  }} 
+                />
               </div>
             </div>
 
