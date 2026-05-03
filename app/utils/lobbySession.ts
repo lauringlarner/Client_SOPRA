@@ -42,6 +42,15 @@ export function getStoredLobbyTeam(userId: string, lobbyId: string): LobbyTeam {
   return null;
 }
 
+export function clearStoredLobbyTeam(userId: string, lobbyId: string): void {
+  if (!canUseLocalStorage() || userId.trim() === "" || lobbyId.trim() === "") {
+    return;
+  }
+
+  const key = getLobbyTeamKey(userId, lobbyId);
+  globalThis.localStorage.removeItem(key);
+}
+
 export function setStoredLobbyTeam(
   userId: string,
   lobbyId: string,
