@@ -6,6 +6,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import {
   clearStoredActiveLobbyId,
+  clearStoredLobbyTeam,
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
 import { ApplicationError } from "@/types/error";
@@ -25,6 +26,7 @@ export default function LeaderboardPage() {
   const lobbyId = params?.lobbyId as string;
   const gameId = params?.gameId as string;
   const api = new ApiService();
+  const hasDeletedRef = React.useRef(false);
   
   const [data, setData] = useState<LeaderboardGetDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,22 @@ export default function LeaderboardPage() {
     if (!rawToken) return undefined;
     return rawToken.replace(/^"(.*)"$/, '$1');
   }, []);
+
+  useEffect(() => {
+    if (!data) return;
+    if (loading) return;
+    if (hasDeletedRef.current) return;
+
+    hasDeletedRef.current = true;
+
+    (async () => {
+      try {
+        await api.delete(`/games/${gameId}`, getCleanToken(token));
+      } catch (err) {
+        console.error("Failed to delete game:", err);
+      }
+    })();
+  }, [data, gameId, token]);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated || !lobbyId || !gameId) return;
@@ -74,10 +92,12 @@ export default function LeaderboardPage() {
       }
     } finally {
       clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId)
       setIsLeaving(false);
       router.push("/menu");
     }
   };
+
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
