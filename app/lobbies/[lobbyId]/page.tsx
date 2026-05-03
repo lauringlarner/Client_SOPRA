@@ -28,6 +28,14 @@ const MAX_GAME_DURATION = 20;
 const BOARD_SIZE = 4;
 const TEAM_SECTIONS: LobbyTeam[] = [...LOBBY_TEAMS, null];
 
+interface User {
+  id: string;
+  username: string;
+  status: string;
+  gamesPlayed: number;
+  gamesWon: number;
+}
+
 export default function LobbyPage() {
   const api = useApi();
   const router = useRouter();
@@ -48,6 +56,9 @@ export default function LobbyPage() {
     text: string;
     tone: "info" | "error";
   } | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<LobbyPlayer | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
   const autoStartSent = useRef(false);
   const latestLobbyRef = useRef<LobbyDetails | null>(null);
 
@@ -118,6 +129,26 @@ export default function LobbyPage() {
     const interval = setInterval(checkLobbyExists, 1000);
     return () => clearInterval(interval);
   }, [loaded, isAuthenticated, lobbyId, lobbyClient, userId, router]);
+
+  const openPlayerProfile = async (player: LobbyPlayer) => {
+    setSelectedPlayer(player);
+    setProfileLoading(true);
+    setSelectedUser(null);
+
+    try {
+      const data = await api.get<User>(`/users/${player.user.id}`, token);
+      setSelectedUser(data);
+    } catch (err: unknown) {
+      setSelectedUser(null);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const closePlayerProfile = () => {
+    setSelectedPlayer(null);
+    setSelectedUser(null);
+  };
 
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
@@ -527,6 +558,7 @@ export default function LobbyPage() {
                           <LobbyPlayerCard
                             player={player}
                             isSelf={player.user.id === userId}
+                            onClick={() => openPlayerProfile(player)}
                           />
                         </React.Fragment>
                       ))}
@@ -570,6 +602,52 @@ export default function LobbyPage() {
             </section>
           </>
         )}
+        {selectedPlayer && (
+          <div className="overlay-backdrop" onClick={closePlayerProfile}>
+            <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+              <h2 className="overlay-title">
+                {selectedPlayer.user.username}
+              </h2>
+
+              {profileLoading && <p>Loading...</p>}
+
+              {selectedUser && (
+                <>
+                  <div className="stats-grid">
+                    <div className="stat-card">
+                      <span className="stat-value">{selectedUser.gamesPlayed}</span>
+                      <span className="info-label">Games</span>
+                    </div>
+
+                    <div className="stat-card">
+                      <span className="stat-value">{selectedUser.gamesWon}</span>
+                      <span className="info-label">Wins</span>
+                    </div>
+
+                    <div className="stat-card">
+                      <span className="stat-value">
+                        {selectedUser.gamesPlayed > 0
+                          ? Math.round((selectedUser.gamesWon / selectedUser.gamesPlayed) * 100)
+                          : 0}%
+                      </span>
+                      <span className="info-label">Winrate</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="overlay-actions-single">
+                <button
+                  type="button"
+                  className="vq-button btn-confirm"
+                  onClick={closePlayerProfile}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -578,14 +656,16 @@ export default function LobbyPage() {
 function LobbyPlayerCard({
   player,
   isSelf,
+  onClick,
 }: {
   player: LobbyPlayer;
   isSelf: boolean;
+  onClick?: () => void;
 }) {
   const initial = player.user.username.charAt(0).toUpperCase() || "P";
 
   return (
-    <article className={`lobby-player-item ${isSelf ? "is-self" : ""}`}>
+    <article className={`lobby-player-item ${isSelf ? "is-self" : ""}`} onClick={onClick} style={{ cursor: "pointer" }}>
       <span className="lobby-player-icon">{initial}</span>
       <div className="lobby-player-copy">
         <span className="lobby-player-team">
