@@ -12,6 +12,14 @@ import {
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
 
+type GameModeDTO = {
+  id: string;
+  name: string;
+  rules: string[]; // [Find, Capture, Submission, Win]
+};
+
+const labels = ["Find", "Capture", "Submission", "Win"];
+
 export default function MenuPage() {
   const router = useRouter();
   const api = useApi();
@@ -30,6 +38,30 @@ export default function MenuPage() {
     if (!username) return "U";
     return username.trim().charAt(0).toUpperCase() || "U";
   }, [username]);
+
+  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
+  const [loadingGameModes, setLoadingGameModes] = useState(false);
+  const [gameModesError, setGameModesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeOverlay !== "rules") return;
+
+    const fetchGameModes = async () => {
+      setLoadingGameModes(true);
+      setGameModesError(null);
+
+      try {
+        const response = await api.get<GameModeDTO[]>("/gameModes", token);
+        setGameModes(response); 
+      } catch (e) {
+        setGameModesError("Failed to load game modes.");
+      } finally {
+        setLoadingGameModes(false);
+      }
+    };
+
+    void fetchGameModes();
+  }, [activeOverlay, api, token]);
 
   // Auth Schutz
   useEffect(() => {
@@ -198,58 +230,111 @@ export default function MenuPage() {
               )}
 
                {activeOverlay === "rules" && (
-                <div className="rules-content">
-                  <h2 className="overlay-title">Game Rules</h2>
-                  <div className="rules-section">
-                    <ul className="rules-bullet-list">
-                      <li><strong>Find:</strong> Locate an item listed on the bingo board in the real world.</li>
-                      <li><strong>Capture:</strong> Tap the tile to open the camera and snap a photo of that item.</li>
-                      <li><strong>Submission:</strong> Once submitted, our AI will validate the image to ensure it matches the item on the tile.</li>
-                      <li><strong>Win:</strong> Earn points for every captured tile, plus bonus points for completing rows, columns, or diagonals.</li>
-                    </ul>
-                  </div>
+                  <div className="rules-content">
+                    <h2 className="overlay-title">Game Rules</h2>
 
-                  <div className="rules-section">
-                    <h3 className="rules-subtitle">Tile Examples</h3>
-                    <div className="rules-tile-grid">
-                      <div className="rules-tile-item">
-                        <button type="button" className="bingo-field-button">
-                          <span className="tile-text">Tree</span>
-                        </button>
-                        <span>Unclaimed</span>
-                      </div>
+                    <div className="rules-section">
+                      <div className="rules-scroll-container">
+                        {loadingGameModes && <p>Loading...</p>}
+                        {gameModesError && (
+                          <p className="overlay-error-bubble">{gameModesError}</p>
+                        )}
 
-                      <div className="rules-tile-item">
-                        <button type="button" className="bingo-field-button is-processing-friendly is-analyzing" disabled>
-                          <div className="loader is-friendly"></div>
-                        </button>
-                        <span>In Validation</span>
-                      </div>
+                        <div className="rules-horizontal-list">
+                          {gameModes.map((mode) => (
+                            <div key={mode.id} className="rules-card">
+                              <h3 className="rules-subtitle">{mode.name}</h3>
 
-                      <div className="rules-tile-item">
-                        <button type="button" className="bingo-field-button is-claimed is-claimed-friendly" disabled>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                            <path d="M20 6L9 17l-5-5" />
-                          </svg>
-                        </button>
-                        <span>Claimed Team 1</span>
-                      </div>
-
-                      <div className="rules-tile-item">
-                        <button type="button" className="bingo-field-button is-claimed is-claimed-enemy" disabled>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                            <path d="M20 6L9 17l-5-5" />
-                          </svg>
-                        </button>
-                        <span>Claimed Team 2</span>
+                              <ul className="rules-bullet-list">
+                                {mode.rules.map((rule, i) => (
+                                  <li key={i}>
+                                    <strong>{labels[i]}:</strong> {rule}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
+
+                    <div className="rules-section">
+                      <h3 className="rules-subtitle">Tile Examples</h3>
+
+                      <div className="rules-tile-grid">
+                        <div className="rules-tile-item">
+                          <button type="button" className="bingo-field-button">
+                            <span className="tile-text">Tree</span>
+                          </button>
+                          <span>Unclaimed</span>
+                        </div>
+
+                        <div className="rules-tile-item">
+                          <button
+                            type="button"
+                            className="bingo-field-button is-processing-friendly is-analyzing"
+                            disabled
+                          >
+                            <div className="loader is-friendly"></div>
+                          </button>
+                          <span>In Validation</span>
+                        </div>
+
+                        <div className="rules-tile-item">
+                          <button
+                            type="button"
+                            className="bingo-field-button is-claimed is-claimed-friendly"
+                            disabled
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="claimed-icon-svg"
+                            >
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          </button>
+                          <span>Claimed Team 1</span>
+                        </div>
+
+                        <div className="rules-tile-item">
+                          <button
+                            type="button"
+                            className="bingo-field-button is-claimed is-claimed-enemy"
+                            disabled
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="claimed-icon-svg"
+                            >
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                          </button>
+                          <span>Claimed Team 2</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overlay-actions overlay-actions-single">
+                      <button
+                        type="button"
+                        className="btn-rules-confirm"
+                        onClick={closeOverlay}
+                      >
+                        Got it!
+                      </button>
+                    </div>
                   </div>
-                  <div className="overlay-actions overlay-actions-single">
-                    <button type="button" className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
-                  </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
         )}
