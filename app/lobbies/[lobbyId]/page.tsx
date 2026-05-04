@@ -8,7 +8,11 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { deriveLobbyViewState } from "@/utils/lobbyViewState";
 import {
   clearStoredActiveLobbyId,
+  clearStoredLobbyTeam,
+  clearStoredSinglePlayerMode,
+  getStoredSinglePlayerMode,
   setStoredActiveLobbyId,
+  setStoredSinglePlayerMode,
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
 import { ApplicationError } from "@/types/error";
@@ -40,7 +44,7 @@ export default function LobbyPage() {
   const [durationDraft, setDurationDraft] = useState("10");
   const [listTypeDraft, setListTypeDraft] = useState<LobbyListType>("all");
   const [isSinglePlayerDraft, setIsSinglePlayerDraft] = useState<SinglPlayereMode>(0);
-  const [isSinglePlayer, setIsSinglePlayer] = useState<SinglPlayereMode>(0);
+  const [savedSinglePlayerMode, setSavedSinglePlayerMode] = useState<SinglPlayereMode>(0);
   const [connectionState, setConnectionState] = useState<
     "connecting" | "live" | "error"
   >("connecting");
@@ -63,7 +67,7 @@ export default function LobbyPage() {
   const needsTeamSelection = currentPlayer?.team == null;
   const { actionNote, canAutoStart } = deriveLobbyViewState({
     currentPlayer,
-    isSinglePlayer,
+    isSinglePlayer: savedSinglePlayerMode,
     pendingAction,
     players: lobbyPlayers,
   });
@@ -91,7 +95,7 @@ export default function LobbyPage() {
         } catch (error: unknown) {
           const appError = error as ApplicationError;
           if (appError.status === 404 || appError.status === 403) {
-            clearStoredActiveLobbyId(userId, lobbyId);
+            clearLocalLobbyState(userId, lobbyId);
             router.replace("/menu");
           }
         }
@@ -129,7 +133,7 @@ export default function LobbyPage() {
 
       const message = getLobbyErrorMessage(error, fallback);
       if (isFatalApplicationError(error)) {
-        clearStoredActiveLobbyId(userId, lobbyId);
+        clearLocalLobbyState(userId, lobbyId);
         router.replace("/menu");
         return;
       }
@@ -169,6 +173,12 @@ export default function LobbyPage() {
       unsubscribe();
     };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId, router]);
+
+  useEffect(() => {
+    const storedMode = getStoredSinglePlayerMode(userId, lobbyId);
+    setSavedSinglePlayerMode(storedMode);
+    setIsSinglePlayerDraft(storedMode);
+  }, [lobbyId, userId]);
 
   useEffect(() => {
     const nextDuration = lobby?.gameDuration;
@@ -211,7 +221,7 @@ export default function LobbyPage() {
     });
 
     void lobbyClient
-      .startLobby(lobbyId, isSinglePlayer)
+      .startLobby(lobbyId, savedSinglePlayerMode)
       .then((result) => {
         if (result.gameId) {
           router.replace(`/lobbies/${lobbyId}/games/${result.gameId}`);
@@ -232,7 +242,7 @@ export default function LobbyPage() {
       .finally(() => {
         setPendingAction(null);
       });
-  }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, userId]);
+  }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, savedSinglePlayerMode]);
 
   if (!loaded || !isAuthenticated) {
     return <div className="app-shell" />;
@@ -287,7 +297,8 @@ export default function LobbyPage() {
 
     await runLobbyAction("settings", async () => {
       await lobbyClient.updateSettings(lobbyId, parsedDuration, listTypeDraft);
-      setIsSinglePlayer(isSinglePlayerDraft);
+      setSavedSinglePlayerMode(isSinglePlayerDraft);
+      setStoredSinglePlayerMode(userId, lobbyId, isSinglePlayerDraft);
       setPageMessage({
         text: "Lobby settings updated.",
         tone: "info",
@@ -298,7 +309,7 @@ export default function LobbyPage() {
   const handleDeleteLobby = async (): Promise<void> => {
     await runLobbyAction("delete", async () => {
       await lobbyClient.deleteLobby(lobbyId);
-      clearStoredActiveLobbyId(userId, lobbyId);
+      clearLocalLobbyState(userId, lobbyId);
       router.replace("/menu");
     });
   };
@@ -306,7 +317,7 @@ export default function LobbyPage() {
   const handleLeaveLobby = async (): Promise<void> => {
     await runLobbyAction("leave", async () => {
       await lobbyClient.leaveLobby(lobbyId);
-      clearStoredActiveLobbyId(userId, lobbyId);
+      clearLocalLobbyState(userId, lobbyId);
       router.replace("/menu");
     });
   };
@@ -618,4 +629,10 @@ function getLobbyErrorMessage(
 function isFatalApplicationError(error: unknown): boolean {
   const applicationError = error as ApplicationError | undefined;
   return applicationError?.status === 403 || applicationError?.status === 404;
+}
+
+function clearLocalLobbyState(userId: string, lobbyId: string): void {
+  clearStoredActiveLobbyId(userId, lobbyId);
+  clearStoredLobbyTeam(userId, lobbyId);
+  clearStoredSinglePlayerMode(userId, lobbyId);
 }

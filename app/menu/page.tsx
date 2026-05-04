@@ -8,6 +8,8 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
 import {
   clearStoredActiveLobbyId,
+  clearStoredLobbyTeam,
+  clearStoredSinglePlayerMode,
   getStoredActiveLobbyId,
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
@@ -101,6 +103,8 @@ export default function MenuPage() {
       const applicationError = error as ApplicationError | undefined;
       if (applicationError?.status === 403 || applicationError?.status === 404) {
         clearStoredActiveLobbyId(userId, activeLobbyId);
+        clearStoredLobbyTeam(userId, activeLobbyId);
+        clearStoredSinglePlayerMode(userId, activeLobbyId);
         setActiveLobbyId("");
         setMenuMessage("Your last lobby is no longer available.");
         return;

@@ -25,7 +25,7 @@ export function deriveLobbyViewState(
   const isHost = currentPlayer?.isHost ?? false;
   const allPlayersReady =
     playerCount > 0 && players.every((player) => player.isReady);
-  const bothTeamsHavePlayers = isSinglePlayer === 1
+  const hasRequiredTeamCoverage = isSinglePlayer === 1
     ? LOBBY_TEAMS.some((team: LobbySelectableTeam) =>
         players.some((player) => player.team === team)
       )
@@ -36,21 +36,23 @@ export function deriveLobbyViewState(
   return {
     actionNote: getActionNote({
       allPlayersReady,
-      bothTeamsHavePlayers,
+      hasRequiredTeamCoverage,
       currentPlayer,
       isHost,
+      isSinglePlayer,
       pendingAction,
       playerCount,
     }),
-    canAutoStart: allPlayersReady && bothTeamsHavePlayers,
+    canAutoStart: allPlayersReady && hasRequiredTeamCoverage,
   };
 }
 
 interface ActionNoteOptions {
   allPlayersReady: boolean;
-  bothTeamsHavePlayers: boolean;
+  hasRequiredTeamCoverage: boolean;
   currentPlayer: LobbyPlayer | null;
   isHost: boolean;
+  isSinglePlayer: SinglPlayereMode;
   pendingAction: string | null;
   playerCount: number;
 }
@@ -58,9 +60,10 @@ interface ActionNoteOptions {
 function getActionNote(options: ActionNoteOptions): string | null {
   const {
     allPlayersReady,
-    bothTeamsHavePlayers,
+    hasRequiredTeamCoverage,
     currentPlayer,
     isHost,
+    isSinglePlayer,
     pendingAction,
     playerCount,
   } = options;
@@ -81,11 +84,15 @@ function getActionNote(options: ActionNoteOptions): string | null {
     return "Everyone is ready. Waiting for the game to start.";
   }
 
-  if (playerCount < 2) {
+  if (isSinglePlayer !== 1 && playerCount < 2) {
     return "At least 2 players are required before the game can start.";
   }
 
-  if (!bothTeamsHavePlayers) {
+  if (!hasRequiredTeamCoverage) {
+    if (isSinglePlayer === 1) {
+      return "Choose a team before the game can start.";
+    }
+
     return "Each team needs at least one player before the game can start.";
   }
 
