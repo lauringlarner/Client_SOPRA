@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { deriveLobbyViewState } from "@/utils/lobbyViewState";
 import {
   clearStoredActiveLobbyId,
   setStoredActiveLobbyId,
@@ -57,40 +58,21 @@ export default function LobbyPage() {
   }), [api, token]);
 
   const lobbyPlayers = lobby?.lobbyPlayers ?? [];
-  const playerCount = lobbyPlayers.length;
   const currentPlayer = lobbyPlayers.find((player: LobbyPlayer) => player.user.id === userId) ?? null;
   const isHost = currentPlayer?.isHost ?? false;
   const needsTeamSelection = currentPlayer?.team == null;
-  const allPlayersReady =
-    lobbyPlayers.length > 0 &&
-    lobbyPlayers.every((player: LobbyPlayer) => player.isReady);
-  const bothTeamsHavePlayers = isSinglePlayer === 1
-    ? LOBBY_TEAMS.some((team: LobbySelectableTeam) =>
-        lobbyPlayers.some((player: LobbyPlayer) => player.team === team),
-      )
-    : LOBBY_TEAMS.every((team: LobbySelectableTeam) =>
-        lobbyPlayers.some((player: LobbyPlayer) => player.team === team),
-      );
-  const canAutoStart = allPlayersReady && bothTeamsHavePlayers;
+  const { actionNote, canAutoStart } = deriveLobbyViewState({
+    currentPlayer,
+    isSinglePlayer,
+    pendingAction,
+    players: lobbyPlayers,
+  });
   const connectionSubtitle =
     connectionState === "error"
       ? "The latest lobby state could not be loaded."
       : connectionState === "live"
       ? "Share this code so other players can join the lobby."
       : "Loading the latest lobby state.";
-  const actionNote = pendingAction === "start"
-    ? "Everyone is ready. Starting the game."
-    : !currentPlayer
-    ? "Your player entry is missing from this lobby."
-    : playerCount < 2
-    ? "At least 2 players are required before the game can start."
-    : !bothTeamsHavePlayers
-    ? "Each team needs at least one player before the game can start."
-    : !allPlayersReady
-    ? "The game starts automatically once everyone is ready."
-    : !isHost
-    ? "Everyone is ready. Waiting for the game to start."
-    : null;
 
   useEffect(() => {
     if (!loaded) return;
@@ -189,8 +171,9 @@ export default function LobbyPage() {
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId, router]);
 
   useEffect(() => {
-    if (!lobby) return;
-    setDurationDraft(String(lobby.gameDuration));
+    const nextDuration = lobby?.gameDuration;
+    if (nextDuration == null) return;
+    setDurationDraft(String(nextDuration));
   }, [lobby?.gameDuration]);
 
   useEffect(() => {
