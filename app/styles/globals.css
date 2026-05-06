@@ -995,7 +995,7 @@ textarea {
 
 .lobby-player-name {
   color: #1d1b20;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 24px;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -1005,7 +1005,7 @@ textarea {
 
 .lobby-player-badge {
   min-width: 74px;
-  padding: 6px 10px;
+  padding: 6px 5px;
   border-radius: 999px;
   text-align: center;
   font-size: 12px;
