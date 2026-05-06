@@ -41,6 +41,7 @@ function CameraContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const [claimedOverlayMessage, setClaimedOverlayMessage] = useState<string | null>(null);
   
@@ -50,7 +51,6 @@ function CameraContent() {
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Stop camera stream safely
   const stopCameraStream = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -116,7 +116,7 @@ function CameraContent() {
 
   useEffect(() => {
     if (capturedImage) {
-      setCountdown(5);
+      setCountdown(15);
 
       countdownTimerRef.current = setInterval(() => {
         setCountdown((prev) => {
@@ -192,7 +192,7 @@ function CameraContent() {
           return;
         }
       } catch {
-        // Bei Netzwerkfehlern den Status beibehalten.
+        // network error
       }
     };
 
@@ -256,6 +256,7 @@ function CameraContent() {
     if (ctx) {
       ctx.drawImage(videoElement, 0, 0);
       const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
+      setIsImageLoaded(false);
       setCapturedImage(dataUrl);
     }
   };
@@ -339,6 +340,13 @@ function CameraContent() {
             </div>
           )}
 
+          {countdown !== null && (
+            <div className="countdown-overlay">
+              <span className="countdown-text">Sending in</span>
+              <span className="countdown-number">{countdown}</span>
+            </div>
+          )}
+
           {submissionError && (
             <section className="lobby-card lobby-feedback-card is-error camera-feedback-card">
               <p className="lobby-feedback-text">{submissionError}</p>
@@ -351,26 +359,26 @@ function CameraContent() {
                 src={capturedImage}
                 alt="Captured"
                 className="camera-video-element"
+                onLoad={() => setIsImageLoaded(true)}
               />
-
-              <div className="countdown-overlay">
-                <span className="countdown-text">Sending in</span>
-                <span className="countdown-number">{countdown}</span>
-              </div>
 
               <div className="camera-actions-frame">
                 <button
                   type="button"
                   className="camera-button-capture"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !capturedImage}
+                  disabled={isSubmitting || !capturedImage || !isImageLoaded}
                 >
                   {isSubmitting ? "Uploading..." : "Submit"}
                 </button>
                 <button
                   type="button"
                   className="camera-button-cancel"
-                  onClick={() => setCapturedImage(null)}
+                  onClick={() => {
+                    setCapturedImage(null);
+                    setIsCameraReady(false);
+                    setIsImageLoaded(false);
+                  }}
                   disabled={isSubmitting}
                 >
                   Discard
