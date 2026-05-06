@@ -92,7 +92,7 @@ export default function LeaderboardPage() {
       }
     } finally {
       clearStoredActiveLobbyId(userId, lobbyId);
-      clearStoredLobbyTeam(userId, lobbyId)
+      clearStoredLobbyTeam(userId, lobbyId);
       setIsLeaving(false);
       router.push("/menu");
     }
@@ -150,12 +150,14 @@ export default function LeaderboardPage() {
                     key={team.id} 
                     className={`team-card ${isWinner ? "leaderboard-row-win-primary" : "leaderboard-row-standard"}`}
                   >
-                    <div className="team-label">{team.name}</div>
+                    <div className="team-label">
+                      {isWinner && <span className="trophy-icon">🏆</span>}
+                      <span>{team.name}</span>
+                    </div>
                     <div className="team-score-section">
                       <span className="score-label">Points</span>
                       <div className="score-row">
                         <span className="score-value">{team.score}</span>
-                        {isWinner && <span className="trophy-icon">🏆</span>}
                       </div>
                     </div>
                   </article>
