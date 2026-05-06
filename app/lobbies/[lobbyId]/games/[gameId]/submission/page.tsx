@@ -51,6 +51,10 @@ function CameraContent() {
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // New states and refs for Zoom functionality
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const touchStartDist = useRef<number | null>(null);
+
   const stopCameraStream = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -60,6 +64,67 @@ function CameraContent() {
       videoRef.current.srcObject = null;
     }
   };
+
+  // Zoom Handling Functions
+  const handleZoomChange = (delta: number, clientX?: number, clientY?: number) => {
+    setZoomLevel((prev) => {
+      // Allow zooming between 1x and 4x
+      const nextZoom = Math.min(Math.max(1, prev + delta), 4);
+      return nextZoom;
+    });
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    // Use the vertical wheel delta and divide to make it smoother
+    const delta = event.deltaY * -0.01;
+    handleZoomChange(delta);
+  };
+
+  const handleTouchStart = (event: TouchEvent) => {
+    if (event.touches.length === 2) {
+      const dist = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+      touchStartDist.current = dist;
+    }
+  };
+
+  const handleTouchMove = (event: TouchEvent) => {
+    if (event.touches.length === 2 && touchStartDist.current !== null) {
+      const currentDist = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+      const delta = (currentDist - touchStartDist.current) * 0.005;
+      handleZoomChange(delta);
+      touchStartDist.current = currentDist;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartDist.current = null;
+  };
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (element) {
+      // Options to ensure standard wheel zoom doesn't break page scroll
+      element.addEventListener("wheel", handleWheel, { passive: false });
+      element.addEventListener("touchstart", handleTouchStart, { passive: true });
+      element.addEventListener("touchmove", handleTouchMove, { passive: true });
+      element.addEventListener("touchend", handleTouchEnd, { passive: true });
+      
+      return () => {
+        element.removeEventListener("wheel", handleWheel);
+        element.removeEventListener("touchstart", handleTouchStart);
+        element.removeEventListener("touchmove", handleTouchMove);
+        element.removeEventListener("touchend", handleTouchEnd);
+      };
+    }
+  }, [videoRef.current]);
+  // End of Zoom Functionality
 
   useEffect(() => {
     if (claimedOverlayMessage) {
@@ -360,6 +425,11 @@ function CameraContent() {
                 alt="Captured"
                 className="camera-video-element"
                 onLoad={() => setIsImageLoaded(true)}
+                // We do not allow zooming once image is captured, or you can apply the same style
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transition: "transform 0.1s ease-out",
+                }}
               />
 
               <div className="camera-actions-frame">
@@ -394,6 +464,12 @@ function CameraContent() {
                 muted
                 className="camera-video-element"
                 onLoadedMetadata={() => setIsCameraReady(true)}
+                // Apply dynamic zoom scale to video
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transition: "transform 0.1s ease-out",
+                  cursor: "pointer",
+                }}
               />
               <div className="camera-actions-frame">
                 <button
