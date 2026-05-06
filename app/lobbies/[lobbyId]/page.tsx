@@ -20,7 +20,6 @@ import {
   LobbyTeam,
   LobbyListType, 
   SinglPlayereMode,
-
 } from "@/types/lobby";
 
 const MIN_GAME_DURATION = 5;
@@ -51,7 +50,7 @@ export default function LobbyPage() {
   const [connectionState, setConnectionState] = useState<
     "connecting" | "live" | "error"
   >("connecting");
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [pendingAction, setPendingActionState] = useState<string | null>(null);
   const [pageMessage, setPageMessage] = useState<{
     text: string;
     tone: "info" | "error";
@@ -59,8 +58,17 @@ export default function LobbyPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<LobbyPlayer | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLobbyClosedModal, setShowLobbyClosedModal] = useState(false);
+
   const autoStartSent = useRef(false);
   const latestLobbyRef = useRef<LobbyDetails | null>(null);
+
+  const setPendingAction = (action: string | null) => {
+    setPendingActionState(action);
+  };
 
   const lobbyClient = useMemo(() => createLobbyClient({
     api,
@@ -110,20 +118,25 @@ export default function LobbyPage() {
     }
   }, [isAuthenticated, loaded, router]);
 
-  // Heartbeat Check: Stellt sicher, dass gelöschte Lobbies bemerkt werden
+  // Heartbeat Check: Detects if the lobby has been deleted by the host
   useEffect(() => {
     if (!loaded || !isAuthenticated || !lobbyId) return;
 
     const checkLobbyExists = async () => {
       try {
-          await lobbyClient.getLobby(lobbyId);
-        } catch (error: unknown) {
-          const appError = error as ApplicationError;
-          if (appError.status === 404 || appError.status === 403) {
+        await lobbyClient.getLobby(lobbyId);
+      } catch (error: unknown) {
+        const appError = error as ApplicationError;
+        // If the host deleted it (404) or access is revoked (403)
+        if (appError.status === 404 || appError.status === 403) {
+          setShowLobbyClosedModal(true);
+
+          setTimeout(() => {
             clearStoredActiveLobbyId(userId, lobbyId);
             router.replace("/menu");
-          }
+          }, 3000);
         }
+      }
     };
 
     const interval = setInterval(checkLobbyExists, 1000);
@@ -160,10 +173,7 @@ export default function LobbyPage() {
     setPageMessage(null);
 
     const applyLobbyDetails = (details: LobbyDetails) => {
-      if (cancelled) {
-        return;
-      }
-
+      if (cancelled) return;
       latestLobbyRef.current = details;
       setStoredActiveLobbyId(userId, details.id);
       setLobby(details);
@@ -172,10 +182,7 @@ export default function LobbyPage() {
     };
 
     const handleLobbyError = (error: unknown, fallback: string) => {
-      if (cancelled) {
-        return;
-      }
-
+      if (cancelled) return;
       const message = getLobbyErrorMessage(error, fallback);
       if (isFatalApplicationError(error)) {
         clearStoredActiveLobbyId(userId, lobbyId);
@@ -184,18 +191,12 @@ export default function LobbyPage() {
       }
 
       if (latestLobbyRef.current) {
-        setPageMessage({
-          text: message,
-          tone: "error",
-        });
+        setPageMessage({ text: message, tone: "error" });
         return;
       }
 
       setConnectionState("connecting");
-      setPageMessage({
-        text: message,
-        tone: "error",
-      });
+      setPageMessage({ text: message, tone: "error" });
     };
 
     const unsubscribe = lobbyClient.subscribeToLobby(
@@ -240,10 +241,10 @@ export default function LobbyPage() {
   useEffect(() => {
     if (!lobby?.gameId) return;
     router.replace(`/lobbies/${lobbyId}/games/${lobby.gameId}`);
-  }, [lobby?.gameId, lobbyId, router, userId]);
+  }, [lobby?.gameId, lobbyId, router]);
 
   useEffect(() => {
-    if (!canAutoStart) {
+    if (!canAutoStartCheck(canAutoStart)) {
       autoStartSent.current = false;
     }
   }, [canAutoStart]);
@@ -265,7 +266,6 @@ export default function LobbyPage() {
           router.replace(`/lobbies/${lobbyId}/games/${result.gameId}`);
           return;
         }
-
         setPageMessage({
           text: "Everyone is ready. Waiting for the game screen.",
           tone: "info",
@@ -280,7 +280,7 @@ export default function LobbyPage() {
       .finally(() => {
         setPendingAction(null);
       });
-  }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, userId]);
+  }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, isSinglePlayer]);
 
   if (!loaded || !isAuthenticated) {
     return <div className="app-shell" />;
@@ -312,7 +312,7 @@ export default function LobbyPage() {
     });
   };
 
-  const handleToggleReady = async (): Promise<void> => {
+  const handleToggleReadyToggle = async (): Promise<void> => {
     if (!currentPlayer) return;
     await runLobbyAction("ready", async () => {
       await lobbyClient.updatePlayerReady(
@@ -344,6 +344,11 @@ export default function LobbyPage() {
   };
 
   const handleDeleteLobby = async (): Promise<void> => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteLobby = async (): Promise<void> => {
+    setShowDeleteModal(false);
     await runLobbyAction("delete", async () => {
       await lobbyClient.deleteLobby(lobbyId);
       clearStoredActiveLobbyId(userId, lobbyId);
@@ -352,6 +357,11 @@ export default function LobbyPage() {
   };
 
   const handleLeaveLobby = async (): Promise<void> => {
+    setShowLeaveModal(true);
+  };
+
+  const confirmLeaveLobby = async (): Promise<void> => {
+    setShowLeaveModal(false);
     await runLobbyAction("leave", async () => {
       await lobbyClient.leaveLobby(lobbyId);
       clearStoredActiveLobbyId(userId, lobbyId);
@@ -444,7 +454,7 @@ export default function LobbyPage() {
                     type="button"
                     className={`vq-button lobby-ready-toggle ${currentPlayer.isReady ? "is-ready" : ""}`}
                     disabled={pendingAction !== null || needsTeamSelection}
-                    onClick={() => void handleToggleReady()}
+                    onClick={() => void handleToggleReadyToggle()}
                   >
                     {pendingAction === "ready"
                       ? "Updating..."
@@ -485,40 +495,42 @@ export default function LobbyPage() {
                   onChange={(event) => setDurationDraft(event.target.value)}
                 />
               </label>
-                            <label className="lobby-settings-field">
-                  <span className="lobby-settings-label">
-                    What kind of objects do you want to collect?
-                  </span>
-                  <select
-                    name="selectedListType"
-                    className="lobby-settings-select"
-                    value={listTypeDraft}
+
+              <label className="lobby-settings-field">
+                <span className="lobby-settings-label">
+                  What kind of objects do you want to collect?
+                </span>
+                <select
+                  name="selectedListType"
+                  className="lobby-settings-select"
+                  value={listTypeDraft}
+                  disabled={!isHost || pendingAction === "settings" || pendingAction === "start"}
+                  onChange={(event) =>
+                    setListTypeDraft(event.target.value as LobbyListType)
+                  }
+                >
+                  <option value="all">Outdoor and Indoor objects</option>
+                  <option value="outside">Outdoor objects</option>
+                  <option value="inside">Indoor objects</option>
+                </select>
+              </label>
+
+              <div className="lobby-settings-field">
+                <span className="lobby-settings-label">Enable singleplayer</span>
+                <label className="lobby-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={isSinglePlayerDraft === 1}
                     disabled={!isHost || pendingAction === "settings" || pendingAction === "start"}
-                    onChange={(event) =>
-                      setListTypeDraft(event.target.value as LobbyListType)
-                    }
-                  >
-                    <option value="all">Outdoor and Indoor objects</option>
-                    <option value="outside">Outdoor objects</option>
-                    <option value="inside">Indoor objects</option>
-                  </select>
+                    onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
+                  />
+                  <span className="lobby-toggle-label">
+                    {isSinglePlayerDraft === 1 ? "Singleplayer" : "Multiplayer"}
+                  </span>
+                  <span className="lobby-toggle-track" />
                 </label>
-             
-<div className="lobby-settings-field">
-  <span className="lobby-settings-label">Enable singleplayer</span>
-  <label className="lobby-toggle-switch">
-    <input
-      type="checkbox"
-      checked={isSinglePlayerDraft === 1}
-      disabled={!isHost || pendingAction === "settings" || pendingAction === "start"}
-      onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
-    />
-    <span className="lobby-toggle-label">
-      {isSinglePlayerDraft === 1 ? "Singleplayer" : "Multiplayer"}
-    </span>
-    <span className="lobby-toggle-track" />
-  </label>
-</div>
+              </div>
+
               {isHost ? (
                 <button
                   type="button"
@@ -537,7 +549,6 @@ export default function LobbyPage() {
 
             {TEAM_SECTIONS.map((team) => {
               const players = lobbyPlayers.filter((player) => player.team === team);
-
               return (
                 <section key={team ?? "none"} className="lobby-card lobby-team-card">
                   <div className="lobby-team-header">
@@ -546,21 +557,17 @@ export default function LobbyPage() {
                       {players.length} player{players.length === 1 ? "" : "s"}
                     </span>
                   </div>
-
                   {players.length === 0 ? (
-                    <p className="lobby-empty-state">
-                      No players in this group yet.
-                    </p>
+                    <p className="lobby-empty-state">No players in this group yet.</p>
                   ) : (
                     <div className="lobby-team-list">
                       {players.map((player) => (
-                        <React.Fragment key={player.id}>
-                          <LobbyPlayerCard
-                            player={player}
-                            isSelf={player.user.id === userId}
-                            onClick={() => openPlayerProfile(player)}
-                          />
-                        </React.Fragment>
+                        <LobbyPlayerCard
+                          key={player.id}
+                          player={player}
+                          isSelf={player.user.id === userId}
+                          onClick={() => openPlayerProfile(player)}
+                        />
                       ))}
                     </div>
                   )}
@@ -573,9 +580,7 @@ export default function LobbyPage() {
                 type="button"
                 className="vq-button lobby-action-btn"
                 disabled={pendingAction !== null}
-                onClick={() =>
-                  void (isHost ? handleDeleteLobby() : handleLeaveLobby())
-                }
+                onClick={() => void (isHost ? handleDeleteLobby() : handleLeaveLobby())}
               >
                 {pendingAction === "delete"
                   ? "Closing..."
@@ -602,46 +607,116 @@ export default function LobbyPage() {
             </section>
           </>
         )}
+
+{/* Delete Lobby Modal (Host) */}
+{showDeleteModal && (
+  <div className="confirm-overlay" onClick={() => setShowDeleteModal(false)}>
+    <div className="confirm-card theme-dark-teal" onClick={(e) => e.stopPropagation()}>
+      <h2 className="confirm-title">Delete Lobby</h2>
+      <p className="confirm-text">
+        Are you sure you want to delete this lobby? All players will be disconnected.
+      </p>
+      <div className="confirm-actions">
+        <button
+          type="button"
+          className="confirm-btn leave"
+          onClick={() => void confirmDeleteLobby()}
+        >
+          Delete
+        </button>
+        <button
+          type="button"
+          className="confirm-btn cancel"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          Stay
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Modal: Delete Lobby */}
+{showDeleteModal && (
+  <div className="guard-backdrop" onClick={() => setShowDeleteModal(false)}>
+    <div className="guard-panel" onClick={(e) => e.stopPropagation()}>
+      <h2 className="guard-title">Delete Lobby</h2>
+      <p className="guard-description">
+        Are you sure you want to delete this lobby?
+      </p>
+      <div className="guard-flow">
+        <button className="guard-action primary-red" onClick={() => void confirmDeleteLobby()}>
+          Delete
+        </button>
+        <button className="guard-action secondary-teal" onClick={() => setShowDeleteModal(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Modal: Lobby Closed by Host */}
+{showLobbyClosedModal && (
+  <div className="guard-backdrop">
+    <div className="guard-panel">
+      <h2 className="guard-title">Lobby Closed</h2>
+      <p className="guard-description">
+        The host has deleted the lobby. You will now be redirected to the menu.
+      </p>
+      {/* Loading animation added here */}
+      <div className="guard-loader-container">
+        <div className="guard-loader"></div>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Modal: Leave Lobby */}
+{showLeaveModal && (
+  <div className="guard-backdrop" onClick={() => setShowLeaveModal(false)}>
+    <div className="guard-panel" onClick={(e) => e.stopPropagation()}>
+      <h2 className="guard-title">Leave Lobby</h2>
+      <p className="guard-description">Are you sure you want to leave the current lobby?</p>
+      <div className="guard-flow">
+        <button className="guard-action primary-red" onClick={() => void confirmLeaveLobby()}>
+          Leave
+        </button>
+        <button className="guard-action secondary-teal" onClick={() => setShowLeaveModal(false)}>
+          Stay
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         {selectedPlayer && (
           <div className="overlay-backdrop" onClick={closePlayerProfile}>
             <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-              <h2 className="overlay-title">
-                {selectedPlayer.user.username}
-              </h2>
-
+              <h2 className="overlay-title">{selectedPlayer.user.username}</h2>
               {profileLoading && <p>Loading...</p>}
-
               {selectedUser && (
-                <>
-                  <div className="stats-grid">
-                    <div className="stat-card">
-                      <span className="stat-value">{selectedUser.gamesPlayed}</span>
-                      <span className="info-label">Games</span>
-                    </div>
-
-                    <div className="stat-card">
-                      <span className="stat-value">{selectedUser.gamesWon}</span>
-                      <span className="info-label">Wins</span>
-                    </div>
-
-                    <div className="stat-card">
-                      <span className="stat-value">
-                        {selectedUser.gamesPlayed > 0
-                          ? Math.round((selectedUser.gamesWon / selectedUser.gamesPlayed) * 100)
-                          : 0}%
-                      </span>
-                      <span className="info-label">Winrate</span>
-                    </div>
+                <div className="stats-grid">
+                  <div className="stat-card">
+                    <span className="stat-value">{selectedUser.gamesPlayed}</span>
+                    <span className="info-label">Games</span>
                   </div>
-                </>
+                  <div className="stat-card">
+                    <span className="stat-value">{selectedUser.gamesWon}</span>
+                    <span className="info-label">Wins</span>
+                  </div>
+                  <div className="stat-card">
+                    <span className="stat-value">
+                      {selectedUser.gamesPlayed > 0
+                        ? Math.round((selectedUser.gamesWon / selectedUser.gamesPlayed) * 100)
+                        : 0}%
+                    </span>
+                    <span className="info-label">Winrate</span>
+                  </div>
+                </div>
               )}
-
               <div className="overlay-actions-single">
-                <button
-                  type="button"
-                  className="vq-button btn-confirm"
-                  onClick={closePlayerProfile}
-                >
+                <button type="button" className="vq-button btn-confirm" onClick={closePlayerProfile}>
                   Close
                 </button>
               </div>
@@ -651,6 +726,10 @@ export default function LobbyPage() {
       </main>
     </div>
   );
+}
+
+function canAutoStartCheck(canAutoStart: boolean) {
+  return canAutoStart;
 }
 
 function LobbyPlayerCard({
@@ -663,7 +742,6 @@ function LobbyPlayerCard({
   onClick?: () => void;
 }) {
   const initial = player.user.username.charAt(0).toUpperCase() || "P";
-
   return (
     <article className={`lobby-player-item ${isSelf ? "is-self" : ""}`} onClick={onClick} style={{ cursor: "pointer" }}>
       <span className="lobby-player-icon">{initial}</span>
@@ -672,8 +750,7 @@ function LobbyPlayerCard({
           {player.isHost ? "Host" : "Player"} • {player.isReady ? "Ready" : "Not Ready"}
         </span>
         <span className="lobby-player-name">
-          {player.user.username}
-          {isSelf ? " (You)" : ""}
+          {player.user.username}{isSelf ? " (You)" : ""}
         </span>
       </div>
       <span className={`lobby-player-badge ${player.isReady ? "is-ready" : "is-pending"}`}>
@@ -692,18 +769,13 @@ function formatJoinCode(value: string): string {
     .trim();
 }
 
-function getConnectionLabel(
-  state: "connecting" | "live" | "error",
-): string {
+function getConnectionLabel(state: "connecting" | "live" | "error"): string {
   if (state === "live") return "Live";
   if (state === "error") return "Issue";
   return "Connecting";
 }
 
-function getLobbyErrorMessage(
-  error: unknown,
-  fallback: string,
-): string {
+function getLobbyErrorMessage(error: unknown, fallback: string): string {
   const applicationError = error as ApplicationError | undefined;
   if (applicationError?.status === 403) return applicationError.message;
   if (applicationError?.status === 404) return "This lobby could not be found anymore.";
