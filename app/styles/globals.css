@@ -103,7 +103,7 @@ textarea {
   top: -60px;
   color: var(--vq-teal);
   font-weight: 900;
-  font-size: 0.9rem;
+  font-size: 3rem;
   opacity: 0;
   white-space: nowrap;
   animation: bingoRain linear infinite;
@@ -1727,8 +1727,8 @@ textarea {
 }
 
 .info-label {
-  color: #7a7a7a;
-  font-size: 0.65rem;
+  color: var(--vq-charcoal);
+  font-size: 0.8rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05rem;
@@ -1831,10 +1831,13 @@ textarea {
   width: 100%;
   background: transparent;
   color: var(--vq-charcoal);
-  font-size: 1.1rem;
   font-weight: 700;
   padding: 0;
   margin-top: 4px;
+}
+
+.edit-input-field::placeholder{
+  font-size: small;
 }
 
 /* --- FEEDBACK MESSAGES --- */
