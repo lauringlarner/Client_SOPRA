@@ -36,24 +36,6 @@ export default function RegisterPage() {
     }
   };
 
-  // Block specific restricted special characters for the password field
-  const handlePasswordBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
-    const char = (event.nativeEvent as InputEvent).data;
-    if (char) {
-      if (/[<>\/\\;.,:""&|()\[\]{}]/.test(char)) {
-        event.preventDefault();
-        setPasswordError(`Special character "${char}" is not allowed in password.`);
-      }
-    }
-  };
-
-  const handlePasswordKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === " ") {
-      event.preventDefault();
-      setPasswordError("Spaces are not allowed in the password.");
-    }
-  };
-
   const validateField = (name: string, value: string) => {
     if (name === "username") {
       if (value.length > 0 && /^\d/.test(value)) {
@@ -64,14 +46,10 @@ export default function RegisterPage() {
         setUsernameError("");
       }
     } else if (name === "password") {
-      if (/\s/.test(value)) {
-        setPasswordError("Spaces are not allowed in the password.");
-      } else if (value.length > 0 && /[<>\/\\;.,:""&|()\[\]{}]/.test(value)) {
-        setPasswordError("Contains forbidden special characters.");
-      } else if (value.length > 0 && !/\d/.test(value)) {
-        setPasswordError("Password must contain at least one digit!");
-      } else if (value.length > 0 && value.length < 12) {
-        setPasswordError("Password must be at least 12 characters.");
+      if (value.length > 0 && !/\d/.test(value)) {
+        setPasswordError("Password must contain at least one digit.");
+      } else if (value.length > 0 && value.length < 8) {
+        setPasswordError("Password must be at least 8 characters.");
       } else {
         setPasswordError("");
       }
@@ -109,17 +87,14 @@ export default function RegisterPage() {
       return;
     }
 
-    // Password validation check
-    const passwordInjectionRegex = /[<>\/\\;.,:""&|()\[\]{}`']/;
-    if (passwordInjectionRegex.test(password)) {
-      setError("Invalid characters in password: < > / \\ ; . , : \" \" & | ( ) [ ] { }");
+    if (!/\d/.test(password)) {
+      setError("Password must contain at least one digit.");
       setIsSubmitting(false);
       return;
     }
 
-    // Digit validation check
-    if (!/\d/.test(password)) {
-      setError("Password must contain at least one digit!");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       setIsSubmitting(false);
       return;
     }
@@ -209,10 +184,8 @@ export default function RegisterPage() {
                 placeholder="Enter password"
                 required
                 disabled={isSubmitting}
-                minLength={12}
+                minLength={8}
                 maxLength={30}
-                onBeforeInput={handlePasswordBeforeInput}
-                onKeyDown={handlePasswordKeyDown}
                 onChange={(e) => validateField("password", e.target.value)}
                 style={{ paddingRight: "3.5rem" }}
               />

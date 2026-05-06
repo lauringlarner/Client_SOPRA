@@ -501,6 +501,7 @@ export default function LobbyPage() {
                     <option value="all">Outdoor and Indoor objects</option>
                     <option value="outside">Outdoor objects</option>
                     <option value="inside">Indoor objects</option>
+                    <option value="demo">Demo Mode</option>
                   </select>
                 </label>
              
