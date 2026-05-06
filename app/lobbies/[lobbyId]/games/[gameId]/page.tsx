@@ -27,6 +27,12 @@ import {
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
 
+type GameModeDTO = {
+  id: string;
+  name: string;
+  rules: string[]; // [Find, Capture, Submission, Win]
+};
+
 export default function GameBoardPage() {
   const api = useApi();
   const router = useRouter();
@@ -48,6 +54,11 @@ export default function GameBoardPage() {
   const [showBingoBanner, setShowBingoBanner] = useState(false);
   const [activeBingoTiles, setActiveBingoTiles] = useState<Set<string>>(new Set());
 
+  // Zusätzliche States für das Rules-Overlay
+  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
+  const [loadingGameModes, setLoadingGameModes] = useState(false);
+  const [gameModesError, setGameModesError] = useState<string | null>(null);
+
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]); 
   const isFirstLoad = useRef(true); 
@@ -61,6 +72,27 @@ export default function GameBoardPage() {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Rules Fetching Logik wie im MenuPage
+  useEffect(() => {
+    if (!showRules) return;
+
+    const fetchGameModes = async () => {
+      setLoadingGameModes(true);
+      setGameModesError(null);
+
+      try {
+        const response = await api.get<GameModeDTO[]>("/gameModes", token);
+        setGameModes(response);
+      } catch (e) {
+        setGameModesError("Failed to load game modes.");
+      } finally {
+        setLoadingGameModes(false);
+      }
+    };
+
+    void fetchGameModes();
+  }, [showRules, api, token]);
 
   const remainingSeconds = useMemo(() => {
     if (!game || game.status === "ENDED") return 0;
@@ -251,7 +283,7 @@ export default function GameBoardPage() {
               ))}
             </section>
 
-           <div className="bingo-time-bar-container">
+            <div className="bingo-time-bar-container">
               <div className="bingo-time-bar-label">
                 Time: {Math.floor(remainingSeconds/60)}:{(remainingSeconds%60).toString().padStart(2,"0")}
               </div>
@@ -319,13 +351,29 @@ export default function GameBoardPage() {
           <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
             <div className="rules-content">
               <h2 className="overlay-title">Game Rules</h2>
+              
               <div className="rules-section">
-                <ul className="rules-bullet-list">
-                  <li><strong>Find:</strong> Locate an item listed on the bingo board in the real world.</li>
-                  <li><strong>Capture:</strong> Tap the tile to open the camera and snap a photo of that item.</li>
-                  <li><strong>Submission:</strong> Once submitted, our AI will validate the image to ensure it matches the item on the tile.</li>
-                  <li><strong>Win:</strong> Earn points for every captured tile, plus bonus points for completing rows, columns, or diagonals.</li>
-                </ul>
+                <div className="rules-scroll-container">
+                  {loadingGameModes && <p>Loading...</p>}
+                  {gameModesError && (
+                    <p className="overlay-error-bubble">{gameModesError}</p>
+                  )}
+
+                  <div className="rules-horizontal-list">
+                    {gameModes.map((mode) => (
+                      <div key={mode.id} className="rules-card">
+                        <h3 className="rules-subtitle">{mode.name}</h3>
+                        <ul className="rules-bullet-list">
+                          {mode.rules.map((rule, i) => (
+                            <li key={i}>
+                              <strong>{["Find", "Capture", "Submission", "Win"][i]}:</strong> {rule}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="rules-section">
