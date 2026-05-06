@@ -522,12 +522,24 @@ export default function LobbyPage() {
                     type="checkbox"
                     checked={isSinglePlayerDraft === 1}
                     disabled={!isHost || pendingAction === "settings" || pendingAction === "start"}
+<<<<<<< Beta-Testing-Feedback-changes
                     onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
                   />
                   <span className="lobby-toggle-label">
                     {isSinglePlayerDraft === 1 ? "Singleplayer" : "Multiplayer"}
                   </span>
                   <span className="lobby-toggle-track" />
+=======
+                    onChange={(event) =>
+                      setListTypeDraft(event.target.value as LobbyListType)
+                    }
+                  >
+                    <option value="all">Outdoor and Indoor objects</option>
+                    <option value="outside">Outdoor objects</option>
+                    <option value="inside">Indoor objects</option>
+                    <option value="demo">Demo Mode</option>
+                  </select>
+>>>>>>> main
                 </label>
               </div>
 
