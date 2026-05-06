@@ -1195,10 +1195,12 @@ textarea {
   flex: 1;
   aspect-ratio: 1 / 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  /* Padding leicht verringern, um mehr Platz für den Text zu machen */
+  padding: 2px;
   background: #ffffff;
   border: 1px solid var(--vq-border);
   border-radius: 8px;
@@ -1208,6 +1210,8 @@ textarea {
   user-select: none;
   -webkit-user-select: none;
   border-color: black;
+  /* Container-Type bleibt erhalten */
+  container-type: inline-size;
 }
 
 .bingo-field-button:hover {
@@ -1341,36 +1345,37 @@ textarea {
 }
 
 .tile-text {
-  /* 1. Layout: Perfect Centering */
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 4px; 
+  padding: 2px; 
 
-  /* 2. Professional Typography */
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 11px;
+  
+  /* * Minimalwert erhöht von 0.35rem auf 0.52rem
+   * Maximalwert erhöht von 0.75rem auf 0.85rem
+   */
+  font-size: clamp(0.2rem, 13cqw, 0.8rem);
+  
   line-height: 1.1;
   font-weight: 700; 
   text-align: center;
   text-transform: uppercase; 
-  letter-spacing: 0.02em;    
+  letter-spacing: -0.01em;    
   color: #FFFFFF;
 
-  /* 3. Modern Wrap Logic */
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: pre-wrap;
   word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
-  /* 4. UI Protection */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   pointer-events: none; 
 }
-  
 
 .bingo-team-points-container {
   display: flex;

@@ -331,7 +331,9 @@ export default function GameBoardPage() {
                               <path d="M20 6L9 17l-5-5" />
                             </svg>
                           ) : (
-                            <span className="tile-text">{tile.word}</span>
+                            <span className="tile-text">
+                              {tile.word}
+                            </span>
                           )}
                         </button>
                       );
