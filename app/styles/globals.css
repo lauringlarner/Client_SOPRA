@@ -2400,6 +2400,37 @@ a[href^="sms"] {
   transition: all 0.2s ease;
 }
 
+.chat-notification-badge {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  background-color: #ff3b30; /* Kräftiges Rot */
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #fff; /* Hebt sich vom Button ab */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
+  pointer-events: none; /* Klicks gehen durch auf den Button */
+}
+
+.chat-notification-badge {
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+
 /* Hover-Zustand für beide */
 .menu-rules-trigger:hover,
 .chat-trigger-btn:hover {
@@ -2563,29 +2594,28 @@ a[href^="sms"] {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 12px;
   width: 100%;
-  overflow: hidden;
+  max-width: 100%; 
+  /* CHANGE: Ensure top overflow is visible for the hover 'jump' */
+  overflow: visible; 
 }
 
 .quick-replies-grid {
   display: grid !important;
-  /* Erzeugt zwei feste Reihen gleicher Höhe */
-  grid-template-rows: repeat(2, 1fr);
-  /* Erlaubt dem Grid, Spalten automatisch nach rechts zu erweitern */
+  grid-template-rows: repeat(3, 1fr);
   grid-auto-flow: column;
-  grid-auto-columns: calc(50% - 10px); /* Zeigt ca. 2 Buttons breit an */
+  grid-auto-columns: 140px; 
   gap: 10px;
   
   overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 12px;
+  /* CHANGE: Allow the vertical 'jump' to be visible */
+  overflow-y: visible; 
   
-  /* Sanftes Scrollen auf Mobilgeräten */
+  /* CRITICAL: Add top/bottom padding so the buttons have space to move 
+     without hitting the edge of the scroll container */
+  padding: 8px 0 15px 0; 
+  
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-
-  /* Scrollbar Styling */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
 /* Chrome/Safari Scrollbar */
@@ -2596,6 +2626,7 @@ a[href^="sms"] {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
 }
+
 
 /* --- Button Styling & Animation --- */
 .btn-quick-chat {
@@ -2614,6 +2645,7 @@ a[href^="sms"] {
   /* Animation beim Hover/Klick */
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  z-index: 1;
 }
 
 .btn-quick-chat:hover {

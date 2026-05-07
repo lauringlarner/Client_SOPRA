@@ -32,7 +32,7 @@ interface ChatMessageGetDTO {
   message: string;
   sender: string;     
   sentAt: string;     
-  teamType: string;   // Matches JSON: "Team1" or "Team2"
+  teamType: string;   
 }
 
 type GameModeDTO = {
@@ -42,18 +42,10 @@ type GameModeDTO = {
 };
 
 const QUICK_MESSAGES = [
-  "Good luck! 🍀",
-  "Too slow! 💨",
-  "Nice find! 🔥",
-  "Pure skill. 😎",
-  "Almost there! 🤏",
-  "Getting nervous? 👀",
-  "BINGO! 🎉",
-  "GGEZ 🥱",
-  "Teamwork! 🙌",
-  "Dream on... 😴",
-  "Respect! 🤝",
-  "Is that all? 😏"
+  "Good luck! 🍀", "Too slow! 💨", "Nice find! 🔥", "Pure skill. 😎",
+  "Almost there! 🤏", "Getting nervous? 👀", "BINGO! 🎉", "GGEZ 🥱",
+  "Teamwork! 🙌", "Dream on... 😴", "Respect! 🤝", "Is that all? 😏",
+  "Wait for me! 🏃‍♂️", "Calculated. 🧠", "Wow! 😮"
 ];
 
 export default function GameBoardPage() {
@@ -80,9 +72,11 @@ export default function GameBoardPage() {
   const [loadingGameModes, setLoadingGameModes] = useState(false);
   const [gameModesError, setGameModesError] = useState<string | null>(null);
 
-  // --- Chat States ---
+  // --- Chat & Notification States ---
   const [chatHistory, setChatHistory] = useState<ChatMessageGetDTO[]>([]);
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const lastReadCountRef = useRef(0);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
@@ -99,23 +93,37 @@ export default function GameBoardPage() {
     try {
       const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
       setChatHistory(messages);
+
+      if (!showChat && messages.length > lastReadCountRef.current) {
+        setHasUnreadMessages(true);
+      }
     } catch (err) {
       console.error("Chat fetch failed", err);
     }
   };
 
   useEffect(() => {
-    if (!showChat || !isAuthenticated) return;
+    if (!isAuthenticated) return;
     fetchChat();
     const interval = setInterval(fetchChat, 3000);
     return () => clearInterval(interval);
-  }, [showChat, isAuthenticated, gameId]);
+  }, [isAuthenticated, gameId, showChat]);
 
   useEffect(() => {
     if (showChat) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      setHasUnreadMessages(false);
+      lastReadCountRef.current = chatHistory.length;
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     }
-  }, [showChat, chatHistory]);
+  }, [showChat]);
+
+  useEffect(() => {
+    if (showChat) {
+      lastReadCountRef.current = chatHistory.length;
+    }
+  }, [chatHistory, showChat]);
 
   const sendQuickMessage = async (msg: string) => {
     if (isSendingChat || !token) return;
@@ -123,6 +131,11 @@ export default function GameBoardPage() {
     try {
       await api.post(`/games/${gameId}/chat`, { message: msg }, token);
       await fetchChat();
+      
+      // FIX: Hier wird nach dem Senden aktiv nach unten gescrollt
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     } catch (err) {
       console.error("Chat send failed", err);
     } finally {
@@ -317,10 +330,12 @@ export default function GameBoardPage() {
             >
               {loadingGameModes ? "..." : "i"}
             </button>
+            
             <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
               <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
+              {hasUnreadMessages && <span className="chat-notification-badge" />}
             </button>
           </div>
         )}
@@ -460,36 +475,28 @@ export default function GameBoardPage() {
             </div>
 
             <div className="chat-messages-log">
-  {chatHistory.map((chat, i) => {
-  // 1. Wir säubern beide Werte: Nur Zahlen extrahieren oder strikt Großbuchstaben
-  const chatTeamClean = chat.teamType.replace(/\D/g, ""); // "Team1" -> "1"
-  const myTeamClean = (myTeamName || "").replace(/\D/g, ""); // "TEAM1" -> "1"
-  
-  // 2. Vergleich (Wenn beide "1" sind, ist es mein Team)
-  const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
+              {chatHistory.map((chat, i) => {
+                const chatTeamClean = chat.teamType.replace(/\D/g, "");
+                const myTeamClean = (myTeamName || "").replace(/\D/g, "");
+                const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
 
-  return (
-    <div 
-      key={i} 
-      className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}
-    >
-<div className="chat-sender-label">
-  <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
-    {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
-  </span>
-  
-  <span className="label-divider">•</span>
-  
-  <span className="sender-name">{chat.sender}</span>
-</div>
-      <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
-        <p style={{ margin: 0 }}>{chat.message}</p>
-      </div>
-    </div>
-  );
-})}
-  <div ref={chatEndRef} />
-</div>
+                return (
+                  <div key={i} className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}>
+                    <div className="chat-sender-label">
+                      <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
+                        {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
+                      </span>
+                      <span className="label-divider">•</span>
+                      <span className="sender-name">{chat.sender}</span>
+                    </div>
+                    <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
+                      <p style={{ margin: 0 }}>{chat.message}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
 
             <div className="chat-quick-replies-section">
               <div className="quick-replies-grid">
