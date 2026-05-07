@@ -19,7 +19,6 @@ import {
 } from "@/utils/gamePerspective";
 import {
   clearLastSubmissionWord,
-  getLastSubmissionWord,
 } from "@/utils/submissionFeedback";
 import {
   getStoredLobbyTeam,
@@ -27,12 +26,13 @@ import {
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
 
-// Entspricht deinem ChatMessageGetDTO
+// --- Interfaces ---
+
 interface ChatMessageGetDTO {
   message: string;
-  senderId: string;
-  senderName: string;
-  team: string; // "TEAM1" oder "TEAM2"
+  sender: string;     
+  sentAt: string;     
+  teamType: string;   // Matches JSON: "Team1" or "Team2"
 }
 
 type GameModeDTO = {
@@ -98,7 +98,6 @@ export default function GameBoardPage() {
     }
   };
 
-  // Polling für neue Nachrichten (alle 3 Sek), wenn Chat offen ist
   useEffect(() => {
     if (!showChat || !isAuthenticated) return;
     fetchChat();
@@ -382,7 +381,7 @@ export default function GameBoardPage() {
         )}
       </main>
 
-      {/* RULES OVERLAY */}
+      {/* --- RULES OVERLAY --- */}
       {showRules && (
         <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
           <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
@@ -445,35 +444,46 @@ export default function GameBoardPage() {
         </div>
       )}
 
-      {/* CHAT OVERLAY */}
+      {/* --- CHAT OVERLAY --- */}
       {showChat && (
         <div className="overlay-backdrop" onClick={() => setShowChat(false)}>
           <div className="overlay-card chat-overlay-card" onClick={(e) => e.stopPropagation()}>
             <div className="chat-header">
-              <h2 className="overlay-title">Team Chat</h2>
+              <h2 className="overlay-title">Live Chat</h2>
               <button className="close-chat-btn" onClick={() => setShowChat(false)}>&times;</button>
             </div>
 
             <div className="chat-messages-log">
-              {chatHistory.length === 0 ? (
-                <p className="chat-empty-state">No messages yet. Start the conversation!</p>
-              ) : (
-                chatHistory.map((chat, i) => {
-                    const isMe = chat.senderId === userId;
-                    const isSameTeam = chat.team === myTeamName;
+  {chatHistory.map((chat, i) => {
+  // 1. Wir säubern beide Werte: Nur Zahlen extrahieren oder strikt Großbuchstaben
+  const chatTeamClean = chat.teamType.replace(/\D/g, ""); // "Team1" -> "1"
+  const myTeamClean = (myTeamName || "").replace(/\D/g, ""); // "TEAM1" -> "1"
+  
+  // 2. Vergleich (Wenn beide "1" sind, ist es mein Team)
+  const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
 
-                    return (
-                        <div key={i} className={`chat-msg-wrapper ${isMe ? 'is-me' : 'is-them'}`}>
-                            {!isMe && <span className="chat-sender-name">{chat.senderName}</span>}
-                            <div className={`chat-msg-bubble ${isSameTeam ? 'team-own' : 'team-enemy'}`}>
-                                <p style={{ margin: 0 }}>{chat.message}</p>
-                            </div>
-                        </div>
-                    );
-                })
-              )}
-              <div ref={chatEndRef} />
-            </div>
+  return (
+    <div 
+      key={i} 
+      className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}
+    >
+<div className="chat-sender-label">
+  <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
+    {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
+  </span>
+  
+  <span className="label-divider">•</span>
+  
+  <span className="sender-name">{chat.sender}</span>
+</div>
+      <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
+        <p style={{ margin: 0 }}>{chat.message}</p>
+      </div>
+    </div>
+  );
+})}
+  <div ref={chatEndRef} />
+</div>
 
             <div className="chat-quick-replies-section">
               <div className="quick-replies-grid">
