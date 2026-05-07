@@ -104,7 +104,7 @@ export default function LobbyPage() {
       }
     };
 
-    const interval = setInterval(checkLobbyExists, 3000);
+    const interval = setInterval(checkLobbyExists, 1000);
     return () => clearInterval(interval);
   }, [loaded, isAuthenticated, lobbyId, lobbyClient, userId]);
 

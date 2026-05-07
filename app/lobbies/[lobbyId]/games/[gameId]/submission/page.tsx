@@ -88,7 +88,7 @@ function CameraContent() {
 
   const handleTouchMove = (event: TouchEvent) => {
     if (event.touches.length === 2 && touchStartDist.current !== null) {
-      if (event.cancelable) event.preventDefault(); // Stop browser from zooming UI
+      if (event.cancelable) event.preventDefault();
 
       const currentDist = Math.hypot(
         event.touches[0].clientX - event.touches[1].clientX,
@@ -121,7 +121,6 @@ function CameraContent() {
       };
     }
   }, [videoRef.current, zoomLevel]);
-  // --- End Zoom Functionality ---
 
   useEffect(() => {
     if (claimedOverlayMessage) {
@@ -231,7 +230,7 @@ function CameraContent() {
         if (tileWord && isClaimed) {
           setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed.`);
         }
-      } catch { /* ignore */ }
+      } catch { /* network error */ }
     };
 
     void checkAndRedirect();
@@ -383,7 +382,7 @@ function CameraContent() {
                   transform: `scale(${zoomLevel})`,
                   transition: "transform 0.1s ease-out",
                   cursor: "pointer",
-                  touchAction: "none" // Prevents default browser touch actions
+                  touchAction: "none" 
                 }}
               />
               <div className="camera-actions-frame">
@@ -424,12 +423,22 @@ export default function CameraPage() {
 }
 
 function getSubmissionErrorMessage(error: unknown): string {
-  if (typeof error === "object" && error !== null && "message" in error && typeof (error as any).message === "string") {
-    return (error as any).message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
   }
   return "The submission could not be sent. Please try again.";
 }
 
 function isGameEndedError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "status" in error && (error as any).status === 409;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status: unknown }).status === 409
+  );
 }
