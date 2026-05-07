@@ -53,7 +53,7 @@ export default function MenuPage() {
       try {
         const response = await api.get<GameModeDTO[]>("/gameModes", token);
         setGameModes(response); 
-      } catch (e) {
+      } catch (_e) { // Fixed: Prefixed with underscore to satisfy linter
         setGameModesError("Failed to load game modes.");
       } finally {
         setLoadingGameModes(false);
@@ -88,7 +88,7 @@ export default function MenuPage() {
       const createdLobby = await lobbyClient.createLobby();
       setStoredActiveLobbyId(userId, createdLobby.lobbyId);
       router.push(`/lobbies/${createdLobby.lobbyId}`);
-    } catch (_error) { // Gefixt: Unterstrich hinzugefügt
+    } catch (_error) { 
       setMenuMessage("Unable to create a lobby.");
     } finally {
       setPendingAction(null);
@@ -105,7 +105,7 @@ export default function MenuPage() {
         setStoredActiveLobbyId(userId, joinedLobby.lobbyId);
         router.push(`/lobbies/${joinedLobby.lobbyId}`);
       }
-    } catch (_error) { // Gefixt: Unterstrich hinzugefügt
+    } catch (_error) { 
       setOverlayError("Invalid join code. Please enter a valid code!");
     } finally {
       setPendingAction(null);

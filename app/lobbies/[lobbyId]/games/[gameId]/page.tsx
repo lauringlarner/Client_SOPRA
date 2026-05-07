@@ -84,7 +84,7 @@ export default function GameBoardPage() {
       try {
         const response = await api.get<GameModeDTO[]>("/gameModes", token);
         setGameModes(response);
-      } catch (e) {
+      } catch (_e) {
         setGameModesError("Failed to load game modes.");
       } finally {
         setLoadingGameModes(false);
