@@ -30,8 +30,17 @@ import {
 type GameModeDTO = {
   id: string;
   name: string;
-  rules: string[]; // [Find, Capture, Submission, Win]
+  rules: string[]; 
 };
+
+const QUICK_MESSAGES = [
+  "Good luck!",
+  "Nice find!",
+  "Almost there!",
+  "BINGO!",
+  "GG!",
+  "Check the rules!",
+];
 
 export default function GameBoardPage() {
   const api = useApi();
@@ -50,14 +59,16 @@ export default function GameBoardPage() {
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
   const [showRules, setShowRules] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [shakingTile, setShakingTile] = useState<string | null>(null);
   const [showBingoBanner, setShowBingoBanner] = useState(false);
   const [activeBingoTiles, setActiveBingoTiles] = useState<Set<string>>(new Set());
 
-  // Zusätzliche States für das Rules-Overlay
   const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
   const [loadingGameModes, setLoadingGameModes] = useState(false);
   const [gameModesError, setGameModesError] = useState<string | null>(null);
+
+  const [chatHistory, setChatHistory] = useState<{sender: string, text: string}[]>([]);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]); 
@@ -67,33 +78,33 @@ export default function GameBoardPage() {
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
-  // Timer für den Fortschrittsbalken
+  // Timer Tick
   useEffect(() => {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Rules Fetching Logik wie im MenuPage
-  useEffect(() => {
-    if (!showRules) return;
+  // Rules Logik: Erst laden, dann zeigen (verhindert Layout-Zucken)
+  const handleOpenRules = async () => {
+    if (gameModes.length > 0) {
+      setShowRules(true);
+      return;
+    }
+    setLoadingGameModes(true);
+    setGameModesError(null);
+    try {
+      const response = await api.get<GameModeDTO[]>("/gameModes", token);
+      setGameModes(response);
+      setShowRules(true);
+    } catch (_e) {
+      setGameModesError("Failed to load game modes.");
+      setShowRules(true);
+    } finally {
+      setLoadingGameModes(false);
+    }
+  };
 
-    const fetchGameModes = async () => {
-      setLoadingGameModes(true);
-      setGameModesError(null);
-
-      try {
-        const response = await api.get<GameModeDTO[]>("/gameModes", token);
-        setGameModes(response);
-      } catch (_e) {
-        setGameModesError("Failed to load game modes.");
-      } finally {
-        setLoadingGameModes(false);
-      }
-    };
-
-    void fetchGameModes();
-  }, [showRules, api, token]);
-
+  // Timer Berechnung
   const remainingSeconds = useMemo(() => {
     if (!game || game.status === "ENDED") return 0;
     const totalSeconds = game.gameDuration * 60;
@@ -107,7 +118,7 @@ export default function GameBoardPage() {
     return `${Math.max(0, Math.min(100, (remainingSeconds / (game.gameDuration * 60)) * 100))}%`;
   }, [game, remainingSeconds]);
 
-  // Auth Session & Lobby Tracking
+  // Auth Session
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) {
@@ -117,7 +128,7 @@ export default function GameBoardPage() {
     setStoredActiveLobbyId(userId, lobbyId);
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
-  // Team Zuordnung
+  // Team Logik
   useEffect(() => {
     if (!loaded || !isAuthenticated || userId.trim() === "") return;
     let cancelled = false;
@@ -139,7 +150,7 @@ export default function GameBoardPage() {
     return () => { cancelled = true; };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
-  // Live Updates via Pusher
+  // Game Updates
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
     let cancelled = false;
@@ -174,7 +185,7 @@ export default function GameBoardPage() {
     return () => { cancelled = true; unsubscribe(); };
   }, [loaded, isAuthenticated, gameClient, gameId]);
 
-  // Bingo Detektion & Animationen
+  // Bingo & Submission Feedback
   useEffect(() => {
     if (!game || !myTeamName) return;
 
@@ -245,6 +256,10 @@ export default function GameBoardPage() {
     router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
   }, [game?.status, gameId, lobbyId, router]);
 
+  const sendQuickMessage = (msg: string) => {
+    setChatHistory(prev => [...prev, { sender: "Me", text: msg }]);
+  };
+
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
   const teamScores: TeamScoreViewModel[] = game && myTeamName
@@ -262,7 +277,21 @@ export default function GameBoardPage() {
 
       <main className="phone-frame screen-gradient bingo-frame-layout">
         {game && myTeamName && (
-          <button type="button" className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+          <div className="top-actions-bar">
+            <button 
+              type="button" 
+              className="menu-rules-trigger" 
+              onClick={handleOpenRules}
+              disabled={loadingGameModes}
+            >
+              {loadingGameModes ? "..." : "i"}
+            </button>
+            <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          </div>
         )}
 
         {(!game || !myTeamName) && (
@@ -274,7 +303,7 @@ export default function GameBoardPage() {
 
         {game && myTeamName && (
           <>
-            <section className="bingo-team-points-container">
+            <section className="bingo-team-points-container bingo-top-spacing">
               {teamScores.map((score) => (
                 <div key={score.label} className={`bingo-team-points-card ${getPerspectiveCardClass(score.perspective)}`}>
                   <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
@@ -294,10 +323,7 @@ export default function GameBoardPage() {
                       ? "is-warning-pulse"
                       : ""
                   }`}
-                  style={{ 
-                    width: progressWidth, 
-                    transition: "width 1s linear"
-                  }} 
+                  style={{ width: progressWidth, transition: "width 1s linear" }} 
                 />
               </div>
             </div>
@@ -331,9 +357,7 @@ export default function GameBoardPage() {
                               <path d="M20 6L9 17l-5-5" />
                             </svg>
                           ) : (
-                            <span className="tile-text">
-                              {tile.word}
-                            </span>
+                            <span className="tile-text">{tile.word}</span>
                           )}
                         </button>
                       );
@@ -348,75 +372,119 @@ export default function GameBoardPage() {
       </main>
 
       {/* RULES OVERLAY */}
-      {showRules && (
-        <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
-          <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-            <div className="rules-content">
-              <h2 className="overlay-title">Game Rules</h2>
-              
-              <div className="rules-section">
-                <div className="rules-scroll-container">
-                  {loadingGameModes && <p>Loading...</p>}
-                  {gameModesError && (
-                    <p className="overlay-error-bubble">{gameModesError}</p>
-                  )}
-
-                  <div className="rules-horizontal-list">
-                    {gameModes.map((mode) => (
-                      <div key={mode.id} className="rules-card">
-                        <h3 className="rules-subtitle">{mode.name}</h3>
-                        <ul className="rules-bullet-list">
-                          {mode.rules.map((rule, i) => (
-                            <li key={i}>
-                              <strong>{["Find", "Capture", "Submission", "Win"][i]}:</strong> {rule}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+{showRules && (
+  <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
+    <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+      <div className="rules-content">
+        <h2 className="overlay-title">Game Rules</h2>
+        
+        <div className="rules-section">
+          <div className="rules-scroll-container">
+            {gameModesError ? (
+              <p className="overlay-error-bubble">{gameModesError}</p>
+            ) : (
+              <div className="rules-horizontal-list">
+                {gameModes.map((mode) => (
+                  <div key={mode.id} className="rules-card">
+                    <h3 className="rules-subtitle">{mode.name}</h3>
+                    <ul className="rules-bullet-list">
+                      {mode.rules.map((rule, i) => (
+                        <li key={i}>
+                          <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
+                ))}
               </div>
+            )}
+          </div>
+        </div>
 
-              <div className="rules-section">
-                <h3 className="rules-subtitle">Tile Examples</h3>
-                <div className="rules-tile-grid">
-                  <div className="rules-tile-item">
-                    <button type="button" className="bingo-field-button">
-                      <span className="tile-text">Tree</span>
-                    </button>
-                    <span>Unclaimed</span>
-                  </div>
-
-                  <div className="rules-tile-item">
-                    <button type="button" className="bingo-field-button is-processing-friendly is-analyzing" disabled>
-                      <div className="loader is-friendly"></div>
-                    </button>
-                    <span>In Validation</span>
-                  </div>
-
-                  <div className="rules-tile-item">
-                    <button type="button" className="bingo-field-button is-claimed is-claimed-friendly" disabled>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </button>
-                    <span>Claimed Team 1</span>
-                  </div>
-
-                  <div className="rules-tile-item">
-                    <button type="button" className="bingo-field-button is-claimed is-claimed-enemy" disabled>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </button>
-                    <span>Claimed Team 2</span>
-                  </div>
-                </div>
+        <div className="rules-section">
+          <h3 className="rules-subtitle">Tile Examples</h3>
+          <div className="rules-tile-grid">
+            {/* 1. Unclaimed */}
+            <div className="rules-tile-item">
+              <div className="bingo-field-button" style={{ pointerEvents: 'none' }}>
+                <span className="tile-text">Tree</span>
               </div>
-              
-              <div className="overlay-actions overlay-actions-single">
-                <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>Got it!</button>
+              <span>Unclaimed</span>
+            </div>
+
+            {/* 2. In Validation */}
+            <div className="rules-tile-item">
+              <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}>
+                <div className="loader is-friendly"></div>
+              </div>
+              <span>In Validation</span>
+            </div>
+
+            {/* 3. Claimed Team 1 (Neu) */}
+            <div className="rules-tile-item">
+              <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+              <span>Claimed Team 1</span>
+            </div>
+
+            {/* 4. Claimed Team 2 (Neu) */}
+            <div className="rules-tile-item">
+              <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+              <span>Claimed Team 2</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="overlay-actions overlay-actions-single">
+          <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>
+            Got it!
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* CHAT OVERLAY */}
+      {showChat && (
+        <div className="overlay-backdrop" onClick={() => setShowChat(false)}>
+          <div className="overlay-card chat-overlay-card" onClick={(e) => e.stopPropagation()}>
+            <div className="chat-header">
+              <h2 className="overlay-title">Team Chat</h2>
+              <button className="close-chat-btn" onClick={() => setShowChat(false)}>&times;</button>
+            </div>
+
+            <div className="chat-messages-log">
+              {chatHistory.length === 0 ? (
+                <p className="chat-empty-state">Send a message to your team!</p>
+              ) : (
+                chatHistory.map((chat, i) => (
+                  <div key={i} className={`chat-msg-bubble ${chat.sender === "Me" ? 'is-me' : 'is-them'}`}>
+                    <p style={{ margin: 0 }}>{chat.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="chat-quick-replies-section">
+              <h3 className="rules-subtitle" style={{ fontSize: '0.9rem', marginBottom: 8 }}>Quick Messages</h3>
+              <div className="quick-replies-grid">
+                {QUICK_MESSAGES.map((msg) => (
+                  <button 
+                    key={msg} 
+                    className="btn-quick-chat"
+                    onClick={() => sendQuickMessage(msg)}
+                  >
+                    {msg}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -402,42 +402,6 @@ textarea {
   font-size: 1.1rem;
 }
 
-.menu-rules-trigger {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 2px solid var(--vq-text-dark);
-  background: transparent;
-  color: var(--vq-text-dark);
-  font-weight: bold;
-  font-size: larger;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.menu-rules-trigger:hover {
-  background: var(--vq-text-dark);
-  color: white; /* Or whatever your "light" color is */
-  transform: scale(1.05);
-  transition: all 0.2s ease;
-}
-
-/* 2. Press state (Mobile & Mouse Click) */
-.menu-rules-trigger:active {
-  transform: scale(0.95);
-  background: var(--vq-text-dark); /* Ensures it stays filled when pressed */
-  opacity: 0.8;
-}
-
-/* 3. Focus state (Accessibility) */
-.menu-rules-trigger:focus-visible {
-  outline: 3px solid skyblue;
-  outline-offset: 2px;
-}
 
 
 
@@ -2402,3 +2366,173 @@ a[href^="sms"] {
   height: 6px;
 }
 
+/*CHAT--------------------------------*/
+/* --- 1. Navigation & Top Bar --- */
+
+.top-actions-bar {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  right: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none; /* Erlaubt Klicks auf das Spielfeld zwischen den Icons */
+}
+
+/* Gemeinsame Basis für Rules- und Chat-Icon (Basierend auf deinem Rules-Style) */
+.menu-rules-trigger,
+.chat-trigger-btn {
+  pointer-events: auto; /* Buttons wieder klickbar machen */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid var(--vq-text-dark);
+  background: transparent;
+  color: var(--vq-text-dark);
+  font-weight: bold;
+  font-size: larger;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+/* Hover-Zustand für beide */
+.menu-rules-trigger:hover,
+.chat-trigger-btn:hover {
+  background: var(--vq-text-dark);
+  color: white; 
+  transform: scale(1.05);
+}
+
+/* Klick-Zustand für beide */
+.menu-rules-trigger:active,
+.chat-trigger-btn:active {
+  transform: scale(0.95);
+  background: var(--vq-text-dark);
+  opacity: 0.8;
+}
+
+/* Fokus-Zustand für Barrierefreiheit */
+.menu-rules-trigger:focus-visible,
+.chat-trigger-btn:focus-visible {
+  outline: 3px solid skyblue;
+  outline-offset: 2px;
+}
+
+/* Spezifisches Styling für das Chat-SVG-Icon */
+.chat-trigger-btn svg {
+  width: 26px;
+  height: 26px;
+  stroke: currentColor; /* Übernimmt die Textfarbe (vq-text-dark oder weiß bei Hover) */
+}
+
+/* --- 2. Chat Overlay & Layout --- */
+
+.chat-overlay-card {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.chat-header .overlay-title {
+  margin: 0;
+}
+
+.close-chat-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* --- 3. Nachrichten & Bubbles --- */
+
+.chat-messages-log {
+  flex: 1;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 15px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-empty-state {
+  text-align: center;
+  opacity: 0.5;
+  font-size: 0.9rem;
+  margin-top: 30px;
+}
+
+.chat-msg-bubble {
+  color: black;
+  padding: 8px 14px;
+  border-radius: 15px;
+  max-width: 85%;
+  font-size: 0.95rem;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.chat-msg-bubble.is-me {
+  background: #95D6A2;
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-msg-bubble.is-them {
+  background: white;
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+}
+
+/* --- 4. Quick Replies (Buttons unten) --- */
+
+.chat-quick-replies-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 12px;
+}
+
+.quick-replies-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-quick-chat {
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-quick-chat:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-quick-chat:active {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0.98);
+}
+
+/*-------------------------------------------*/
