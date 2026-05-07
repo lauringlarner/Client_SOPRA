@@ -92,11 +92,11 @@ export default function UserProfilePage() {
 
         <section className="user-profile-card">
           <div className="info-group">
-            <label className="info-label">Username</label>
+            <label className="info-label">Username:</label>
             <div className="info-value">{userData.username}</div>
           </div>
           <div className="info-group">
-            <label className="info-label">Status</label>
+            <label className="info-label">Status:</label>
             <div className="info-value status-text">
               {userData.status.toLowerCase()}
             </div>
@@ -136,11 +136,11 @@ export default function UserProfilePage() {
             <div className="edit-form-stack">
               <div className="info-group">
                 <label className="info-label" htmlFor="oldPassword">Current Password</label>
-                <input id="oldPassword" name="oldPassword" type="password" className="edit-input-field" placeholder="••••••••" required disabled={isSubmitting || !!success} />
+                <input id="oldPassword" name="oldPassword" type="password" className="edit-input-field" placeholder="Enter current password" required disabled={isSubmitting || !!success} />
               </div>
               <div className="info-group">
                 <label className="info-label" htmlFor="newPassword">New Password</label>
-                <input id="newPassword" name="newPassword" type="password" className="edit-input-field" placeholder="••••••••" required disabled={isSubmitting || !!success} />
+                <input id="newPassword" name="newPassword" type="password" className="edit-input-field" placeholder="Enter new password" required disabled={isSubmitting || !!success} />
               </div>
             </div>
             <div className="overlay-actions">
