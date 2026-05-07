@@ -32,7 +32,7 @@ interface ChatMessageGetDTO {
   message: string;
   sender: string;     
   sentAt: string;     
-  teamType: string;   
+  teamType: string;
 }
 
 type GameModeDTO = {
@@ -42,10 +42,18 @@ type GameModeDTO = {
 };
 
 const QUICK_MESSAGES = [
-  "Good luck! 🍀", "Too slow! 💨", "Nice find! 🔥", "Pure skill. 😎",
-  "Almost there! 🤏", "Getting nervous? 👀", "BINGO! 🎉", "GGEZ 🥱",
-  "Teamwork! 🙌", "Dream on... 😴", "Respect! 🤝", "Is that all? 😏",
-  "Wait for me! 🏃‍♂️", "Calculated. 🧠", "Wow! 😮"
+  "Too slow on the shutter! 🐢📸",
+  "Mine now! 🚩",
+  "Focus, please! 📸🥴",
+  "Bingo? Denied. 🙅‍♂️",
+  "Nice blurry pic! 🏃💨",
+  "Blocked! 🛑",
+  "I saw that first! 👀",
+  "Run faster! 🏃‍♀️🔥",
+  "Touch grass! 🌿",
+  "Calculated steal 🧮",
+  "Was that a smudge? 🌫️",
+  "Respect! 🤝"
 ];
 
 export default function GameBoardPage() {
@@ -72,13 +80,13 @@ export default function GameBoardPage() {
   const [loadingGameModes, setLoadingGameModes] = useState(false);
   const [gameModesError, setGameModesError] = useState<string | null>(null);
 
-  // --- Chat & Notification States ---
+  // --- Chat States ---
   const [chatHistory, setChatHistory] = useState<ChatMessageGetDTO[]>([]);
   const [isSendingChat, setIsSendingChat] = useState(false);
-  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
-  const lastReadCountRef = useRef(0);
+  
+  // --- Refs ---
   const chatEndRef = useRef<HTMLDivElement>(null);
-
+  const hasAutoScrolledOnOpen = useRef(false);
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]); 
   const isFirstLoad = useRef(true); 
@@ -87,43 +95,56 @@ export default function GameBoardPage() {
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
-  // --- Chat Logic ---
+  // --- 1. Background Scroll Lock ---
+  useEffect(() => {
+    const shouldLock = showRules || showChat || showBingoBanner;
+    if (shouldLock) {
+      document.body.classList.add("no-scroll");
+    } else {
+      document.body.classList.remove("no-scroll");
+    }
+    return () => document.body.classList.remove("no-scroll");
+  }, [showRules, showChat, showBingoBanner]);
+
+  // --- 2. Redirect Logic (Updated) ---
+  useEffect(() => {
+    if (game?.status === "ENDED" && lobbyId && gameId) {
+      clearLastSubmissionWord();
+      // Use a slight delay to ensure final state updates settle
+      const timer = setTimeout(() => {
+        router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [game?.status, gameId, lobbyId, router]);
+
+  // --- 3. Chat Logic & Smart Scrolling ---
   const fetchChat = async () => {
     if (!token || !gameId) return;
     try {
       const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
       setChatHistory(messages);
-
-      if (!showChat && messages.length > lastReadCountRef.current) {
-        setHasUnreadMessages(true);
-      }
     } catch (err) {
       console.error("Chat fetch failed", err);
     }
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!showChat || !isAuthenticated) {
+      hasAutoScrolledOnOpen.current = false;
+      return;
+    }
     fetchChat();
     const interval = setInterval(fetchChat, 3000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, gameId, showChat]);
+  }, [showChat, isAuthenticated, gameId]);
 
   useEffect(() => {
-    if (showChat) {
-      setHasUnreadMessages(false);
-      lastReadCountRef.current = chatHistory.length;
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+    if (showChat && !hasAutoScrolledOnOpen.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: "instant" });
+      hasAutoScrolledOnOpen.current = true;
     }
-  }, [showChat]);
-
-  useEffect(() => {
-    if (showChat) {
-      lastReadCountRef.current = chatHistory.length;
-    }
-  }, [chatHistory, showChat]);
+  }, [showChat, chatHistory]);
 
   const sendQuickMessage = async (msg: string) => {
     if (isSendingChat || !token) return;
@@ -131,11 +152,9 @@ export default function GameBoardPage() {
     try {
       await api.post(`/games/${gameId}/chat`, { message: msg }, token);
       await fetchChat();
-      
-      // FIX: Hier wird nach dem Senden aktiv nach unten gescrollt
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+      }, 50);
     } catch (err) {
       console.error("Chat send failed", err);
     } finally {
@@ -155,7 +174,6 @@ export default function GameBoardPage() {
       return;
     }
     setLoadingGameModes(true);
-    setGameModesError(null);
     try {
       const response = await api.get<GameModeDTO[]>("/gameModes", token);
       setGameModes(response);
@@ -298,12 +316,6 @@ export default function GameBoardPage() {
     previousStatuses.current = nextStatuses;
   }, [game, myTeamName]);
 
-  useEffect(() => {
-    if (game?.status !== "ENDED") return;
-    clearLastSubmissionWord();
-    router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
-  }, [game?.status, gameId, lobbyId, router]);
-
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
   const teamScores: TeamScoreViewModel[] = game && myTeamName
@@ -322,21 +334,21 @@ export default function GameBoardPage() {
       <main className="phone-frame screen-gradient bingo-frame-layout">
         {game && myTeamName && (
           <div className="top-actions-bar">
-            <button 
-              type="button" 
-              className="menu-rules-trigger" 
-              onClick={handleOpenRules}
-              disabled={loadingGameModes}
-            >
-              {loadingGameModes ? "..." : "i"}
-            </button>
-            
-            <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              {hasUnreadMessages && <span className="chat-notification-badge" />}
-            </button>
+            <div className="rules-trigger-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <button 
+                type="button" 
+                className="menu-rules-trigger" 
+                onClick={handleOpenRules}
+                disabled={loadingGameModes}
+              >
+                {loadingGameModes ? "..." : "i"}
+              </button>
+              <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
@@ -475,27 +487,27 @@ export default function GameBoardPage() {
             </div>
 
             <div className="chat-messages-log">
-              {chatHistory.map((chat, i) => {
-                const chatTeamClean = chat.teamType.replace(/\D/g, "");
-                const myTeamClean = (myTeamName || "").replace(/\D/g, "");
-                const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
+                {chatHistory.map((chat, i) => {
+                    const chatTeamClean = chat.teamType.replace(/\D/g, "");
+                    const myTeamClean = (myTeamName || "").replace(/\D/g, "");
+                    const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
 
-                return (
-                  <div key={i} className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}>
-                    <div className="chat-sender-label">
-                      <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
-                        {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
-                      </span>
-                      <span className="label-divider">•</span>
-                      <span className="sender-name">{chat.sender}</span>
-                    </div>
-                    <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
-                      <p style={{ margin: 0 }}>{chat.message}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={chatEndRef} />
+                    return (
+                        <div key={i} className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}>
+                            <div className="chat-sender-label">
+                                <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
+                                    {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
+                                </span>
+                                <span className="label-divider">•</span>
+                                <span className="sender-name">{chat.sender}</span>
+                            </div>
+                            <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
+                                <p style={{ margin: 0 }}>{chat.message}</p>
+                            </div>
+                        </div>
+                    );
+                })}
+                <div ref={chatEndRef} />
             </div>
 
             <div className="chat-quick-replies-section">

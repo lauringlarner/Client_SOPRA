@@ -626,6 +626,26 @@ textarea {
 }
 
 
+.menu-trigger{
+  pointer-events: auto; /* Buttons wieder klickbar machen */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid var(--vq-text-dark);
+  background: transparent;
+  color: var(--vq-text-dark);
+  font-weight: bold;
+  font-size: larger;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.rules-trigger-container{
+display: flex;
+justify-content: space-between;
+}
+
 .btn-rules-confirm {
   width: 100%;
   background: var(--vq-charcoal);
@@ -2398,37 +2418,6 @@ a[href^="sms"] {
   cursor: pointer;
   padding: 0;
   transition: all 0.2s ease;
-}
-
-.chat-notification-badge {
-  position: absolute;
-  top: 0px;
-  right: 0px;
-  background-color: #ff3b30; /* Kräftiges Rot */
-  color: white;
-  font-size: 10px;
-  font-weight: 800;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  border: 2px solid #fff; /* Hebt sich vom Button ab */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  z-index: 10;
-  pointer-events: none; /* Klicks gehen durch auf den Button */
-}
-
-.chat-notification-badge {
-  animation: pulse-red 2s infinite;
-}
-
-@keyframes pulse-red {
-  0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-  70% { box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
 }
 
 /* Hover-Zustand für beide */
