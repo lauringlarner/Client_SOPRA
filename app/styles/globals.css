@@ -2689,3 +2689,19 @@ a[href^="sms"] {
   background-color: rgba(255, 255, 255, 0.5); /* Heller beim Drüberfahren */
 }
 /*-------------------------------------------*/
+
+
+/* This targets the native 'eye' icon in Microsoft Edge and others */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Optional: Removes native icons in some versions of Chrome/Safari 
+   if they try to overlap your custom button */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}
