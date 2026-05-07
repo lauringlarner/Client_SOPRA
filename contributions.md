@@ -137,6 +137,8 @@ reason).
 
 ---
 
-## Contributions Week 6 - [Begin Date] to [End Date]
-
+## Contributions Week 6 - [04.05.2026] to [10.05.2026]
+| **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
+| ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
+|**[@AleMarti0]** |[06.05.2026] and [07.05.2026]| [https://github.com/lauringlarner/Client_SOPRA/commit/b08d1bf1ea2fb357b3b0db278bad5b258fd29341] [https://github.com/lauringlarner/Client_SOPRA/commit/9c0f1f56a0dc449fe1a894a76fbac920b3335c89] [https://github.com/lauringlarner/Client_SOPRA/commit/f68719095018bba2c43a90ad532521713cc50156] [https://github.com/lauringlarner/Client_SOPRA/commit/edd0ca919a6f6f278275a0241c5f0a9539271842] [https://github.com/lauringlarner/Client_SOPRA/commit/2451fc5da10c2ec7688145640e491a27fbc6ca43] [https://github.com/lauringlarner/Client_SOPRA/commit/cea99accea383f700aeba9c8d1cf7d67e9c9bd46] [https://github.com/lauringlarner/Client_SOPRA/commit/10fd7a83a7c866a94fc1d868767e288530e8e795] [https://github.com/lauringlarner/Client_SOPRA/commit/e0837e78d7239d97d9d8eca5c939eaa41799c5a7]| [Refined the user interface and camera experience by implementing a proportional pinch-to-zoom system, adding confirmation overlays for lobby actions, and fixing overlapping UI elements. We also modernized the profile layout, transitioned the game rules to a backend-driven system, and improved word formatting on tiles to prevent awkward text splitting.]|[This update directly resolves critical pain points identified during beta testing, such as accidental lobby exits and "clunky" camera controls. By hardening the camera's capture logic and improving UI feedback, we've created a more stable, professional, and intuitive mobile experience that adapts to the user's needs.]|
 _Continue with the same table format as above._
