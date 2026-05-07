@@ -68,7 +68,28 @@ export default function GameBoardPage() {
   const [loadingGameModes, setLoadingGameModes] = useState(false);
   const [gameModesError, setGameModesError] = useState<string | null>(null);
 
-  const [chatHistory, setChatHistory] = useState<{sender: string, text: string}[]>([]);
+  // --- Chat Persistence ---
+  const [chatHistory, setChatHistory] = useState<{sender: string, text: string}[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`chat_${gameId}`);
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (gameId) {
+      localStorage.setItem(`chat_${gameId}`, JSON.stringify(chatHistory));
+    }
+  }, [chatHistory, gameId]);
+
+  useEffect(() => {
+    if (showChat) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [showChat, chatHistory]);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]); 
@@ -78,13 +99,11 @@ export default function GameBoardPage() {
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
-  // Timer Tick
   useEffect(() => {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Rules Logik: Erst laden, dann zeigen (verhindert Layout-Zucken)
   const handleOpenRules = async () => {
     if (gameModes.length > 0) {
       setShowRules(true);
@@ -104,7 +123,6 @@ export default function GameBoardPage() {
     }
   };
 
-  // Timer Berechnung
   const remainingSeconds = useMemo(() => {
     if (!game || game.status === "ENDED") return 0;
     const totalSeconds = game.gameDuration * 60;
@@ -118,7 +136,6 @@ export default function GameBoardPage() {
     return `${Math.max(0, Math.min(100, (remainingSeconds / (game.gameDuration * 60)) * 100))}%`;
   }, [game, remainingSeconds]);
 
-  // Auth Session
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) {
@@ -128,7 +145,6 @@ export default function GameBoardPage() {
     setStoredActiveLobbyId(userId, lobbyId);
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
-  // Team Logik
   useEffect(() => {
     if (!loaded || !isAuthenticated || userId.trim() === "") return;
     let cancelled = false;
@@ -150,7 +166,6 @@ export default function GameBoardPage() {
     return () => { cancelled = true; };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
-  // Game Updates
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
     let cancelled = false;
@@ -185,7 +200,6 @@ export default function GameBoardPage() {
     return () => { cancelled = true; unsubscribe(); };
   }, [loaded, isAuthenticated, gameClient, gameId]);
 
-  // Bingo & Submission Feedback
   useEffect(() => {
     if (!game || !myTeamName) return;
 
@@ -253,6 +267,7 @@ export default function GameBoardPage() {
   useEffect(() => {
     if (game?.status !== "ENDED") return;
     clearLastSubmissionWord();
+    // localStorage.removeItem(`chat_${gameId}`); // Optional: Chat beim Beenden löschen
     router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
   }, [game?.status, gameId, lobbyId, router]);
 
@@ -292,13 +307,6 @@ export default function GameBoardPage() {
               </svg>
             </button>
           </div>
-        )}
-
-        {(!game || !myTeamName) && (
-          <section className="lobby-card lobby-loading-card">
-            <h2 className="lobby-section-title">{connectionState === "error" ? "Unavailable" : "Connecting..."}</h2>
-            <p className="lobby-muted-note">{pageMessage ?? "Waiting for game state..."}</p>
-          </section>
         )}
 
         {game && myTeamName && (
@@ -366,91 +374,81 @@ export default function GameBoardPage() {
                 ))}
               </div>
             </section>
-            {submissionNotice && <p className="bingo-submission-note">{submissionNotice}</p>}
           </>
         )}
       </main>
 
       {/* RULES OVERLAY */}
-{showRules && (
-  <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
-    <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-      <div className="rules-content">
-        <h2 className="overlay-title">Game Rules</h2>
-        
-        <div className="rules-section">
-          <div className="rules-scroll-container">
-            {gameModesError ? (
-              <p className="overlay-error-bubble">{gameModesError}</p>
-            ) : (
-              <div className="rules-horizontal-list">
-                {gameModes.map((mode) => (
-                  <div key={mode.id} className="rules-card">
-                    <h3 className="rules-subtitle">{mode.name}</h3>
-                    <ul className="rules-bullet-list">
-                      {mode.rules.map((rule, i) => (
-                        <li key={i}>
-                          <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
-                        </li>
+      {showRules && (
+        <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
+          <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rules-content">
+              <h2 className="overlay-title">Game Rules</h2>
+              
+              <div className="rules-section">
+                <div className="rules-scroll-container">
+                  {gameModesError ? (
+                    <p className="overlay-error-bubble">{gameModesError}</p>
+                  ) : (
+                    <div className="rules-horizontal-list">
+                      {gameModes.map((mode) => (
+                        <div key={mode.id} className="rules-card">
+                          <h3 className="rules-subtitle">{mode.name}</h3>
+                          <ul className="rules-bullet-list">
+                            {mode.rules.map((rule, i) => (
+                              <li key={i}>
+                                <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="rules-section">
+                <h3 className="rules-subtitle">Tile Examples</h3>
+                <div className="rules-tile-grid">
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}>
+                      <span className="tile-text">Tree</span>
+                    </div>
+                    <span>Unclaimed</span>
                   </div>
-                ))}
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}>
+                      <div className="loader is-friendly"></div>
+                    </div>
+                    <span>In Validation</span>
+                  </div>
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <span>Claimed Team 1</span>
+                  </div>
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <span>Claimed Team 2</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        <div className="rules-section">
-          <h3 className="rules-subtitle">Tile Examples</h3>
-          <div className="rules-tile-grid">
-            {/* 1. Unclaimed */}
-            <div className="rules-tile-item">
-              <div className="bingo-field-button" style={{ pointerEvents: 'none' }}>
-                <span className="tile-text">Tree</span>
+              <div className="overlay-actions overlay-actions-single">
+                <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>Got it!</button>
               </div>
-              <span>Unclaimed</span>
-            </div>
-
-            {/* 2. In Validation */}
-            <div className="rules-tile-item">
-              <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}>
-                <div className="loader is-friendly"></div>
-              </div>
-              <span>In Validation</span>
-            </div>
-
-            {/* 3. Claimed Team 1 (Neu) */}
-            <div className="rules-tile-item">
-              <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-              <span>Claimed Team 1</span>
-            </div>
-
-            {/* 4. Claimed Team 2 (Neu) */}
-            <div className="rules-tile-item">
-              <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </div>
-              <span>Claimed Team 2</span>
             </div>
           </div>
         </div>
-
-        <div className="overlay-actions overlay-actions-single">
-          <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>
-            Got it!
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* CHAT OVERLAY */}
       {showChat && (
@@ -471,19 +469,14 @@ export default function GameBoardPage() {
                   </div>
                 ))
               )}
+              <div ref={chatEndRef} />
             </div>
 
             <div className="chat-quick-replies-section">
               <h3 className="rules-subtitle" style={{ fontSize: '0.9rem', marginBottom: 8 }}>Quick Messages</h3>
               <div className="quick-replies-grid">
                 {QUICK_MESSAGES.map((msg) => (
-                  <button 
-                    key={msg} 
-                    className="btn-quick-chat"
-                    onClick={() => sendQuickMessage(msg)}
-                  >
-                    {msg}
-                  </button>
+                  <button key={msg} className="btn-quick-chat" onClick={() => sendQuickMessage(msg)}>{msg}</button>
                 ))}
               </div>
             </div>
@@ -494,7 +487,7 @@ export default function GameBoardPage() {
   );
 }
 
-// --- Helpers ---
+// --- Helpers (getDetailedBingos, getTileStateClass etc. wie gehabt) ---
 function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
   if (status === "UNCLAIMED") return "";
   const p = getTilePerspective(status, myTeamName);
@@ -529,7 +522,6 @@ function getGameErrorMessage(error: unknown, fallback: string): string {
   if (applicationError?.status === 401) return "Session expired.";
   if (applicationError?.status === 403) return applicationError.message;
   if (applicationError?.status === 404) return "Game not found.";
-  if (shouldExposeLocalErrorDetails() && applicationError?.message) return `${fallback} (${applicationError.message})`;
   return fallback;
 }
 
@@ -538,36 +530,24 @@ function isFatalApplicationError(error: unknown): boolean {
   return applicationError?.status === 401 || applicationError?.status === 403 || applicationError?.status === 404;
 }
 
-function shouldExposeLocalErrorDetails(): boolean {
-  if (typeof globalThis === "undefined" || !globalThis.location) return false;
-  return globalThis.location.hostname === "localhost" || globalThis.location.hostname === "127.0.0.1";
-}
-
 function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   const size = grid.length;
   const results: { id: string; tiles: string[] }[] = [];
   const isF = (t: GameTile) => isClaimedStatus(t.status) && getTilePerspective(t.status, team) === "own";
-
-  grid.forEach((row, r) => {
-    if (row.every(isF)) results.push({ id: `row-${r}`, tiles: row.map((_, c) => `${r}-${c}`) });
-  });
-  
+  grid.forEach((row, r) => { if (row.every(isF)) results.push({ id: `row-${r}`, tiles: row.map((_, c) => `${r}-${c}`) }); });
   for (let c = 0; c < size; c++) {
     let match = true;
     const tiles: string[] = []; 
     for (let r = 0; r < size; r++) { if (!isF(grid[r][c])) match = false; tiles.push(`${r}-${c}`); }
     if (match) results.push({ id: `col-${c}`, tiles });
   }
-
   let d1Match = true;
   const d1Tiles: string[] = [];
   for (let i = 0; i < size; i++) { if (!isF(grid[i][i])) d1Match = false; d1Tiles.push(`${i}-${i}`); }
   if (d1Match) results.push({ id: "diag-1", tiles: d1Tiles });
-
   let d2Match = true;
   const d2Tiles: string[] = [];
   for (let i = 0; i < size; i++) { if (!isF(grid[i][size - 1 - i])) d2Match = false; d2Tiles.push(`${i}-${size - 1 - i}`); }
   if (d2Match) results.push({ id: "diag-2", tiles: d2Tiles });
-  
   return results;
 }
