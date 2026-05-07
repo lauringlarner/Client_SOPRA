@@ -402,42 +402,6 @@ textarea {
   font-size: 1.1rem;
 }
 
-.menu-rules-trigger {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 2px solid var(--vq-text-dark);
-  background: transparent;
-  color: var(--vq-text-dark);
-  font-weight: bold;
-  font-size: larger;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.menu-rules-trigger:hover {
-  background: var(--vq-text-dark);
-  color: white; /* Or whatever your "light" color is */
-  transform: scale(1.05);
-  transition: all 0.2s ease;
-}
-
-/* 2. Press state (Mobile & Mouse Click) */
-.menu-rules-trigger:active {
-  transform: scale(0.95);
-  background: var(--vq-text-dark); /* Ensures it stays filled when pressed */
-  opacity: 0.8;
-}
-
-/* 3. Focus state (Accessibility) */
-.menu-rules-trigger:focus-visible {
-  outline: 3px solid skyblue;
-  outline-offset: 2px;
-}
 
 
 
@@ -661,6 +625,26 @@ textarea {
   height: 28px;
 }
 
+
+.menu-trigger{
+  pointer-events: auto; /* Buttons wieder klickbar machen */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid var(--vq-text-dark);
+  background: transparent;
+  color: var(--vq-text-dark);
+  font-weight: bold;
+  font-size: larger;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.rules-trigger-container{
+display: flex;
+justify-content: space-between;
+}
 
 .btn-rules-confirm {
   width: 100%;
@@ -2402,3 +2386,322 @@ a[href^="sms"] {
   height: 6px;
 }
 
+/*CHAT--------------------------------*/
+/* --- 1. Navigation & Top Bar --- */
+
+.top-actions-bar {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  right: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+  pointer-events: none; /* Erlaubt Klicks auf das Spielfeld zwischen den Icons */
+}
+
+/* Gemeinsame Basis für Rules- und Chat-Icon (Basierend auf deinem Rules-Style) */
+.menu-rules-trigger,
+.chat-trigger-btn {
+  pointer-events: auto; /* Buttons wieder klickbar machen */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid var(--vq-text-dark);
+  background: transparent;
+  color: var(--vq-text-dark);
+  font-weight: bold;
+  font-size: larger;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+/* Hover-Zustand für beide */
+.menu-rules-trigger:hover,
+.chat-trigger-btn:hover {
+  background: var(--vq-text-dark);
+  color: white; 
+  transform: scale(1.05);
+}
+
+/* Klick-Zustand für beide */
+.menu-rules-trigger:active,
+.chat-trigger-btn:active {
+  transform: scale(0.95);
+  background: var(--vq-text-dark);
+  opacity: 0.8;
+}
+
+/* Fokus-Zustand für Barrierefreiheit */
+.menu-rules-trigger:focus-visible,
+.chat-trigger-btn:focus-visible {
+  outline: 3px solid skyblue;
+  outline-offset: 2px;
+}
+
+/* Spezifisches Styling für das Chat-SVG-Icon */
+.chat-trigger-btn svg {
+  width: 26px;
+  height: 26px;
+  stroke: currentColor; /* Übernimmt die Textfarbe (vq-text-dark oder weiß bei Hover) */
+}
+
+/* --- 2. Chat Overlay & Layout --- */
+.chat-overlay-card {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.chat-header .overlay-title {
+  margin: 0;
+}
+
+.close-chat-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* --- 1. Chat Container --- */
+.chat-messages-log {
+  flex: 1;
+  overflow-y: auto;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 15px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column; /* Stacks wrappers vertically */
+  gap: 12px;
+}
+
+
+.chat-empty-state {
+  text-align: center;
+  opacity: 0.5;
+  font-size: 0.9rem;
+  margin-top: 40px;
+  color: white;
+}
+
+/* --- 2. Message Wrappers (Alignment) --- */
+/* --- Message Wrappers (Positionierung) --- */
+.chat-msg-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important; /* Wichtig für die Ausrichtung */
+}
+
+/* Eigene Nachrichten nach LINKS */
+.chat-msg-wrapper.is-friendly-side {
+  align-items: flex-start !important;
+}
+.chat-msg-wrapper.is-friendly-side .chat-msg-bubble {
+  margin-right: auto !important;
+  margin-left: 0 !important;
+}
+
+.chat-msg-bubble {
+  padding: 10px 14px;
+  border-radius: 15px;
+  font-size: 0.95rem;
+  color: #1a1a1a !important; 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  word-wrap: break-word;
+  width: fit-content; /* Bubble passt sich dem Text an */
+}
+
+/* Gegnerische Nachrichten nach RECHTS */
+.chat-msg-wrapper.is-enemy-side {
+  align-items: flex-end !important;
+}
+.chat-msg-wrapper.is-enemy-side .chat-msg-bubble {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  text-align: right;
+}
+
+/* --- Bubbles (Farben) --- */
+.chat-msg-bubble {
+  padding: 10px 14px;
+  border-radius: 15px;
+  max-width: 85%;
+  font-size: 0.95rem;
+  color: #1a1a1a !important; 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Eigene Teamfarbe (Grün) */
+.chat-msg-bubble.chat-color-own {
+  background-color: #95D6A2 !important; 
+  border-bottom-left-radius: 2px;
+}
+
+/* Gegner Teamfarbe (Orange/Gelb aus deinem Code) */
+.chat-msg-bubble.chat-color-enemy {
+  background-color: #FFCB88 !important; 
+  border-bottom-right-radius: 2px;
+}
+
+/* Labels Ausrichtung passend zur Bubble */
+.chat-msg-wrapper.is-enemy-side .chat-sender-label {
+  justify-content: flex-end;
+}
+
+.chat-sender-label {
+  display: flex;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: rgba(0, 0, 0, 0.8);
+  max-width: 100%; /* Verhindert, dass das Label breiter als die Bubble wird */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+
+/* --- 4. Quick Replies --- */
+.chat-quick-replies-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 12px;
+  width: 100%;
+  max-width: 100%; 
+  /* CHANGE: Ensure top overflow is visible for the hover 'jump' */
+  overflow: visible; 
+}
+
+.quick-replies-grid {
+  display: grid !important;
+  grid-template-rows: repeat(3, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 140px; 
+  gap: 10px;
+  
+  overflow-x: auto;
+  /* CHANGE: Allow the vertical 'jump' to be visible */
+  overflow-y: visible; 
+  
+  /* CRITICAL: Add top/bottom padding so the buttons have space to move 
+     without hitting the edge of the scroll container */
+  padding: 8px 0 15px 0; 
+  
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Chrome/Safari Scrollbar */
+.quick-replies-grid::-webkit-scrollbar {
+  height: 4px;
+}
+.quick-replies-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+
+/* --- Button Styling & Animation --- */
+.btn-quick-chat {
+  scroll-snap-align: start;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--vq-charcoal);
+  background: var(--vq-charcoal);
+  color: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  /* Animation beim Hover/Klick */
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.btn-quick-chat:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px); /* Kleiner Sprung nach oben */
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-quick-chat:active {
+  transform: scale(0.95); /* "Eindrücken" beim Klicken */
+  background: rgba(255, 255, 255, 0.3);
+}
+
+
+
+.chat-messages-log {
+  flex: 1;
+  overflow-y: auto;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 15px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  /* --- Scrollbar Styling --- */
+  
+  /* Firefox: Breite auf "thin" setzen */
+  scrollbar-width: thin;
+  /* Scrollbar-Farbe: [Griff] [Hintergrund] */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Chrome, Edge und Safari */
+.chat-messages-log::-webkit-scrollbar {
+  width: 6px; /* Hier kannst du die Dicke einstellen (z.B. 4px oder 6px) */
+}
+
+.chat-messages-log::-webkit-scrollbar-track {
+  background: transparent; /* Hintergrund der Scrollbar-Spur */
+}
+
+.chat-messages-log::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3); /* Farbe des Griffs */
+  border-radius: 20px; /* Abgerundete Ecken für den Griff */
+  border: 1px solid transparent; /* Optional: kleiner Abstand */
+}
+
+.chat-messages-log::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5); /* Heller beim Drüberfahren */
+}
+/*-------------------------------------------*/
+
+
+/* This targets the native 'eye' icon in Microsoft Edge and others */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Optional: Removes native icons in some versions of Chrome/Safari 
+   if they try to overlap your custom button */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}

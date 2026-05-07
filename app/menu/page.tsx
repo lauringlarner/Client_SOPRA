@@ -161,11 +161,14 @@ export default function MenuPage() {
 
         <div className="menu-layout">
           <section className="menu-panel">
-            <button type="button" className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
-            <button type="button" className="menu-profile" onClick={() => router.push(`/users/${userId}`)}>
+            <div className="rules-trigger-container">
+              <button type="button" className="menu-profile" onClick={() => router.push(`/users/${userId}`)}>
               <span className="menu-avatar">{avatarInitial}</span>
               <span className="menu-username">{username || "User"}</span>
             </button>
+            <button type="button" className="menu-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
+
+            </div>
             <div className="menu-main-actions">
               <button type="button" className="vq-button menu-main-btn" onClick={() => void handleCreateLobby()} disabled={pendingAction !== null}>
                 {pendingAction === "create" ? "Creating..." : "Create Lobby"}
