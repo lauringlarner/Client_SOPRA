@@ -2471,6 +2471,7 @@ a[href^="sms"] {
   gap: 12px;
 }
 
+
 .chat-empty-state {
   text-align: center;
   opacity: 0.5;
@@ -2549,7 +2550,7 @@ a[href^="sms"] {
   font-size: 0.72rem;
   font-weight: 600;
   margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(0, 0, 0, 0.8);
   max-width: 100%; /* Verhindert, dass das Label breiter als die Bubble wird */
   overflow: hidden;
   white-space: nowrap;
@@ -2561,31 +2562,109 @@ a[href^="sms"] {
 .chat-quick-replies-section {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 12px;
+  width: 100%;
+  overflow: hidden;
 }
 
 .quick-replies-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: grid !important;
+  /* Erzeugt zwei feste Reihen gleicher Höhe */
+  grid-template-rows: repeat(2, 1fr);
+  /* Erlaubt dem Grid, Spalten automatisch nach rechts zu erweitern */
+  grid-auto-flow: column;
+  grid-auto-columns: calc(50% - 10px); /* Zeigt ca. 2 Buttons breit an */
   gap: 10px;
+  
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 12px;
+  
+  /* Sanftes Scrollen auf Mobilgeräten */
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+
+  /* Scrollbar Styling */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
-.btn-quick-chat {
-  padding: 12px 8px;
+/* Chrome/Safari Scrollbar */
+.quick-replies-grid::-webkit-scrollbar {
+  height: 4px;
+}
+.quick-replies-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* --- Button Styling & Animation --- */
+.btn-quick-chat {
+  scroll-snap-align: start;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--vq-charcoal);
   background: var(--vq-charcoal);
   color: white;
   cursor: pointer;
   font-size: 0.85rem;
-  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  /* Animation beim Hover/Klick */
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .btn-quick-chat:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px); /* Kleiner Sprung nach oben */
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .btn-quick-chat:active {
-  background: rgba(255, 255, 255, 0.25);
-  transform: scale(0.98);
+  transform: scale(0.95); /* "Eindrücken" beim Klicken */
+  background: rgba(255, 255, 255, 0.3);
+}
+
+
+
+.chat-messages-log {
+  flex: 1;
+  overflow-y: auto;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 15px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  /* --- Scrollbar Styling --- */
+  
+  /* Firefox: Breite auf "thin" setzen */
+  scrollbar-width: thin;
+  /* Scrollbar-Farbe: [Griff] [Hintergrund] */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Chrome, Edge und Safari */
+.chat-messages-log::-webkit-scrollbar {
+  width: 6px; /* Hier kannst du die Dicke einstellen (z.B. 4px oder 6px) */
+}
+
+.chat-messages-log::-webkit-scrollbar-track {
+  background: transparent; /* Hintergrund der Scrollbar-Spur */
+}
+
+.chat-messages-log::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3); /* Farbe des Griffs */
+  border-radius: 20px; /* Abgerundete Ecken für den Griff */
+  border: 1px solid transparent; /* Optional: kleiner Abstand */
+}
+
+.chat-messages-log::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5); /* Heller beim Drüberfahren */
 }
 /*-------------------------------------------*/
