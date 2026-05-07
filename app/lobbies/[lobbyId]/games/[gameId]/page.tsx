@@ -42,12 +42,18 @@ type GameModeDTO = {
 };
 
 const QUICK_MESSAGES = [
-  "Good luck!",
-  "Nice find!",
-  "Almost there!",
-  "BINGO!",
-  "GG!",
-  "Check the rules!",
+  "Good luck! 🍀",
+  "Too slow! 💨",
+  "Nice find! 🔥",
+  "Pure skill. 😎",
+  "Almost there! 🤏",
+  "Getting nervous? 👀",
+  "BINGO! 🎉",
+  "GGEZ 🥱",
+  "Teamwork! 🙌",
+  "Dream on... 😴",
+  "Respect! 🤝",
+  "Is that all? 😏"
 ];
 
 export default function GameBoardPage() {
