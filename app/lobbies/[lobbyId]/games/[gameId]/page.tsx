@@ -27,6 +27,14 @@ import {
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
 
+// Entspricht deinem ChatMessageGetDTO
+interface ChatMessageGetDTO {
+  message: string;
+  senderId: string;
+  senderName: string;
+  team: string; // "TEAM1" oder "TEAM2"
+}
+
 type GameModeDTO = {
   id: string;
   name: string;
@@ -47,15 +55,13 @@ export default function GameBoardPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, token, userId } = useAuthSession();
   const params = useParams<{ lobbyId: string; gameId: string }>();
-  const lobbyId = params.lobbyId;
-  const gameId = params.gameId;
+  const { lobbyId, gameId } = params;
 
   // --- States ---
   const [game, setGame] = useState<GameDetails | null>(null);
   const [myTeamName, setMyTeamName] = useState<BackendTeamName | null>(null);
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [pageMessage, setPageMessage] = useState<string | null>(null);
-  const [submissionNotice, setSubmissionNotice] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
   const [showRules, setShowRules] = useState(false);
@@ -68,28 +74,10 @@ export default function GameBoardPage() {
   const [loadingGameModes, setLoadingGameModes] = useState(false);
   const [gameModesError, setGameModesError] = useState<string | null>(null);
 
-  // --- Chat Persistence ---
-  const [chatHistory, setChatHistory] = useState<{sender: string, text: string}[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`chat_${gameId}`);
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
-
+  // --- Chat States ---
+  const [chatHistory, setChatHistory] = useState<ChatMessageGetDTO[]>([]);
+  const [isSendingChat, setIsSendingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (gameId) {
-      localStorage.setItem(`chat_${gameId}`, JSON.stringify(chatHistory));
-    }
-  }, [chatHistory, gameId]);
-
-  useEffect(() => {
-    if (showChat) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [showChat, chatHistory]);
 
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]); 
@@ -99,6 +87,45 @@ export default function GameBoardPage() {
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
+  // --- Chat Logic ---
+  const fetchChat = async () => {
+    if (!token || !gameId) return;
+    try {
+      const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
+      setChatHistory(messages);
+    } catch (err) {
+      console.error("Chat fetch failed", err);
+    }
+  };
+
+  // Polling für neue Nachrichten (alle 3 Sek), wenn Chat offen ist
+  useEffect(() => {
+    if (!showChat || !isAuthenticated) return;
+    fetchChat();
+    const interval = setInterval(fetchChat, 3000);
+    return () => clearInterval(interval);
+  }, [showChat, isAuthenticated, gameId]);
+
+  useEffect(() => {
+    if (showChat) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [showChat, chatHistory]);
+
+  const sendQuickMessage = async (msg: string) => {
+    if (isSendingChat || !token) return;
+    setIsSendingChat(true);
+    try {
+      await api.post(`/games/${gameId}/chat`, { message: msg }, token);
+      await fetchChat();
+    } catch (err) {
+      console.error("Chat send failed", err);
+    } finally {
+      setIsSendingChat(false);
+    }
+  };
+
+  // --- Game Timer ---
   useEffect(() => {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
@@ -136,6 +163,7 @@ export default function GameBoardPage() {
     return `${Math.max(0, Math.min(100, (remainingSeconds / (game.gameDuration * 60)) * 100))}%`;
   }, [game, remainingSeconds]);
 
+  // --- Auth & Team Sync ---
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) {
@@ -160,12 +188,13 @@ export default function GameBoardPage() {
         setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
       } catch (error) {
         if (cancelled) return;
-        setPageMessage(getGameErrorMessage(error, "Unable to confirm your team."));
+        setPageMessage("Unable to confirm your team.");
       }
     })();
     return () => { cancelled = true; };
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
+  // --- Game Subscription ---
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
     let cancelled = false;
@@ -200,6 +229,7 @@ export default function GameBoardPage() {
     return () => { cancelled = true; unsubscribe(); };
   }, [loaded, isAuthenticated, gameClient, gameId]);
 
+  // --- Bingo & Animation Logic ---
   useEffect(() => {
     if (!game || !myTeamName) return;
 
@@ -231,23 +261,10 @@ export default function GameBoardPage() {
     }
 
     const nextStatuses = new Map<string, GameTileStatus>();
-    const lastWord = getLastSubmissionWord();
-    let failedSubmission = false;
-
     game.tileGrid.forEach((row, r) => {
       row.forEach((tile, c) => {
         const key = `${r}-${c}`;
         const prev = previousStatuses.current.get(key);
-        
-        if (lastWord === tile.word && prev && isFriendlyProcessing(prev, myTeamName)) {
-          if (tile.status === "UNCLAIMED") {
-            failedSubmission = true;
-            clearLastSubmissionWord();
-          } else if (isClaimedStatus(tile.status)) {
-            clearLastSubmissionWord();
-          }
-        }
-
         if (prev && isFriendlyProcessing(prev, myTeamName) && isClaimedStatus(tile.status)) {
           if (!bingoDetails.some(b => !celebratedBingos.current.includes(b.id))) {
             setShakingTile(key);
@@ -261,19 +278,13 @@ export default function GameBoardPage() {
       });
     });
     previousStatuses.current = nextStatuses;
-    if (failedSubmission) setSubmissionNotice("Your last submission was not recognized. Try again!");
   }, [game, myTeamName]);
 
   useEffect(() => {
     if (game?.status !== "ENDED") return;
     clearLastSubmissionWord();
-    // localStorage.removeItem(`chat_${gameId}`); // Optional: Chat beim Beenden löschen
     router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
   }, [game?.status, gameId, lobbyId, router]);
-
-  const sendQuickMessage = (msg: string) => {
-    setChatHistory(prev => [...prev, { sender: "Me", text: msg }]);
-  };
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
@@ -326,11 +337,7 @@ export default function GameBoardPage() {
               </div>
               <div className="bingo-time-bar-track">
                 <div 
-                  className={`bingo-time-bar-fill ${
-                    remainingSeconds > 0 && remainingSeconds <= (game.gameDuration * 60) * 0.15
-                      ? "is-warning-pulse"
-                      : ""
-                  }`}
+                  className={`bingo-time-bar-fill ${remainingSeconds > 0 && remainingSeconds <= (game.gameDuration * 60) * 0.15 ? "is-warning-pulse" : ""}`}
                   style={{ width: progressWidth, transition: "width 1s linear" }} 
                 />
               </div>
@@ -351,10 +358,7 @@ export default function GameBoardPage() {
                         <button
                           key={key}
                           type="button"
-                          className={`bingo-field-button 
-                            ${getTileStateClass(tile.status, myTeamName)} 
-                            ${isSuccessShaking ? "is-success-shake" : ""} 
-                            ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
+                          className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
                           disabled={isClaimed || isProcessing}
                           onClick={() => router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`)}
                         >
@@ -384,7 +388,6 @@ export default function GameBoardPage() {
           <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
             <div className="rules-content">
               <h2 className="overlay-title">Game Rules</h2>
-              
               <div className="rules-section">
                 <div className="rules-scroll-container">
                   {gameModesError ? (
@@ -412,30 +415,22 @@ export default function GameBoardPage() {
                 <h3 className="rules-subtitle">Tile Examples</h3>
                 <div className="rules-tile-grid">
                   <div className="rules-tile-item">
-                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}>
-                      <span className="tile-text">Tree</span>
-                    </div>
+                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}><span className="tile-text">Tree</span></div>
                     <span>Unclaimed</span>
                   </div>
                   <div className="rules-tile-item">
-                    <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}>
-                      <div className="loader is-friendly"></div>
-                    </div>
+                    <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}><div className="loader is-friendly"></div></div>
                     <span>In Validation</span>
                   </div>
                   <div className="rules-tile-item">
                     <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
                     </div>
                     <span>Claimed Team 1</span>
                   </div>
                   <div className="rules-tile-item">
                     <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="claimed-icon-svg">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
                     </div>
                     <span>Claimed Team 2</span>
                   </div>
@@ -461,22 +456,36 @@ export default function GameBoardPage() {
 
             <div className="chat-messages-log">
               {chatHistory.length === 0 ? (
-                <p className="chat-empty-state">Send a message to your team!</p>
+                <p className="chat-empty-state">No messages yet. Start the conversation!</p>
               ) : (
-                chatHistory.map((chat, i) => (
-                  <div key={i} className={`chat-msg-bubble ${chat.sender === "Me" ? 'is-me' : 'is-them'}`}>
-                    <p style={{ margin: 0 }}>{chat.text}</p>
-                  </div>
-                ))
+                chatHistory.map((chat, i) => {
+                    const isMe = chat.senderId === userId;
+                    const isSameTeam = chat.team === myTeamName;
+
+                    return (
+                        <div key={i} className={`chat-msg-wrapper ${isMe ? 'is-me' : 'is-them'}`}>
+                            {!isMe && <span className="chat-sender-name">{chat.senderName}</span>}
+                            <div className={`chat-msg-bubble ${isSameTeam ? 'team-own' : 'team-enemy'}`}>
+                                <p style={{ margin: 0 }}>{chat.message}</p>
+                            </div>
+                        </div>
+                    );
+                })
               )}
               <div ref={chatEndRef} />
             </div>
 
             <div className="chat-quick-replies-section">
-              <h3 className="rules-subtitle" style={{ fontSize: '0.9rem', marginBottom: 8 }}>Quick Messages</h3>
               <div className="quick-replies-grid">
                 {QUICK_MESSAGES.map((msg) => (
-                  <button key={msg} className="btn-quick-chat" onClick={() => sendQuickMessage(msg)}>{msg}</button>
+                  <button 
+                    key={msg} 
+                    className="btn-quick-chat" 
+                    disabled={isSendingChat}
+                    onClick={() => sendQuickMessage(msg)}
+                  >
+                    {msg}
+                  </button>
                 ))}
               </div>
             </div>
@@ -487,7 +496,7 @@ export default function GameBoardPage() {
   );
 }
 
-// --- Helpers (getDetailedBingos, getTileStateClass etc. wie gehabt) ---
+// --- Helpers ---
 function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
   if (status === "UNCLAIMED") return "";
   const p = getTilePerspective(status, myTeamName);
@@ -521,7 +530,6 @@ function getGameErrorMessage(error: unknown, fallback: string): string {
   const applicationError = error as ApplicationError | undefined;
   if (applicationError?.status === 401) return "Session expired.";
   if (applicationError?.status === 403) return applicationError.message;
-  if (applicationError?.status === 404) return "Game not found.";
   return fallback;
 }
 
