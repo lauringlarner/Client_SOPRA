@@ -37,24 +37,6 @@ export default function LoginPage() {
     }
   };
 
-  // Block specific restricted special characters for the password field
-  const handlePasswordBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
-    const char = (event.nativeEvent as InputEvent).data;
-    if (char) {
-      if (/[<>\/\\;.,:""&|()\[\]{}]/.test(char)) {
-        event.preventDefault();
-        setPasswordError(`Special character "${char}" is not allowed in password.`);
-      }
-    }
-  };
-
-  const handlePasswordKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === " ") {
-      event.preventDefault();
-      setPasswordError("Spaces are not allowed in the password.");
-    }
-  };
-
   const validateField = (name: string, value: string) => {
     if (name === "username") {
       if (value.length > 0 && /^\d/.test(value)) {
@@ -65,14 +47,10 @@ export default function LoginPage() {
         setUsernameError("");
       }
     } else if (name === "password") {
-      if (/\s/.test(value)) {
-        setPasswordError("Spaces are not allowed in the password.");
-      } else if (value.length > 0 && /[<>\/\\;.,:""&|()\[\]{}]/.test(value)) {
-        setPasswordError("Contains forbidden special characters.");
-      } else if (value.length > 0 && !/\d/.test(value)) {
-        setPasswordError("Password must contain at least one digit!");
-      } else if (value.length > 0 && value.length < 12) {
-        setPasswordError("Password must be at least 12 characters.");
+      if (value.length > 0 && !/\d/.test(value)) {
+        setPasswordError("Password must contain at least one digit.");
+      } else if (value.length > 0 && value.length < 8) {
+        setPasswordError("Password must be at least 8 characters.");
       } else {
         setPasswordError("");
       }
@@ -90,45 +68,46 @@ export default function LoginPage() {
     const username = credentials.username as string;
     const password = credentials.password as string;
 
-    if (/\s/.test(username) || /\s/.test(password)) {
-      setError("Username and password must not contain spaces.");
+    // Validation checks
+    if (/^\d/.test(username)) {
+      setError("Username cannot start with a number.");
       setIsSubmitting(false);
       return;
     }
 
-    // Username validation check
-    const usernameInjectionRegex = /[;$"'\\/]/;
+    if (/\s/.test(username)) {
+      setError("Username must not contain spaces.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Username injection regex (Consistent with Register)
+    const usernameInjectionRegex = /[;$"'\\/<>,. ]/;
     if (usernameInjectionRegex.test(username)) {
       setError("Special characters are not allowed in the username.");
       setIsSubmitting(false);
       return;
     }
 
-    // Password validation check
-    const passwordInjectionRegex = /[<>\/\\;.,:""&|()\[\]{}`']/;
-    if (passwordInjectionRegex.test(password)) {
-      setError("Invalid characters in password: < > / \\ ; . , : \" \" & | ( ) [ ] { }");
+    if (!/\d/.test(password)) {
+      setError("Password must contain at least one digit.");
       setIsSubmitting(false);
       return;
     }
 
-    // Digit validation check
-    if (!/\d/.test(password)) {
-      setError("Password must contain at least one digit!");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      // POST /users/login
       const loginData = await api.post<{ id: string; token: string, username: string}>(
         "/users/login",
-        credentials
+        { username, password }
       );
 
-      // Save real session data to localStorage via the hook
       setSession(loginData.token, loginData.id, loginData.username);
-      
       router.push("/menu");
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -201,10 +180,8 @@ export default function LoginPage() {
                 placeholder="Enter password"
                 required
                 disabled={isSubmitting}
-                minLength={12}
+                minLength={8}
                 maxLength={30}
-                onBeforeInput={handlePasswordBeforeInput}
-                onKeyDown={handlePasswordKeyDown}
                 onChange={(e) => validateField("password", e.target.value)}
                 style={{ paddingRight: "3.5rem" }}
               />
@@ -227,36 +204,9 @@ export default function LoginPage() {
                 }}
               >
                 {showPassword ? (
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    style={{ color: "#000000" }}
-                  >
-                    <path d="M2 12s3.75 6 10 6 10-6 10-6" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
                 ) : (
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    style={{ color: "#000000" }}
-                  >
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 )}
               </button>
             </div>

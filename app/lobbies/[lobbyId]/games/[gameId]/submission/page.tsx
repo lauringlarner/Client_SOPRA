@@ -41,16 +41,20 @@ function CameraContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   const [claimedOverlayMessage, setClaimedOverlayMessage] = useState<string | null>(null);
-  
   const isRedirecting = useRef(false);
 
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Stop camera stream safely
+  // --- Zoom Functionality ---
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const touchStartDist = useRef<number | null>(null);
+  const initialZoomRef = useRef<number>(1);
+
   const stopCameraStream = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -60,6 +64,63 @@ function CameraContent() {
       videoRef.current.srcObject = null;
     }
   };
+
+  const handleZoomChange = (delta: number) => {
+    setZoomLevel((prev) => Math.min(Math.max(1, prev + delta), 4));
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    const delta = event.deltaY * -0.01;
+    handleZoomChange(delta);
+  };
+
+  const handleTouchStart = (event: TouchEvent) => {
+    if (event.touches.length === 2) {
+      const dist = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+      touchStartDist.current = dist;
+      initialZoomRef.current = zoomLevel;
+    }
+  };
+
+  const handleTouchMove = (event: TouchEvent) => {
+    if (event.touches.length === 2 && touchStartDist.current !== null) {
+      if (event.cancelable) event.preventDefault();
+
+      const currentDist = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+
+      const zoomFactor = currentDist / touchStartDist.current;
+      const nextZoom = Math.min(Math.max(1, initialZoomRef.current * zoomFactor), 4);
+      setZoomLevel(nextZoom);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartDist.current = null;
+  };
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (element) {
+      element.addEventListener("wheel", handleWheel, { passive: false });
+      element.addEventListener("touchstart", handleTouchStart, { passive: false });
+      element.addEventListener("touchmove", handleTouchMove, { passive: false });
+      element.addEventListener("touchend", handleTouchEnd);
+      
+      return () => {
+        element.removeEventListener("wheel", handleWheel);
+        element.removeEventListener("touchstart", handleTouchStart);
+        element.removeEventListener("touchmove", handleTouchMove);
+        element.removeEventListener("touchend", handleTouchEnd);
+      };
+    }
+  }, [videoRef.current, zoomLevel]);
 
   useEffect(() => {
     if (claimedOverlayMessage) {
@@ -71,9 +132,7 @@ function CameraContent() {
       }, 2000);
     }
     return () => {
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-      }
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     };
   }, [claimedOverlayMessage, lobbyId, gameId, router]);
 
@@ -109,21 +168,16 @@ function CameraContent() {
       })();
     }
 
-    return () => {
-      stopCameraStream();
-    };
+    return () => stopCameraStream();
   }, [capturedImage, isAuthenticated, loaded, lobbyId, router, userId]);
 
   useEffect(() => {
     if (capturedImage) {
-      setCountdown(5);
-
+      setCountdown(15);
       countdownTimerRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev === null || prev <= 1) {
-            if (countdownTimerRef.current) {
-              clearInterval(countdownTimerRef.current);
-            }
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
             void handleSubmit();
             return null;
           }
@@ -131,23 +185,16 @@ function CameraContent() {
         });
       }, 1000);
     } else {
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-      }
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       setCountdown(null);
     }
-
     return () => {
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-      }
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
     };
   }, [capturedImage]);
 
   useEffect(() => {
-    if (!loaded || !isAuthenticated || !gameId) {
-      return;
-    }
+    if (!loaded || !isAuthenticated || !gameId) return;
 
     const redirectToLeaderboard = () => {
       router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
@@ -162,13 +209,11 @@ function CameraContent() {
         }
 
         let isClaimed = false;
-
         const possibleProperties: (keyof GameDetails)[] = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
         for (const prop of possibleProperties) {
           const propertyVal = game[prop];
           if (Array.isArray(propertyVal) && propertyVal.every((item) => typeof item === "string")) {
-            const stringArray = propertyVal as string[];
-            if (tileWord && stringArray.includes(tileWord)) {
+            if (tileWord && (propertyVal as string[]).includes(tileWord)) {
               isClaimed = true;
               break;
             }
@@ -177,71 +222,23 @@ function CameraContent() {
 
         if (!isClaimed && Array.isArray(game.board)) {
           for (const row of game.board) {
-            if (Array.isArray(row)) {
-              const found = row.find((t: Tile) => t.word === tileWord && t.status === "CLAIMED");
-              if (found) {
-                isClaimed = true;
-                break;
-              }
-            }
+            const found = row.find((t: Tile) => t.word === tileWord && t.status === "CLAIMED");
+            if (found) { isClaimed = true; break; }
           }
         }
 
         if (tileWord && isClaimed) {
-          setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed by another team.`);
-          return;
+          setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed.`);
         }
-      } catch {
-        // Bei Netzwerkfehlern den Status beibehalten.
-      }
+      } catch { /* network error */ }
     };
 
     void checkAndRedirect();
+    const unsubscribe = gameClient.subscribeToGame(gameId, (details: GameDetails) => {
+      if (details.status === "ENDED") redirectToLeaderboard();
+    }, () => {});
 
-    const unsubscribe = gameClient.subscribeToGame(
-      gameId,
-      (details: GameDetails) => {
-        if (details.status === "ENDED") {
-          redirectToLeaderboard();
-          return;
-        }
-
-        let isClaimedLive = false;
-
-        const possibleProperties: (keyof GameDetails)[] = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
-        for (const prop of possibleProperties) {
-          const propertyVal = details[prop];
-          if (Array.isArray(propertyVal) && propertyVal.every((item) => typeof item === "string")) {
-            const stringArray = propertyVal as string[];
-            if (tileWord && stringArray.includes(tileWord)) {
-              isClaimedLive = true;
-              break;
-            }
-          }
-        }
-
-        if (!isClaimedLive && Array.isArray(details.board)) {
-          for (const row of details.board) {
-            if (Array.isArray(row)) {
-              const found = row.find((t: Tile) => t.word === tileWord && t.status === "CLAIMED");
-              if (found) {
-                isClaimedLive = true;
-                break;
-              }
-            }
-          }
-        }
-
-        if (tileWord && isClaimedLive) {
-          setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed by another team.`);
-        }
-      },
-      () => {},
-    );
-
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router, tileWord]);
 
   const handleCapture = () => {
@@ -255,31 +252,24 @@ function CameraContent() {
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(videoElement, 0, 0);
-      const dataUrl = canvas.toDataURL("image/jpeg", 1.0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+      setIsImageLoaded(false);
       setCapturedImage(dataUrl);
     }
   };
 
   const handleSubmit = async () => {
     if (claimedOverlayMessage || isRedirecting.current) return;
-
-    if (!capturedImage || !tileWord) {
-      setSubmissionError("The target word or captured image is missing.");
+    if (!capturedImage || !tileWord || !gameId) {
+      setSubmissionError("Missing required submission data.");
       return;
     }
 
     setIsSubmitting(true);
     setSubmissionError(null);
 
-    if (!gameId) {
-      setSubmissionError("The game route is missing its game id.");
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
       stopCameraStream();
-
       const fetchRes = await fetch(capturedImage);
       const blob = await fetchRes.blob();
 
@@ -296,16 +286,7 @@ function CameraContent() {
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
         return;
       }
-
       const errorMsg = getSubmissionErrorMessage(error);
-
-      if (errorMsg.toLowerCase().includes("already taken")) {
-        setClaimedOverlayMessage(`The tile "${tileWord}" is already claimed by a team!`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      console.error("Submission error:", error);
       setSubmissionError(errorMsg);
       setIsSubmitting(false);
     }
@@ -339,6 +320,13 @@ function CameraContent() {
             </div>
           )}
 
+          {countdown !== null && (
+            <div className="countdown-overlay">
+              <span className="countdown-text">Sending in</span>
+              <span className="countdown-number">{countdown}</span>
+            </div>
+          )}
+
           {submissionError && (
             <section className="lobby-card lobby-feedback-card is-error camera-feedback-card">
               <p className="lobby-feedback-text">{submissionError}</p>
@@ -351,26 +339,30 @@ function CameraContent() {
                 src={capturedImage}
                 alt="Captured"
                 className="camera-video-element"
+                onLoad={() => setIsImageLoaded(true)}
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transition: "transform 0.1s ease-out",
+                }}
               />
-
-              <div className="countdown-overlay">
-                <span className="countdown-text">Sending in</span>
-                <span className="countdown-number">{countdown}</span>
-              </div>
 
               <div className="camera-actions-frame">
                 <button
                   type="button"
                   className="camera-button-capture"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !capturedImage}
+                  disabled={isSubmitting || !capturedImage || !isImageLoaded}
                 >
                   {isSubmitting ? "Uploading..." : "Submit"}
                 </button>
                 <button
                   type="button"
                   className="camera-button-cancel"
-                  onClick={() => setCapturedImage(null)}
+                  onClick={() => {
+                    setCapturedImage(null);
+                    setIsCameraReady(false);
+                    setIsImageLoaded(false);
+                  }}
                   disabled={isSubmitting}
                 >
                   Discard
@@ -386,6 +378,12 @@ function CameraContent() {
                 muted
                 className="camera-video-element"
                 onLoadedMetadata={() => setIsCameraReady(true)}
+                style={{
+                  transform: `scale(${zoomLevel})`,
+                  transition: "transform 0.1s ease-out",
+                  cursor: "pointer",
+                  touchAction: "none" 
+                }}
               />
               <div className="camera-actions-frame">
                 <button
@@ -394,14 +392,7 @@ function CameraContent() {
                   onClick={handleCapture}
                   disabled={!isCameraReady}
                 >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    strokeWidth={2} 
-                    stroke="currentColor" 
-                    className="button-icon"
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="button-icon">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 5.5H3.814A2.31 2.31 0 0 0 2 7.814v8.372A2.31 2.31 0 0 0 3.814 18h16.372A2.31 2.31 0 0 0 22 16.186V7.814A2.31 2.31 0 0 0 20.186 5.5h-1.372a2.31 2.31 0 0 1-1.641-.675l-1.079-1.092A2.31 2.31 0 0 0 14.656 3.5H9.344a2.31 2.31 0 0 0-1.641.675l-1.076 1.092Z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.5 11.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" />
                   </svg>
@@ -436,12 +427,10 @@ function getSubmissionErrorMessage(error: unknown): string {
     typeof error === "object" &&
     error !== null &&
     "message" in error &&
-    typeof error.message === "string" &&
-    error.message.trim() !== ""
+    typeof (error as { message: unknown }).message === "string"
   ) {
-    return error.message;
+    return (error as { message: string }).message;
   }
-
   return "The submission could not be sent. Please try again.";
 }
 
@@ -450,7 +439,6 @@ function isGameEndedError(error: unknown): boolean {
     typeof error === "object" &&
     error !== null &&
     "status" in error &&
-    typeof error.status === "number" &&
-    error.status === 409
+    (error as { status: unknown }).status === 409
   );
 }
