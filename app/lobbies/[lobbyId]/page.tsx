@@ -7,7 +7,11 @@ import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
   clearStoredActiveLobbyId,
+  clearStoredLobbyTeam,
+  clearStoredSinglePlayerMode,
+  getStoredSinglePlayerMode,
   setStoredActiveLobbyId,
+  setStoredSinglePlayerMode,
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
 import { ApplicationError } from "@/types/error";
@@ -45,19 +49,18 @@ export default function LobbyPage() {
   const [durationDraft, setDurationDraft] = useState("10");
   const [listTypeDraft, setListTypeDraft] = useState<LobbyListType>("all");
   const [isSinglePlayerDraft, setIsSinglePlayerDraft] = useState<SinglPlayereMode>(0);
-  const [isSinglePlayer, setIsSinglePlayer] = useState<SinglPlayereMode>(0);
+  const [savedSinglePlayerMode, setSavedSinglePlayerMode] = useState<SinglPlayereMode>(0);
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [pendingAction, setPendingActionState] = useState<string | null>(null);
   const [pageMessage, setPageMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
-  
+
   const [_selectedPlayer, setSelectedPlayer] = useState<LobbyPlayer | null>(null);
   const [_selectedUser, setSelectedUser] = useState<User | null>(null);
   const [_profileLoading, setProfileLoading] = useState(false);
-  
+
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLobbyClosedModal, setShowLobbyClosedModal] = useState(false);
-
   const autoStartSent = useRef(false);
   const latestLobbyRef = useRef<LobbyDetails | null>(null);
 
@@ -71,14 +74,12 @@ export default function LobbyPage() {
   const currentPlayer = lobbyPlayers.find((p) => p.user.id === userId) ?? null;
   const isHost = currentPlayer?.isHost ?? false;
   const needsTeamSelection = currentPlayer?.team == null;
-  
   const allPlayersReady = lobbyPlayers.length > 0 && lobbyPlayers.every((p) => p.isReady);
-  const bothTeamsHavePlayers = isSinglePlayer === 1
+  const hasRequiredTeamCoverage = savedSinglePlayerMode === 1
     ? LOBBY_TEAMS.some((team) => lobbyPlayers.some((p) => p.team === team))
     : LOBBY_TEAMS.every((team) => lobbyPlayers.some((p) => p.team === team));
 
-  const canAutoStart = allPlayersReady && bothTeamsHavePlayers;
-
+  const canAutoStart = allPlayersReady && hasRequiredTeamCoverage;
   const connectionSubtitle =
     connectionState === "error"
       ? "The latest lobby state could not be loaded."
@@ -112,6 +113,8 @@ export default function LobbyPage() {
     setShowLobbyClosedModal(true);
     setTimeout(() => {
       clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId);
       router.replace("/menu");
     }, 3000);
   };
@@ -172,6 +175,12 @@ export default function LobbyPage() {
   }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
   useEffect(() => {
+    const storedMode = getStoredSinglePlayerMode(userId, lobbyId);
+    setSavedSinglePlayerMode(storedMode);
+    setIsSinglePlayerDraft(storedMode);
+  }, [lobbyId, userId]);
+
+  useEffect(() => {
     if (lobby) {
       setDurationDraft(String(lobby.gameDuration));
       setListTypeDraft(lobby.listType ?? "all");
@@ -203,15 +212,16 @@ export default function LobbyPage() {
     setPendingAction("start");
     setPageMessage({ text: "Starting the game...", tone: "info" });
 
-    void lobbyClient.startLobby(lobbyId, isSinglePlayer)
+    void lobbyClient.startLobby(lobbyId, savedSinglePlayerMode)
       .then((res) => {
         if (res.gameId) router.replace(`/lobbies/${lobbyId}/games/${res.gameId}`);
+        else setPageMessage({ text: "Everyone is ready. Waiting for the game screen.", tone: "info" });
       })
       .catch((err) => {
         setPageMessage({ text: getLobbyErrorMessage(err, "Failed to start."), tone: "error" });
       })
       .finally(() => setPendingAction(null));
-  }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, isSinglePlayer]);
+  }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, savedSinglePlayerMode]);
 
   const handleUpdateTeam = async (team: LobbySelectableTeam) => {
     if (!currentPlayer) return;
@@ -246,7 +256,8 @@ export default function LobbyPage() {
     setPendingAction("settings");
     try {
       await lobbyClient.updateSettings(lobbyId, parsed, listTypeDraft);
-      setIsSinglePlayer(isSinglePlayerDraft);
+      setSavedSinglePlayerMode(isSinglePlayerDraft);
+      setStoredSinglePlayerMode(userId, lobbyId, isSinglePlayerDraft);
       setPageMessage({ text: "Settings updated.", tone: "info" });
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Save failed."), tone: "error" });
@@ -261,6 +272,8 @@ export default function LobbyPage() {
     try {
       await lobbyClient.deleteLobby(lobbyId);
       clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId);
       router.replace("/menu");
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Delete failed."), tone: "error" });
@@ -274,6 +287,8 @@ export default function LobbyPage() {
     try {
       await lobbyClient.leaveLobby(lobbyId);
       clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId);
       router.replace("/menu");
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Leave failed."), tone: "error" });
@@ -351,7 +366,7 @@ export default function LobbyPage() {
 
             <section className="lobby-card lobby-settings-card">
               <h2 className="lobby-section-title">Game Settings</h2>
-              
+
               <label className="lobby-settings-field">
                 <span className="lobby-settings-label">Round duration (min)</span>
                 <input
@@ -409,11 +424,11 @@ export default function LobbyPage() {
                   <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
                   <div className="lobby-team-list">
                     {players.map((p) => (
-                      <LobbyPlayerCard 
-                        key={p.id} 
-                        player={p} 
-                        isSelf={p.user.id === userId} 
-                        onClick={() => openPlayerProfile(p)} 
+                      <LobbyPlayerCard
+                        key={p.id}
+                        player={p}
+                        isSelf={p.user.id === userId}
+                        onClick={() => openPlayerProfile(p)}
                       />
                     ))}
                   </div>
@@ -493,7 +508,7 @@ function LobbyPlayerCard({ player, isSelf, onClick }: { player: LobbyPlayer; isS
 function formatJoinCode(v: string) { return v.toUpperCase().slice(0, 6); }
 function getConnectionLabel(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
 function getLobbyErrorMessage(e: unknown, f: string) { return (e as ApplicationError)?.message || f; }
-function isFatalApplicationError(e: unknown) { 
+function isFatalApplicationError(e: unknown) {
   const status = (e as ApplicationError)?.status;
-  return status === 403 || status === 404; 
+  return status === 403 || status === 404;
 }

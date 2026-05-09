@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
 import { createGameClient } from "@/api/gameService";
 import { createLobbyClient } from "@/api/lobbyService";
+import { FittedTileText } from "@/components/FittedTileText";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
@@ -401,7 +402,7 @@ export default function GameBoardPage() {
                               <path d="M20 6L9 17l-5-5" />
                             </svg>
                           ) : (
-                            <span className="tile-text">{tile.word}</span>
+                            <FittedTileText text={tile.word} />
                           )}
                         </button>
                       );
@@ -447,7 +448,7 @@ export default function GameBoardPage() {
                 <h3 className="rules-subtitle">Tile Examples</h3>
                 <div className="rules-tile-grid">
                   <div className="rules-tile-item">
-                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}><span className="tile-text">Tree</span></div>
+                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}><FittedTileText text="Tree" maxFontSize={10} /></div>
                     <span>Unclaimed</span>
                   </div>
                   <div className="rules-tile-item">

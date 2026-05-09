@@ -1,4 +1,4 @@
-import { LobbyTeam } from "@/types/lobby";
+import { LobbyTeam, SinglPlayereMode } from "@/types/lobby";
 
 export function getStoredActiveLobbyId(userId: string): string {
   if (!canUseLocalStorage() || userId.trim() === "") {
@@ -69,8 +69,45 @@ export function setStoredLobbyTeam(
   globalThis.localStorage.removeItem(key);
 }
 
+export function getStoredSinglePlayerMode(
+  userId: string,
+  lobbyId: string,
+): SinglPlayereMode {
+  if (!canUseLocalStorage() || userId.trim() === "" || lobbyId.trim() === "") {
+    return 0;
+  }
+
+  return globalThis.localStorage.getItem(getSinglePlayerModeKey(userId, lobbyId)) === "1"
+    ? 1
+    : 0;
+}
+
+export function clearStoredSinglePlayerMode(userId: string, lobbyId: string): void {
+  if (!canUseLocalStorage() || userId.trim() === "" || lobbyId.trim() === "") {
+    return;
+  }
+
+  globalThis.localStorage.removeItem(getSinglePlayerModeKey(userId, lobbyId));
+}
+
+export function setStoredSinglePlayerMode(
+  userId: string,
+  lobbyId: string,
+  mode: SinglPlayereMode,
+): void {
+  if (!canUseLocalStorage() || userId.trim() === "" || lobbyId.trim() === "") {
+    return;
+  }
+
+  globalThis.localStorage.setItem(getSinglePlayerModeKey(userId, lobbyId), String(mode));
+}
+
 function getLobbyTeamKey(userId: string, lobbyId: string): string {
   return `vq.lobbyTeam.${userId}.${lobbyId}`;
+}
+
+function getSinglePlayerModeKey(userId: string, lobbyId: string): string {
+  return `vq.singlePlayerMode.${userId}.${lobbyId}`;
 }
 
 function getActiveLobbyKey(userId: string): string {

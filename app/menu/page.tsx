@@ -3,11 +3,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
+import { FittedTileText } from "@/components/FittedTileText";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
 import {
   clearStoredActiveLobbyId,
+  clearStoredLobbyTeam,
+  clearStoredSinglePlayerMode,
   getStoredActiveLobbyId,
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
@@ -133,6 +136,8 @@ export default function MenuPage() {
       const applicationError = error as ApplicationError | undefined;
       if (applicationError?.status === 403 || applicationError?.status === 404) {
         clearStoredActiveLobbyId(userId, activeLobbyId);
+        clearStoredLobbyTeam(userId, activeLobbyId);
+        clearStoredSinglePlayerMode(userId, activeLobbyId);
         setActiveLobbyId("");
         setMenuMessage("Your last lobby is no longer available.");
         return;
@@ -267,7 +272,7 @@ export default function MenuPage() {
                       <div className="rules-tile-grid">
                         <div className="rules-tile-item">
                           <button type="button" className="bingo-field-button">
-                            <span className="tile-text">Tree</span>
+                            <FittedTileText text="Tree" maxFontSize={10} />
                           </button>
                           <span>Unclaimed</span>
                         </div>

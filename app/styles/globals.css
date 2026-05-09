@@ -617,7 +617,7 @@ textarea {
 }
 
 .rules-tile-item .tile-text {
-  font-size: 10px;
+  font-size: var(--tile-text-font-size, 10px);
 }
 
 .claimed-icon-svg {
@@ -1443,36 +1443,55 @@ justify-content: space-between;
 }
 
 .tile-text {
+  /* 1. Layout: Perfect Centering */
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
-  padding: 2px; 
+  box-sizing: border-box;
+  position: relative;
+  padding: 4px;
 
+  /* 2. Professional Typography */
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  
-  /* * Minimalwert erhöht von 0.35rem auf 0.52rem
-   * Maximalwert erhöht von 0.75rem auf 0.85rem
-   */
-  font-size: clamp(0.2rem, 13cqw, 0.8rem);
-  
+  font-size: var(--tile-text-font-size, 11px);
   line-height: 1.1;
   font-weight: 700; 
   text-align: center;
   text-transform: uppercase; 
-  letter-spacing: -0.01em;    
+  letter-spacing: 0.02em;
   color: #FFFFFF;
 
-  white-space: pre-wrap;
-  word-break: break-word;
+  /* 3. Modern Wrap Logic */
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+  text-wrap: balance;
   overflow: hidden;
-  text-overflow: ellipsis;
 
+  /* 4. UI Protection */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   pointer-events: none; 
+}
+
+.tile-text-content {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  text-wrap: balance;
+}
+
+.tile-text-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .bingo-team-points-container {
