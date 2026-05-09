@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { deriveLobbyViewState } from "@/utils/lobbyViewState";
 import {
   clearStoredActiveLobbyId,
   clearStoredLobbyTeam,
@@ -75,12 +74,12 @@ export default function LobbyPage() {
   const currentPlayer = lobbyPlayers.find((p) => p.user.id === userId) ?? null;
   const isHost = currentPlayer?.isHost ?? false;
   const needsTeamSelection = currentPlayer?.team == null;
-  const { actionNote, canAutoStart } = deriveLobbyViewState({
-    currentPlayer,
-    isSinglePlayer: savedSinglePlayerMode,
-    pendingAction,
-    players: lobbyPlayers,
-  });
+  const allPlayersReady = lobbyPlayers.length > 0 && lobbyPlayers.every((p) => p.isReady);
+  const hasRequiredTeamCoverage = savedSinglePlayerMode === 1
+    ? LOBBY_TEAMS.some((team) => lobbyPlayers.some((p) => p.team === team))
+    : LOBBY_TEAMS.every((team) => lobbyPlayers.some((p) => p.team === team));
+
+  const canAutoStart = allPlayersReady && hasRequiredTeamCoverage;
   const connectionSubtitle =
     connectionState === "error"
       ? "The latest lobby state could not be loaded."
@@ -113,7 +112,9 @@ export default function LobbyPage() {
   const triggerExitSequence = () => {
     setShowLobbyClosedModal(true);
     setTimeout(() => {
-      clearLocalLobbyState(userId, lobbyId);
+      clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId);
       router.replace("/menu");
     }, 3000);
   };
@@ -270,7 +271,9 @@ export default function LobbyPage() {
     setPendingAction("delete");
     try {
       await lobbyClient.deleteLobby(lobbyId);
-      clearLocalLobbyState(userId, lobbyId);
+      clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId);
       router.replace("/menu");
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Delete failed."), tone: "error" });
@@ -283,7 +286,9 @@ export default function LobbyPage() {
     setPendingAction("leave");
     try {
       await lobbyClient.leaveLobby(lobbyId);
-      clearLocalLobbyState(userId, lobbyId);
+      clearStoredActiveLobbyId(userId, lobbyId);
+      clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId);
       router.replace("/menu");
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Leave failed."), tone: "error" });
@@ -439,9 +444,6 @@ export default function LobbyPage() {
               >
                 {isHost ? "Delete Lobby" : "Leave Lobby"}
               </button>
-              {actionNote && (
-                <p className="lobby-action-note">{actionNote}</p>
-              )}
             </section>
           </>
         )}
@@ -503,42 +505,10 @@ function LobbyPlayerCard({ player, isSelf, onClick }: { player: LobbyPlayer; isS
   );
 }
 
-function formatJoinCode(value: string): string {
-  return value
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toUpperCase()
-    .slice(0, 6)
-    .replace(/(.{3})/g, "$1 ")
-    .trim();
-}
-
-function getConnectionLabel(
-  state: "connecting" | "live" | "error",
-): string {
-  if (state === "live") return "Live";
-  if (state === "error") return "Issue";
-  return "Connecting";
-}
-
-function getLobbyErrorMessage(
-  error: unknown,
-  fallback: string,
-): string {
-  const applicationError = error as ApplicationError | undefined;
-  if (applicationError?.status === 403) return applicationError.message;
-  if (applicationError?.status === 404) return "This lobby could not be found anymore.";
-  if (applicationError?.status === 409) return applicationError.message;
-  if (applicationError instanceof Error && applicationError.message.trim() !== "") return applicationError.message;
-  return fallback;
-}
-
-function isFatalApplicationError(error: unknown): boolean {
-  const applicationError = error as ApplicationError | undefined;
-  return applicationError?.status === 403 || applicationError?.status === 404;
-}
-
-function clearLocalLobbyState(userId: string, lobbyId: string): void {
-  clearStoredActiveLobbyId(userId, lobbyId);
-  clearStoredLobbyTeam(userId, lobbyId);
-  clearStoredSinglePlayerMode(userId, lobbyId);
+function formatJoinCode(v: string) { return v.toUpperCase().slice(0, 6); }
+function getConnectionLabel(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function getLobbyErrorMessage(e: unknown, f: string) { return (e as ApplicationError)?.message || f; }
+function isFatalApplicationError(e: unknown) {
+  const status = (e as ApplicationError)?.status;
+  return status === 403 || status === 404;
 }
