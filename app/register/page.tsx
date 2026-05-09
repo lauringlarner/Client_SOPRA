@@ -140,7 +140,7 @@ export default function RegisterPage() {
       <main className="phone-frame screen-gradient auth-layout">
         <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
-            <span key={i} className="rain-item">BINGO</span>
+            <span key={i} className="rain-item">Visionquest</span>
           ))}
         </div>
         <h1 className="auth-title">Create Your Account</h1>
@@ -168,7 +168,7 @@ export default function RegisterPage() {
               title="Username must start with a letter and contain only alphanumeric characters without spaces"
             />
             {usernameError && (
-              <span style={{ fontSize: "0.75rem", color: "#cc0000", marginTop: "0.25rem", display: "block" }}>
+              <span style={{ fontSize: "0.75rem", color: "#9c4326c4", marginTop: "0.25rem", display: "block" }}>
                 {usernameError}
               </span>
             )}
@@ -215,7 +215,7 @@ export default function RegisterPage() {
               </button>
             </div>
             {passwordError && (
-              <span style={{ fontSize: "0.75rem", color: "#cc0000", marginTop: "0.25rem", display: "block" }}>
+              <span style={{ fontSize: "0.75rem", color: "#9c4326c4", marginTop: "0.25rem", display: "block" }}>
                 {passwordError}
               </span>
             )}

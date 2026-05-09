@@ -356,7 +356,7 @@ export default function GameBoardPage() {
           <>
             <section className="bingo-team-points-container bingo-top-spacing">
               {teamScores.map((score) => (
-                <div key={score.label} className={`bingo-team-points-card ${getPerspectiveCardClass(score.perspective)}`}>
+                <div key={score.label} className={`bingo-team-points-card ${score.label === "Team 1" ? "is-team1" : "is-team2"}`}>
                   <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
                   <span className="bingo-team-points-card-points">{score.totalPoints}</span>
                 </div>

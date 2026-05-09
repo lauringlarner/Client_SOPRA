@@ -155,7 +155,7 @@ export default function MenuPage() {
       <main className="phone-frame screen-gradient">
         <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
-            <span key={i} className="rain-item">BINGO</span>
+            <span key={i} className="rain-item">Visionquest</span>
           ))}
         </div>
 
