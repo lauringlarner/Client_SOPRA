@@ -364,7 +364,7 @@ export default function LobbyPage() {
               </label>
 
               <label className="lobby-settings-field">
-                <span className="lobby-settings-label">Word List</span>
+                <span className="lobby-settings-label">What kind of objects do you want to search?</span>
                 <select
                   className="field-input"
                   value={listTypeDraft}

@@ -168,7 +168,7 @@ export default function RegisterPage() {
               title="Username must start with a letter and contain only alphanumeric characters without spaces"
             />
             {usernameError && (
-              <span style={{ fontSize: "0.75rem", color: "#9c4326c4", marginTop: "0.25rem", display: "block" }}>
+              <span style={{ fontSize: "0.85rem", color: "#f40303cd", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
                 {usernameError}
               </span>
             )}
@@ -200,7 +200,7 @@ export default function RegisterPage() {
                   background: "transparent",
                   border: "none",
                   cursor: isSubmitting ? "not-allowed" : "pointer",
-                  color: "#000000",
+                  color: "#ffffff",
                   padding: "0.25rem",
                   display: "flex",
                   alignItems: "center",
@@ -215,7 +215,7 @@ export default function RegisterPage() {
               </button>
             </div>
             {passwordError && (
-              <span style={{ fontSize: "0.75rem", color: "#9c4326c4", marginTop: "0.25rem", display: "block" }}>
+              <span style={{ fontSize: "0.85rem", color: "#e50909d6", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
                 {passwordError}
               </span>
             )}
