@@ -27,7 +27,7 @@ import {
 } from "@/types/lobby";
 
 const MIN_GAME_DURATION = 5;
-const MAX_GAME_DURATION = 20;
+const MAX_GAME_DURATION = 120;
 const TEAM_SECTIONS: LobbyTeam[] = [...LOBBY_TEAMS, null];
 
 interface User {
@@ -372,6 +372,8 @@ export default function LobbyPage() {
                 <input
                   className="field-input"
                   type="number"
+                  min={MIN_GAME_DURATION}
+                  max={MAX_GAME_DURATION}
                   value={durationDraft}
                   disabled={!isHost || pendingAction !== null}
                   onChange={(e) => setDurationDraft(e.target.value)}

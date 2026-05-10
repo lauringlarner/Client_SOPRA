@@ -102,6 +102,11 @@ export function setStoredSinglePlayerMode(
   globalThis.localStorage.setItem(getSinglePlayerModeKey(userId, lobbyId), String(mode));
 }
 
+export function clearStoredPusherTransportTLS(): void {
+  if (!canUseLocalStorage()) return;
+  globalThis.localStorage.removeItem("pusherTransportTLS");
+}
+
 function getLobbyTeamKey(userId: string, lobbyId: string): string {
   return `vq.lobbyTeam.${userId}.${lobbyId}`;
 }
