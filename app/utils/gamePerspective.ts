@@ -5,7 +5,7 @@ export type BackendTeamName = "Team 1" | "Team 2";
 export type TeamPerspective = "own" | "enemy";
 
 export interface TeamScoreViewModel {
-  label: BackendTeamName;
+  label: string;
   perspective: TeamPerspective;
   totalPoints: number;
 }
@@ -26,7 +26,18 @@ export function buildTeamScores(
   currentTeam: BackendTeamName,
   team1Score: number,
   team2Score: number,
+  isSinglePlayer = false,
 ): TeamScoreViewModel[] {
+  if (isSinglePlayer) {
+    return [
+      {
+        label: "Your",
+        perspective: "own",
+        totalPoints: currentTeam === "Team 1" ? team1Score : team2Score,
+      },
+    ];
+  }
+
   return [
     createTeamScore("Team 1", currentTeam, team1Score),
     createTeamScore("Team 2", currentTeam, team2Score),

@@ -16,6 +16,7 @@ export interface GameTile {
 export interface GameDetails {
   gameDuration: number;
   id: string;
+  isSinglePlayer?: boolean;
   lobbyId: string;
   score_1: number;
   score_2: number;

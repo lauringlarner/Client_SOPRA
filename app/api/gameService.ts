@@ -131,6 +131,7 @@ function normalizeGameDetails(value: unknown): GameDetails {
   return {
     gameDuration: getRequiredNumber(value.gameDuration, "game duration"),
     id: getRequiredString(value.id, "game id"),
+    isSinglePlayer: getOptionalBoolean(value.isSinglePlayer ?? value.singlePlayer),
     lobbyId: getRequiredString(value.lobbyId, "lobby id"),
     score_1: getRequiredNumber(value.score_1, "team 1 score"),
     score_2: getRequiredNumber(value.score_2, "team 2 score"),
@@ -220,6 +221,13 @@ function getRequiredNumber(value: unknown, label: string): number {
     throw createApplicationError(`The ${label} is missing from the response.`, 500);
   }
   return value;
+}
+
+function getOptionalBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

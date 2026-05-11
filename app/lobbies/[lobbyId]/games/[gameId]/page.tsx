@@ -23,6 +23,7 @@ import {
 } from "@/utils/submissionFeedback";
 import {
   getStoredLobbyTeam,
+  getStoredSinglePlayerMode,
   setStoredActiveLobbyId,
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
@@ -67,6 +68,7 @@ export default function GameBoardPage() {
   // --- States ---
   const [game, setGame] = useState<GameDetails | null>(null);
   const [myTeamName, setMyTeamName] = useState<BackendTeamName | null>(null);
+  const [storedSinglePlayerMode, setStoredSinglePlayerMode] = useState(false);
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
@@ -214,6 +216,7 @@ export default function GameBoardPage() {
     if (!loaded || !isAuthenticated || userId.trim() === "") return;
     let cancelled = false;
     setMyTeamName(normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId)));
+    setStoredSinglePlayerMode(getStoredSinglePlayerMode(userId, lobbyId) === 1);
 
     void (async () => {
       try {
@@ -319,8 +322,9 @@ export default function GameBoardPage() {
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
+  const isSinglePlayerGame = game?.isSinglePlayer ?? storedSinglePlayerMode;
   const teamScores: TeamScoreViewModel[] = game && myTeamName
-    ? buildTeamScores(myTeamName, game.score_1, game.score_2)
+    ? buildTeamScores(myTeamName, game.score_1, game.score_2, isSinglePlayerGame)
     : [];
 
   return (
@@ -355,7 +359,7 @@ export default function GameBoardPage() {
 
         {game && myTeamName && (
           <>
-            <section className="bingo-team-points-container bingo-top-spacing">
+            <section className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}>
               {teamScores.map((score) => (
                 <div key={score.label} className={`bingo-team-points-card ${getPerspectiveCardClass(score.perspective)}`}>
                   <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
