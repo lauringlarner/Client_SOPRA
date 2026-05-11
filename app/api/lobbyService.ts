@@ -22,6 +22,7 @@ type SubscribeToLobby = (
 interface LobbyClient {
   createLobby: () => Promise<JoinLobbyResult>;
   joinLobby: (joinCode: string) => Promise<JoinLobbyResult>;
+  getCurrentLobby: () => Promise<LobbyDetails>;
   getLobby: (lobbyId: string) => Promise<LobbyDetails>;
   updatePlayerTeam: (
     lobbyId: string,
@@ -70,6 +71,10 @@ function createRemoteLobbyClient(
   return {
     async getLobby(lobbyId: string): Promise<LobbyDetails> {
       const payload = await api.get<LobbyDetails>(`/lobbies/${lobbyId}`, token);
+      return normalizeLobbyDetails(payload);
+    },
+    async getCurrentLobby(): Promise<LobbyDetails> {
+      const payload = await api.get<LobbyDetails>("/lobbies/current", token);
       return normalizeLobbyDetails(payload);
     },
     async createLobby(): Promise<JoinLobbyResult> {
@@ -140,9 +145,9 @@ const channelCache = new Map<string, CachedChannel>();
 
 function getPusher() {
   if (!pusher) {
-    // deno-lint-ignore no-process-global
+    // deno-lint-ignore no-process-globals
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    // deno-lint-ignore no-process-global
+    // deno-lint-ignore no-process-globals
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
     if (!key || !cluster) {

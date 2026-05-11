@@ -74,11 +74,32 @@ export default function MenuPage() {
 
   // Lade gespeicherte Lobby nur wenn User Daten da sind
   useEffect(() => {
-    if (loaded && isAuthenticated && userId && userId.trim() !== "") {
-      const id = getStoredActiveLobbyId(userId);
-      setActiveLobbyId(id);
-    }
-  }, [isAuthenticated, loaded, userId]);
+    if (!loaded || !isAuthenticated || !userId || userId.trim() === "") return;
+
+    let cancelled = false;
+    const storedLobbyId = getStoredActiveLobbyId(userId);
+    setActiveLobbyId(storedLobbyId);
+
+    if (storedLobbyId) return;
+
+    void lobbyClient.getCurrentLobby()
+      .then((currentLobby) => {
+        if (cancelled) return;
+        setStoredActiveLobbyId(userId, currentLobby.id);
+        setActiveLobbyId(currentLobby.id);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const applicationError = error as ApplicationError | undefined;
+        if (applicationError?.status === 404) {
+          setActiveLobbyId("");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, loaded, lobbyClient, userId]);
 
   if (!loaded || !isAuthenticated) {
     return <div className="app-shell" />;
