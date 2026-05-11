@@ -192,7 +192,7 @@ export default function MenuPage() {
               <span className="menu-avatar">{avatarInitial}</span>
               <span className="menu-username">{username || "User"}</span>
             </button>
-            <button type="button" className="menu-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
+            <button type="button" className="menu-rules-trigger" onClick={() => setActiveOverlay("rules")}>i</button>
 
             </div>
             <div className="menu-main-actions">
@@ -291,66 +291,27 @@ export default function MenuPage() {
                       <h3 className="rules-subtitle">Tile Examples</h3>
 
                       <div className="rules-tile-grid">
-                        <div className="rules-tile-item">
-                          <button type="button" className="bingo-field-button">
-                            <FittedTileText text="Tree" maxFontSize={10} />
-                          </button>
-                          <span>Unclaimed</span>
-                        </div>
-
-                        <div className="rules-tile-item">
-                          <button
-                            type="button"
-                            className="bingo-field-button is-processing-friendly is-analyzing"
-                            disabled
-                          >
-                            <div className="loader is-friendly"></div>
-                          </button>
-                          <span>In Validation</span>
-                        </div>
-
-                        <div className="rules-tile-item">
-                          <button
-                            type="button"
-                            className="bingo-field-button is-claimed is-claimed-friendly"
-                            disabled
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="4"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="claimed-icon-svg"
-                            >
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                          </button>
-                          <span>Claimed Team 1</span>
-                        </div>
-
-                        <div className="rules-tile-item">
-                          <button
-                            type="button"
-                            className="bingo-field-button is-claimed is-claimed-enemy"
-                            disabled
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="white"
-                              strokeWidth="4"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="claimed-icon-svg"
-                            >
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                          </button>
-                          <span>Claimed Team 2</span>
-                        </div>
-                      </div>
+                                        <div className="rules-tile-item">
+                                          <div className="bingo-field-button" style={{ pointerEvents: 'none' }}><FittedTileText text="Tree" maxFontSize={10} /></div>
+                                          <span>Unclaimed</span>
+                                        </div>
+                                        <div className="rules-tile-item">
+                                          <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}><div className="loader is-friendly"></div></div>
+                                          <span>In Validation</span>
+                                        </div>
+                                        <div className="rules-tile-item">
+                                          <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
+                                          </div>
+                                          <span>Claimed Team 1</span>
+                                        </div>
+                                        <div className="rules-tile-item">
+                                          <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
+                                          </div>
+                                          <span>Claimed Team 2</span>
+                                        </div>
+                                      </div>
                     </div>
 
                     <div className="overlay-actions overlay-actions-single">

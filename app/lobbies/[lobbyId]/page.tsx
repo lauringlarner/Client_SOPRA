@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
+import { FittedTileText } from "@/components/FittedTileText";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
@@ -38,6 +39,12 @@ interface User {
   gamesWon: number;
 }
 
+type GameModeDTO = {
+  id: string;
+  name: string;
+  rules: string[]; 
+};
+
 export default function LobbyPage() {
   const api = useApi();
   const router = useRouter();
@@ -64,6 +71,11 @@ export default function LobbyPage() {
   const autoStartSent = useRef(false);
   const latestLobbyRef = useRef<LobbyDetails | null>(null);
 
+  const [showRules, setShowRules] = useState(false);
+  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
+  const [loadingGameModes, setLoadingGameModes] = useState(false);
+  const [gameModesError, setGameModesError] = useState<string | null>(null);
+
   const setPendingAction = (action: string | null) => {
     setPendingActionState(action);
   };
@@ -86,6 +98,27 @@ export default function LobbyPage() {
       : connectionState === "live"
       ? "Share this code so other players can join the lobby."
       : "Loading the latest lobby state.";
+
+
+    // --- Rules Fetcher ---
+  const handleOpenRules = async () => {
+    if (gameModes.length > 0) {
+      setShowRules(true);
+      return;
+    }
+    setLoadingGameModes(true);
+    try {
+      // Ensure 'token' is available from useAuthSession
+      const response = await api.get<GameModeDTO[]>("/gameModes", token);
+      setGameModes(response);
+      setShowRules(true);
+    } catch (_e) {
+      setGameModesError("Failed to load game modes.");
+      setShowRules(true);
+    } finally {
+      setLoadingGameModes(false);
+    }
+  };
 
   useEffect(() => {
     if (!loaded) return;
@@ -301,15 +334,23 @@ export default function LobbyPage() {
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient lobby-layout">
+
+      <div className="lobby-top-actions">
+          <button 
+            type="button" 
+            className="menu-rules-trigger" 
+            onClick={handleOpenRules}
+            disabled={loadingGameModes}
+          >
+            {loadingGameModes ? "..." : "i"}
+          </button>
+        </div>
         <section className="lobby-card lobby-code-card">
           <div className="lobby-code-header">
             <div>
               <h1 className="lobby-code-title">Lobby Code</h1>
               <p className="lobby-code-subtitle">{connectionSubtitle}</p>
             </div>
-            <span className={`lobby-connection-pill is-${connectionState}`}>
-              {getConnectionLabel(connectionState)}
-            </span>
           </div>
           <div className="lobby-code-box">
             {lobby?.joinCode ? formatJoinCode(lobby.joinCode) : "Loading..."}
@@ -430,24 +471,28 @@ export default function LobbyPage() {
   </details>
 </section>
 
-            {TEAM_SECTIONS.map((team) => {
-              const players = lobbyPlayers.filter((p) => p.team === team);
-              return (
-                <section key={team ?? "none"} className="lobby-card lobby-team-card">
-                  <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
-                  <div className="lobby-team-list">
-                    {players.map((p) => (
-                      <LobbyPlayerCard
-                        key={p.id}
-                        player={p}
-                        isSelf={p.user.id === userId}
-                        onClick={() => openPlayerProfile(p)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+      {TEAM_SECTIONS.map((team) => {
+  const players = lobbyPlayers.filter((p) => p.team === team);
+
+  // If there are no players in this section, don't render anything
+  if (players.length === 0) return null;
+
+  return (
+    <section key={team ?? "none"} className="lobby-card lobby-team-card">
+      <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
+      <div className="lobby-team-list">
+        {players.map((p) => (
+          <LobbyPlayerCard
+            key={p.id}
+            player={p}
+            isSelf={p.user.id === userId}
+            onClick={() => openPlayerProfile(p)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+})}
 
             <section className="lobby-action-bar">
               <button
@@ -498,6 +543,70 @@ export default function LobbyPage() {
             </div>
           </div>
         )}
+
+{showRules && (
+          <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
+            <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
+              <div className="rules-content">
+                <h2 className="overlay-title">Game Rules</h2>
+                <div className="rules-section">
+                  <div className="rules-scroll-container">
+                    {gameModesError ? (
+                      <p className="overlay-error-bubble">{gameModesError}</p>
+                    ) : (
+                      <div className="rules-horizontal-list">
+                        {gameModes.map((mode) => (
+                          <div key={mode.id} className="rules-card">
+                            <h3 className="rules-subtitle">{mode.name}</h3>
+                            <ul className="rules-bullet-list">
+                              {mode.rules.map((rule, i) => (
+                                <li key={i}>
+                                  <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rules-section">
+                  <h3 className="rules-subtitle">Tile Examples</h3>
+               <div className="rules-tile-grid">
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}><FittedTileText text="Tree" maxFontSize={10} /></div>
+                    <span>Unclaimed</span>
+                  </div>
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}><div className="loader is-friendly"></div></div>
+                    <span>In Validation</span>
+                  </div>
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
+                    </div>
+                    <span>Claimed Team 1</span>
+                  </div>
+                  <div className="rules-tile-item">
+                    <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
+                    </div>
+                    <span>Claimed Team 2</span>
+                  </div>
+                </div>
+                </div>
+
+                <div className="overlay-actions overlay-actions-single">
+                  <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>Got it!</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+      
       </main>
     </div>
   );
