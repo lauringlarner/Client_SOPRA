@@ -364,60 +364,71 @@ export default function LobbyPage() {
               )}
             </section>
 
-            <section className="lobby-card lobby-settings-card">
-              <h2 className="lobby-section-title">Game Settings</h2>
+            {/* Modified Game Settings Section */}
+<section className="lobby-card lobby-settings-card">
+  <details className="settings-accordion">
+    <summary className="lobby-section-title" style={{ cursor: 'pointer', listStyle: 'none' }}>
+      Game Settings <span style={{ fontSize: '0.8rem', float: 'right' }}>▼</span>
+    </summary>
 
-              <label className="lobby-settings-field">
-                <span className="lobby-settings-label">Round duration (min)</span>
-                <input
-                  className="field-input"
-                  type="number"
-                  min={MIN_GAME_DURATION}
-                  max={MAX_GAME_DURATION}
-                  value={durationDraft}
-                  disabled={!isHost || pendingAction !== null}
-                  onChange={(e) => setDurationDraft(e.target.value)}
-                />
-              </label>
+    <div className="settings-content">
+      {/* Changed: input type="number" to type="range" */}
+      <label className="lobby-settings-field">
+        <span className="lobby-settings-label">
+          Round duration: <strong>{durationDraft}</strong> min
+        </span>
+        <input
+          className="range-slider"
+          type="range"
+          min={MIN_GAME_DURATION}
+          max={MAX_GAME_DURATION}
+          step="1"
+          value={durationDraft}
+          disabled={!isHost || pendingAction !== null}
+          onChange={(e) => setDurationDraft(e.target.value)}
+        />
+      </label>
 
-              <label className="lobby-settings-field">
-                <span className="lobby-settings-label">Word List</span>
-                <select
-                  className="field-input"
-                  value={listTypeDraft}
-                  disabled={!isHost || pendingAction !== null}
-                  onChange={(e) => setListTypeDraft(e.target.value as LobbyListType)}
-                >
-                  <option value="all">Outdoor and Indoor objects</option>
-                  <option value="outside">Outdoor objects</option>
-                  <option value="inside">Indoor objects</option>
-                  <option value="demo">Demo Mode</option>
-                </select>
-              </label>
+      <label className="lobby-settings-field">
+        <span className="lobby-settings-label">Word List</span>
+        <select
+          className="field-input"
+          value={listTypeDraft}
+          disabled={!isHost || pendingAction !== null}
+          onChange={(e) => setListTypeDraft(e.target.value as LobbyListType)}
+        >
+          <option value="all">Outdoor and Indoor objects</option>
+          <option value="outside">Outdoor objects</option>
+          <option value="inside">Indoor objects</option>
+          <option value="demo">Demo Mode</option>
+        </select>
+      </label>
 
-              <div className="lobby-settings-field">
-                <span className="lobby-settings-label">Singleplayer</span>
-                <label className="lobby-toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={isSinglePlayerDraft === 1}
-                    disabled={!isHost || pendingAction !== null}
-                    onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
-                  />
-                  <span className="lobby-toggle-track" />
-                </label>
-              </div>
+      <div className="lobby-settings-field">
+        <span className="lobby-settings-label">Singleplayer</span>
+        <label className="lobby-toggle-switch">
+          <input
+            type="checkbox"
+            checked={isSinglePlayerDraft === 1}
+            disabled={!isHost || pendingAction !== null}
+            onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
+          />
+          <span className="lobby-toggle-track" />
+        </label>
+      </div>
 
-              {isHost && (
-                <button
-                  className="vq-button"
-                  disabled={pendingAction !== null}
-                  onClick={() => void handleSaveSettings()}
-                >
-                  {pendingAction === "settings" ? "Saving..." : "Save Settings"}
-                </button>
-              )}
-            </section>
+      {isHost && (
+        <button
+          className="vq-button"
+          disabled={pendingAction !== null}
+          onClick={() => void handleSaveSettings()}
+        >
+          {pendingAction === "settings" ? "Saving..." : "Save Settings"}
+        </button>
+      )}
+    </div>
+  </details>
+</section>
 
             {TEAM_SECTIONS.map((team) => {
               const players = lobbyPlayers.filter((p) => p.team === team);
