@@ -307,9 +307,6 @@ export default function LobbyPage() {
               <h1 className="lobby-code-title">Lobby Code</h1>
               <p className="lobby-code-subtitle">{connectionSubtitle}</p>
             </div>
-            <span className={`lobby-connection-pill is-${connectionState}`}>
-              {getConnectionLabel(connectionState)}
-            </span>
           </div>
           <div className="lobby-code-box">
             {lobby?.joinCode ? formatJoinCode(lobby.joinCode) : "Loading..."}
@@ -430,24 +427,28 @@ export default function LobbyPage() {
   </details>
 </section>
 
-            {TEAM_SECTIONS.map((team) => {
-              const players = lobbyPlayers.filter((p) => p.team === team);
-              return (
-                <section key={team ?? "none"} className="lobby-card lobby-team-card">
-                  <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
-                  <div className="lobby-team-list">
-                    {players.map((p) => (
-                      <LobbyPlayerCard
-                        key={p.id}
-                        player={p}
-                        isSelf={p.user.id === userId}
-                        onClick={() => openPlayerProfile(p)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+      {TEAM_SECTIONS.map((team) => {
+  const players = lobbyPlayers.filter((p) => p.team === team);
+
+  // If there are no players in this section, don't render anything
+  if (players.length === 0) return null;
+
+  return (
+    <section key={team ?? "none"} className="lobby-card lobby-team-card">
+      <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
+      <div className="lobby-team-list">
+        {players.map((p) => (
+          <LobbyPlayerCard
+            key={p.id}
+            player={p}
+            isSelf={p.user.id === userId}
+            onClick={() => openPlayerProfile(p)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+})}
 
             <section className="lobby-action-bar">
               <button
