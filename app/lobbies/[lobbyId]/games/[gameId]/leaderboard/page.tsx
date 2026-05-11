@@ -7,6 +7,8 @@ import { ApiService } from "@/api/apiService";
 import {
   clearStoredActiveLobbyId,
   clearStoredLobbyTeam,
+  clearStoredPusherTransportTLS,
+  clearStoredSinglePlayerMode,
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
 import { ApplicationError } from "@/types/error";
@@ -93,9 +95,17 @@ export default function LeaderboardPage() {
     } finally {
       clearStoredActiveLobbyId(userId, lobbyId);
       clearStoredLobbyTeam(userId, lobbyId);
+      clearStoredSinglePlayerMode(userId, lobbyId)
+      clearStoredPusherTransportTLS();
       setIsLeaving(false);
       router.push("/menu");
     }
+  };
+
+  const handleReturnToLobby = () => {
+    clearStoredSinglePlayerMode(userId, lobbyId);
+    clearStoredPusherTransportTLS();
+    router.push(`/lobbies/${lobbyId}`);
   };
 
 
@@ -171,7 +181,7 @@ export default function LeaderboardPage() {
           <button type="button" className="leaderboard-action-btn" onClick={() => setShowConfirm(true)} disabled={isLeaving}>
             Leave
           </button>
-          <button type="button" className="leaderboard-action-btn" onClick={() => router.push(`/lobbies/${lobbyId}`)} disabled={isLeaving}>
+          <button type="button" className="leaderboard-action-btn" onClick={handleReturnToLobby} disabled={isLeaving}>
             To Lobby
           </button>
         </footer>
