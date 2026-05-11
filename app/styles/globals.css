@@ -857,6 +857,13 @@ justify-content: space-between;
   margin-bottom: 10px;
 }
 
+.lobby-top-actions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+}
+
 .lobby-toggle-switch input {
   position: absolute;
   opacity: 0;
