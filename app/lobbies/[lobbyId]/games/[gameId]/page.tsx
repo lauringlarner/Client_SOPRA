@@ -6,6 +6,7 @@ import confetti from "canvas-confetti";
 import { createGameClient } from "@/api/gameService";
 import { createLobbyClient } from "@/api/lobbyService";
 import { FittedTileText } from "@/components/FittedTileText";
+import { GameRulesOverlay } from "@/components/GameRulesOverlay";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
@@ -37,11 +38,6 @@ interface ChatMessageGetDTO {
   teamType: string;
 }
 
-type GameModeDTO = {
-  id: string;
-  name: string;
-  rules: string[]; 
-};
 
 const QUICK_MESSAGES = [
   "Too slow on the shutter! 🐢📸",
@@ -78,10 +74,6 @@ export default function GameBoardPage() {
   const [shakingTile, setShakingTile] = useState<string | null>(null);
   const [showBingoBanner, setShowBingoBanner] = useState(false);
   const [activeBingoTiles, setActiveBingoTiles] = useState<Set<string>>(new Set());
-
-  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
-  const [loadingGameModes, setLoadingGameModes] = useState(false);
-  const [gameModesError, setGameModesError] = useState<string | null>(null);
 
   // --- Chat States ---
   const [chatHistory, setChatHistory] = useState<ChatMessageGetDTO[]>([]);
@@ -171,24 +163,7 @@ export default function GameBoardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleOpenRules = async () => {
-    if (gameModes.length > 0) {
-      setShowRules(true);
-      return;
-    }
-    setLoadingGameModes(true);
-    try {
-      const response = await api.get<GameModeDTO[]>("/gameModes", token);
-      setGameModes(response);
-      setShowRules(true);
-    } catch (_e) {
-      setGameModesError("Failed to load game modes.");
-      setShowRules(true);
-    } finally {
-      setLoadingGameModes(false);
-    }
-  };
-
+  
   const remainingSeconds = useMemo(() => {
     if (!game || game.status === "ENDED") return 0;
     const totalSeconds = game.gameDuration * 60;
@@ -340,14 +315,9 @@ export default function GameBoardPage() {
         {game && myTeamName && (
           <div className="top-actions-bar">
             <div className="rules-trigger-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-              <button 
-                type="button" 
-                className="menu-rules-trigger" 
-                onClick={handleOpenRules}
-                disabled={loadingGameModes}
-              >
-                {loadingGameModes ? "..." : "i"}
-              </button>
+
+            <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+
               <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -419,68 +389,13 @@ export default function GameBoardPage() {
         )}
       </main>
 
-      {/* --- RULES OVERLAY --- */}
-      {showRules && (
-        <div className="overlay-backdrop" onClick={() => setShowRules(false)}>
-          <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-            <div className="rules-content">
-              <h2 className="overlay-title">Game Rules</h2>
-              <div className="rules-section">
-                <div className="rules-scroll-container">
-                  {gameModesError ? (
-                    <p className="overlay-error-bubble">{gameModesError}</p>
-                  ) : (
-                    <div className="rules-horizontal-list">
-                      {gameModes.map((mode) => (
-                        <div key={mode.id} className="rules-card">
-                          <h3 className="rules-subtitle">{mode.name}</h3>
-                          <ul className="rules-bullet-list">
-                            {mode.rules.map((rule, i) => (
-                              <li key={i}>
-                                <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              <div className="rules-section">
-                <h3 className="rules-subtitle">Tile Examples</h3>
-                <div className="rules-tile-grid">
-                  <div className="rules-tile-item">
-                    <div className="bingo-field-button" style={{ pointerEvents: 'none' }}><FittedTileText text="Tree" maxFontSize={10} /></div>
-                    <span>Unclaimed</span>
-                  </div>
-                  <div className="rules-tile-item">
-                    <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}><div className="loader is-friendly"></div></div>
-                    <span>In Validation</span>
-                  </div>
-                  <div className="rules-tile-item">
-                    <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
-                    </div>
-                    <span>Claimed Team 1</span>
-                  </div>
-                  <div className="rules-tile-item">
-                    <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
-                    </div>
-                    <span>Claimed Team 2</span>
-                  </div>
-                </div>
-              </div>
+              <GameRulesOverlay 
+                isOpen={showRules} 
+                onClose={() => setShowRules(false)} 
+                token={token} 
+              />
 
-              <div className="overlay-actions overlay-actions-single">
-                <button type="button" className="btn-rules-confirm" onClick={() => setShowRules(false)}>Got it!</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --- CHAT OVERLAY --- */}
       {showChat && (
