@@ -89,6 +89,8 @@ export default function GameBoardPage() {
   
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
+  const tileSound = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => { tileSound.current = new Audio('/sounds/ui_click_beep.wav'); }, []);
 
   // --- 1. Background Scroll Lock ---
   useEffect(() => {
@@ -367,7 +369,7 @@ export default function GameBoardPage() {
                           type="button"
                           className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
                           disabled={isClaimed || isProcessing}
-                          onClick={() => router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`)}
+                          onClick={() => { tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
                             <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>
