@@ -1,11 +1,13 @@
 :root {
   --font-geist-sans: "Geist";
   --vq-aquamarine: #6bcae2;
+  --vq-coral: #85B7EB; 
+  --vq-royalblue: #85B7EB;
   --vq-charcoal: #22313a;
   --vq-teal: #57a5b8;
   --vq-deep: #101a24;
   --vq-home-bg: #0c0c12;
-  --vq-border: #d9d9d9;
+  --vq-border: #22313a;
   --vq-text-dark: #1e1e1e;
   --vq-text-muted: #b3b3b3;
   --vq-text-light: #f5f5f5;
@@ -80,10 +82,10 @@ textarea {
 .screen-gradient {
   background-image: linear-gradient(
     180deg,
-    var(--vq-teal) 0%,
+    #2a5c6b 0%,       /* was --vq-teal #57a5b8 — darker/more muted */
     var(--vq-deep) 14.423%,
     var(--vq-deep) 84.615%,
-    var(--vq-teal) 100%
+    #2a5c6b 100%      /* same */
   );
 }
 
@@ -117,11 +119,11 @@ textarea {
 }
 
 /* Rain Positions */
-.rain-item:nth-child(1) { left: 5%; animation-duration: 8s; }
-.rain-item:nth-child(2) { left: 20%; animation-duration: 12s; animation-delay: 2s; }
-.rain-item:nth-child(3) { left: 40%; animation-duration: 10s; animation-delay: 5s; }
-.rain-item:nth-child(4) { left: 60%; animation-duration: 14s; animation-delay: 1s; }
-.rain-item:nth-child(5) { left: 85%; animation-duration: 9s; animation-delay: 3s; }
+.rain-item:nth-child(1) { left: -20%; animation-duration: 14s; }
+.rain-item:nth-child(2) { left: 0%; animation-duration: 16s; animation-delay: 5s; }
+.rain-item:nth-child(3) { left: 20%; animation-duration: 14s; animation-delay: 15s; }
+.rain-item:nth-child(4) { left: 40%; animation-duration: 18s; animation-delay: 0s; }
+.rain-item:nth-child(5) { left: 60%; animation-duration: 13s; animation-delay: 10s; }
 
 .home-layout {
   padding: clamp(56px, 11vh, 107px) 9px clamp(40px, 14vh, 142px);
@@ -137,8 +139,8 @@ textarea {
   position: relative;
   border-radius: 0;
   background:
-    radial-gradient(circle at 18% 24%, rgb(107 202 226 / 35%), transparent 52%),
-    radial-gradient(circle at 82% 72%, rgb(87 165 184 / 30%), transparent 50%),
+    radial-gradient(circle at 18% 24%, rgb(107 202 226 / 20%), transparent 52%),
+    radial-gradient(circle at 82% 72%, rgb(42 92 107 / 20%), transparent 50%),
     linear-gradient(155deg, #121926 0%, #22313a 42%, #0f131c 100%);
   overflow: hidden;
 }
@@ -245,9 +247,7 @@ textarea {
   min-height: 116px;
   display: grid;
   place-items: center;
-  text-shadow: 0 0 20px rgba(107, 202, 226, 0.3), 
-               0 0 40px rgba(107, 202, 226, 0.1);
-  color: var(--vq-aquamarine); 
+  color: var(--vq-coral); 
 }
 .auth-title,
 .auth-form-card,
@@ -257,7 +257,7 @@ textarea {
 }
 
 .auth-form-card {
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   border: 1px solid var(--vq-border);
   border-radius: var(--vq-radius);
   padding: 24px;
@@ -273,7 +273,7 @@ textarea {
 }
 
 .field-label {
-  color: var(--vq-text-dark);
+  color: var(--vq-text-light);
   font-size: 16px;
   font-weight: 400;
   line-height: 1.4;
@@ -284,8 +284,8 @@ textarea {
   min-height: 40px;
   border: 1px solid var(--vq-border);
   border-radius: var(--vq-radius);
-  background: #fff;
-  color: var(--vq-text-dark);
+  background: var(--vq-deep);
+  color: var(--vq-text-light);
   padding: 12px 16px;
   font-size: 16px;
   line-height: 1;
@@ -368,7 +368,7 @@ textarea {
 
 .menu-panel {
   position: relative;
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   border-radius: var(--vq-radius);
   padding: 24px;
   display: flex;
@@ -441,10 +441,28 @@ textarea {
   z-index: 21;
 }
 
-.menu-secondary-btn.logout { 
-  background: rgba(150, 34, 34, 1)!important; 
-    z-index: 22;  
+.menu-secondary-btn.logout {
+  background: #d97757 !important;
+  color: #ffffff !important;
+  border: 1.5px solid white !important;
+  z-index: 22;
 }
+
+.menu-status-card {
+  border-radius: var(--vq-radius);
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  animation: vq-shake 0.4s ease-in-out;
+}
+
+.menu-status-card.is-error {
+  background: #C53030;
+  color: #3d1a0a;
+  border: 1px solid rgba(156, 67, 38, 0.4);
+}
+
 /* --- RULES OVERLAY --- */
 .overlay-backdrop {
   position: absolute;
@@ -533,8 +551,8 @@ textarea {
   display: flex;
   flex-direction: column;
   /* Wichtig: overflow-y auf auto oder scroll setzen */
-  overflow-y: auto; 
-  background: var(--vq-aquamarine);
+  overflow-y: auto;
+  background: var(--vq-coral);
   padding: 24px;
   border-radius: var(--vq-radius);
   width: 90%;
@@ -665,15 +683,15 @@ justify-content: space-between;
 /*Error message for join code*/
 
 .overlay-error-bubble {
-  background: rgba(180, 20, 20, 0.2); /* Sanftes Rot passend zum Design */
-  color: #d32f2f;
+  background: #F0997B;
+  color: #9c4326c4;
   padding: 10px 14px;
   border-radius: var(--vq-radius);
   font-size: 0.85rem;
   font-weight: 700;
   text-align: center;
   margin-bottom: 15px;
-  border: 1px solid rgba(180, 20, 20, 0.4);
+  border: 1px solid rgba(156, 67, 38, 0.4);
   
   /* Die Animation macht den Fehler "spürbar" */
   animation: vq-shake 0.4s ease-in-out;
@@ -697,7 +715,7 @@ justify-content: space-between;
 }
 
 .lobby-card {
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   border: 1px solid var(--vq-border);
   border-radius: var(--vq-radius);
   padding: 24px;
@@ -927,7 +945,9 @@ justify-content: space-between;
 
 .lobby-team-option.is-selected,
 .lobby-ready-toggle.is-ready {
-  background: #1d3e4d;
+  background: #2a5272;
+  color: white;
+  border: 2px solid white;
 }
 
 .lobby-team-list {
@@ -1024,7 +1044,7 @@ justify-content: space-between;
 }
 
 .lobby-action-bar {
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   border-radius: var(--vq-radius);
   padding: 10px;
   min-height: 78px;
@@ -1038,6 +1058,9 @@ justify-content: space-between;
   font-size: 15px;
   line-height: 1.1;
   padding: 10px 6px;
+  background: #d97757 !important;
+  color: #ffffff !important;
+  border: 1.5px solid white !important;
 }
 
 .lobby-action-note {
@@ -1165,8 +1188,8 @@ justify-content: space-between;
 
 /* Spezialisierungen */
 .guard-action.primary-red {
-  background-color: #ef4444;
-  color: #ffffff;
+  background-color: #F0997B;
+  color: #9c4326c4;
 }
 
 .guard-action.secondary-teal {
@@ -1268,7 +1291,7 @@ justify-content: space-between;
   align-items: center;
   gap: 30px;
   flex-shrink: 0;
-  background-color: var(--vq-aquamarine);
+  background-color: var(--vq-coral);
 }
 
 .bingo-frame-layout {
@@ -1277,7 +1300,7 @@ justify-content: space-between;
 }
 
 .bingo-panel {
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   border-radius: var(--vq-radius);
   padding: 10px;
   display: flex;
@@ -1291,7 +1314,7 @@ justify-content: space-between;
   flex-direction: column;
   align-items: center;
   border-radius: 8px;
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
 }
 
 .bingo-row-frame {
@@ -1352,23 +1375,23 @@ justify-content: space-between;
 
 /* --- TEAM FARBEN & STATES --- */
 .bingo-field-button.is-claimed-friendly {
-  background-color: #95D6A2 !important;
-  border-color: #95D6A2 !important;
+  background-color: var(--vq-aquamarine) !important;
+  border-color: var(--vq-aquamarine) !important;
 }
 
 .bingo-field-button.is-claimed-enemy {
-  background-color: #FFCB88 !important;
-  border-color: #FFCB88 !important;
+  background-color: #F0997B !important;
+  border-color: #F0997B !important;
 }
 
 .bingo-field-button.is-processing-friendly {
-  background-color: #cfead5 !important;
-  border-color: #aadab4 !important;
+  background-color: #aadff0 !important;
+  border-color: #85cfe5 !important;
 }
 
 .bingo-field-button.is-processing-enemy {
-  background-color: #f7e1c4 !important;
-  border-color: #edc99a !important;
+  background-color: #f5c4ae !important;
+  border-color: #e8a98c !important;
 }
 
 .bingo-field-button.is-claimed .tile-text {
@@ -1527,7 +1550,7 @@ justify-content: space-between;
   justify-content: space-between;
   padding: 15px 12px 12px 12px;
   flex: 1;
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   border-radius: 12px;
   height: 140px;
   box-sizing: border-box;
@@ -1543,6 +1566,14 @@ justify-content: space-between;
 
 .bingo-team-points-card.is-enemy {
   background: #FFCB88;
+}
+
+.bingo-team-points-card.is-team1 {
+  background: var(--vq-aquamarine);
+}
+
+.bingo-team-points-card.is-team2 {
+  background: #F0997B;
 }
 
 .bingo-team-points-card-text {
@@ -1605,7 +1636,7 @@ justify-content: space-between;
 
 .bingo-time-bar-fill {
   height: 100%;
-  background-color: var(--vq-aquamarine);
+  background-color: var(--vq-coral);
   border-radius: 6px;
   transition: width 1s linear;
 }
@@ -1619,7 +1650,7 @@ justify-content: space-between;
 
 @keyframes modern-pulse {
   0%, 100% {
-    background-color: var(--vq-aquamarine);
+    background-color: var(--vq-coral);
     opacity: 1;
   }
   50% {
@@ -1799,7 +1830,7 @@ justify-content: space-between;
 .custom-overlay-title {
   font-size: 1.25rem;
   margin-bottom: 8px;
-  color: #ef4444;
+  color: #9c4326c4;
   font-weight: bold;
 }
 
@@ -1914,7 +1945,7 @@ justify-content: space-between;
 }
 
 .overlay-card {
-  background: var(--vq-aquamarine);
+  background: var(--vq-coral);
   width: 100%;
   max-width: 340px;
   border-radius: var(--vq-radius);
@@ -1994,7 +2025,7 @@ justify-content: space-between;
 /* --- FEEDBACK MESSAGES --- */
 .success-template {
   background: rgba(46, 125, 50, 0.15);
-  color: #2e7d32;
+  color: #2e8533;
   padding: 10px;
   border-radius: var(--vq-radius);
   font-size: 0.85rem;
@@ -2005,15 +2036,15 @@ justify-content: space-between;
 }
 
 .error-template {
-  background: rgba(180, 20, 20, 0.15);
-  color: #d32f2f;
+  background: #f40303cd;
+  color: #f2f2ef;
   padding: 10px;
   border-radius: var(--vq-radius);
   font-size: 0.85rem;
   font-weight: 700;
   text-align: center;
   margin-bottom: 15px;
-  border: 1px solid rgba(180, 20, 20, 0.2);
+  border: 1px solid rgba(156, 67, 38, 0.4);
   animation: vq-shake 0.4s ease-in-out;
 }
 
@@ -2191,19 +2222,19 @@ justify-content: space-between;
  }
 
 .leaderboard-action-btn {
-  flex: 1; 
+  flex: 1;
   padding: 16px;
-   border-radius: 14px; 
-   font-weight: 800; 
+   border-radius: 14px;
+   font-weight: 800;
    text-transform: uppercase;
-  background: var(--vq-charcoal); 
-  color: white; 
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #F0997B;
+  color: #9c4326c4;
+  border: 2px solid white;
   backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s ease;
 }
 
 .leaderboard-action-btn:hover {
-  background: color-mix(in srgb, var(--vq-charcoal) 85%, white 15%);
+  background: color-mix(in srgb, #F0997B 85%, white 15%);
 }
 
 /* --- THE RECTANGLE OVERLAY --- */
@@ -2274,8 +2305,8 @@ justify-content: space-between;
 
 /* Maps to guard-action.primary-red */
 .confirm-btn.leave {
-  background-color: #ef4444;
-  color: #ffffff;
+  background-color: #F0997B;
+  color: #9c4326c4;
 }
 
 /* Maps to guard-action.secondary-teal */
@@ -2469,9 +2500,9 @@ a[href^="sms"] {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid var(--vq-text-dark);
+  border: 2px solid white;
   background: transparent;
-  color: var(--vq-text-dark);
+  color: white;
   font-weight: bold;
   font-size: larger;
   display: grid;
