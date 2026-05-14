@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import { playUiBeep } from "@/utils/sounds";
 
 const api = new ApiService();
 
@@ -58,6 +59,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
+    playUiBeep();
     setIsSubmitting(true);
     setError("");
 
