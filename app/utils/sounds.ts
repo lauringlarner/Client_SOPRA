@@ -17,6 +17,7 @@ export function playCameraClick() {
 
 let successAudio: HTMLAudioElement | null = null;
 let errorAudio: HTMLAudioElement | null = null;
+let countdownAudio: HTMLAudioElement | null = null;
 
 //success
 export function successClick() {
@@ -24,6 +25,13 @@ export function successClick() {
   if (!successAudio) successAudio = new Audio("/sounds/correct.mp3");
   successAudio.currentTime = 0;
   successAudio.play().catch(() => {});
+}
+//countdown warning
+export function playCountdown() {
+  if (typeof window === "undefined") return;
+  if (!countdownAudio) countdownAudio = new Audio("/sounds/countdown-10s.mp3");
+  countdownAudio.currentTime = 0;
+  countdownAudio.play().catch(() => {});
 }
 //error
 export function errorClick() {
