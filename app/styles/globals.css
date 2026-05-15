@@ -1046,7 +1046,6 @@ justify-content: space-between;
 .lobby-action-bar {
   background: var(--vq-coral);
   border-radius: var(--vq-radius);
-  padding: 10px;
   min-height: 78px;
   display: flex;
   justify-content: center;
@@ -1190,6 +1189,13 @@ justify-content: space-between;
 .guard-action.primary-red {
   background-color: #F0997B;
   color: #9c4326c4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .guard-action.primary-red {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
 }
 
 .guard-action.secondary-teal {
@@ -2224,13 +2230,20 @@ justify-content: space-between;
 .leaderboard-action-btn {
   flex: 1;
   padding: 16px;
-   border-radius: 14px;
-   font-weight: 800;
-   text-transform: uppercase;
+  border-radius: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
   background: #F0997B;
   color: #9c4326c4;
   border: 2px solid white;
   backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leaderboard-action-btn {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
 }
 
 .leaderboard-action-btn:hover {
@@ -2307,6 +2320,13 @@ justify-content: space-between;
 .confirm-btn.leave {
   background-color: #F0997B;
   color: #9c4326c4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .confirm-btn.leave {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
 }
 
 /* Maps to guard-action.secondary-teal */
@@ -2836,7 +2856,7 @@ summary::-webkit-details-marker {
   justify-content: space-between;
   align-items: center;
   cursor:pointer;
-  padding: 10px 14px;
+  padding: 14px 18px;
   border-radius: 999px;
   background: rgb(16 26 36 / 12%);
   color: var(--vq-charcoal);
@@ -2844,6 +2864,11 @@ summary::-webkit-details-marker {
   font-weight: 600;
   transition: background 0.2s ease, transform 0.1s ease;
   -webkit-tap-highlight-color: transparent;
+  margin-bottom: 0;
+}
+
+.settings-accordion[open] .settings-summary {
+  margin-bottom: 10px;
 }
 
 .settings-summary:hover {
