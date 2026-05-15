@@ -25,6 +25,10 @@ export default function UserProfilePage() {
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Visibility states for the password inputs
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const fetchUserData = useCallback(async () => {
     if (!userId || !token) return;
     try {
@@ -48,6 +52,8 @@ export default function UserProfilePage() {
     setActiveOverlay(null);
     setError("");
     setSuccess("");
+    setShowOldPassword(false);
+    setShowNewPassword(false);
   };
 
   const handleSavePassword = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -133,16 +139,91 @@ export default function UserProfilePage() {
             <h2 className="overlay-title">Update Password</h2>
             {error && <div className="error-template">{error}</div>}
             {success && <div className="success-template">{success}</div>}
+            
             <div className="edit-form-stack">
+              {/* Current Password */}
               <div className="info-group">
                 <label className="info-label" htmlFor="oldPassword">Current Password</label>
-                <input id="oldPassword" name="oldPassword" type="password" className="edit-input-field" placeholder="Enter current password" required disabled={isSubmitting || !!success} />
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input 
+                    id="oldPassword" 
+                    name="oldPassword" 
+                    type={showOldPassword ? "text" : "password"} 
+                    className="edit-input-field" 
+                    placeholder="Enter current password" 
+                    required 
+                    disabled={isSubmitting || !!success} 
+                    style={{ paddingRight: "3.5rem", width: "100%" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    disabled={isSubmitting || !!success}
+                    aria-label={showOldPassword ? "Hide current password" : "Show current password"}
+                    style={{
+                      position: "absolute",
+                      right: "0.75rem",
+                      background: "transparent",
+                      border: "none",
+                      cursor: (isSubmitting || !!success) ? "not-allowed" : "pointer",
+                      color: "#000000",
+                      padding: "0.25rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {showOldPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {/* New Password */}
               <div className="info-group">
                 <label className="info-label" htmlFor="newPassword">New Password</label>
-                <input id="newPassword" name="newPassword" type="password" className="edit-input-field" placeholder="Enter new password" required disabled={isSubmitting || !!success} />
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input 
+                    id="newPassword" 
+                    name="newPassword" 
+                    type={showNewPassword ? "text" : "password"} 
+                    className="edit-input-field" 
+                    placeholder="Enter new password" 
+                    required 
+                    disabled={isSubmitting || !!success} 
+                    style={{ paddingRight: "3.5rem", width: "100%" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    disabled={isSubmitting || !!success}
+                    aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                    style={{
+                      position: "absolute",
+                      right: "0.75rem",
+                      background: "transparent",
+                      border: "none",
+                      cursor: (isSubmitting || !!success) ? "not-allowed" : "pointer",
+                      color: "#000000",
+                      padding: "0.25rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {showNewPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
+
             <div className="overlay-actions">
               <button type="button" className="vq-button btn-cancel" onClick={closeOverlay} disabled={isSubmitting}>Cancel</button>
               <button type="submit" className="vq-button btn-confirm" disabled={isSubmitting || !!success}>
