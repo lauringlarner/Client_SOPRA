@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { GameRulesOverlay } from "@/components/GameRulesOverlay";
+import StatsOverlay from "@/components/StatsOverlay"; // Imported your new reusable component
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
@@ -56,8 +57,8 @@ export default function LobbyPage() {
   const [pageMessage, setPageMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
 
   const [_selectedPlayer, setSelectedPlayer] = useState<LobbyPlayer | null>(null);
-  const [_selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [_profileLoading, setProfileLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -66,7 +67,6 @@ export default function LobbyPage() {
   const latestLobbyRef = useRef<LobbyDetails | null>(null);
 
   const [showRules, setShowRules] = useState(false);
-
 
   const setPendingAction = (action: string | null) => {
     setPendingActionState(action);
@@ -90,7 +90,6 @@ export default function LobbyPage() {
       : connectionState === "live"
       ? "Share this code so other players can join the lobby."
       : "Loading the latest lobby state.";
-
 
   useEffect(() => {
     if (!loaded) return;
@@ -125,6 +124,7 @@ export default function LobbyPage() {
   };
 
   const openPlayerProfile = async (player: LobbyPlayer) => {
+    if (profileLoading) return;
     setSelectedPlayer(player);
     setProfileLoading(true);
     setSelectedUser(null);
@@ -306,10 +306,11 @@ export default function LobbyPage() {
   return (
     <div className="app-shell">
       <main className="phone-frame screen-gradient lobby-layout">
-
-      <div className="lobby-top-actions">
-        <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+        <div className="lobby-top-actions">
+          <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+          {profileLoading && <span className="profile-loading-spinner">...</span>}
         </div>
+
         <section className="lobby-card lobby-code-card">
           <div className="lobby-code-header">
             <div>
@@ -370,94 +371,91 @@ export default function LobbyPage() {
               )}
             </section>
 
-            {/* Modified Game Settings Section */}
-<section className="lobby-card lobby-settings-card">
-  <details className="settings-accordion">
-    <summary className="lobby-section-title settings-summary">
-      Game Settings <span className="chevron">▼</span>
-    </summary>
+            <section className="lobby-card lobby-settings-card">
+              <details className="settings-accordion">
+                <summary className="lobby-section-title settings-summary">
+                  Game Settings <span className="chevron">▼</span>
+                </summary>
 
-    <div className="settings-content">
-      {/* Changed: input type="number" to type="range" */}
-      <label className="lobby-settings-field">
-        <span className="lobby-settings-label">
-          Round duration: <strong>{durationDraft}</strong> min
-        </span>
-        <input
-          className="range-slider"
-          type="range"
-          min={MIN_GAME_DURATION}
-          max={MAX_GAME_DURATION}
-          step="1"
-          value={durationDraft}
-          disabled={!isHost || pendingAction !== null}
-          onChange={(e) => setDurationDraft(e.target.value)}
-        />
-      </label>
+                <div className="settings-content">
+                  <label className="lobby-settings-field">
+                    <span className="lobby-settings-label">
+                      Round duration: <strong>{durationDraft}</strong> min
+                    </span>
+                    <input
+                      className="range-slider"
+                      type="range"
+                      min={MIN_GAME_DURATION}
+                      max={MAX_GAME_DURATION}
+                      step="1"
+                      value={durationDraft}
+                      disabled={!isHost || pendingAction !== null}
+                      onChange={(e) => setDurationDraft(e.target.value)}
+                    />
+                  </label>
 
-              <label className="lobby-settings-field">
-                <span className="lobby-settings-label">What kind of objects do you want to search?</span>
-                <select
-                  className="field-input"
-                  value={listTypeDraft}
-                  disabled={!isHost || pendingAction !== null}
-                  onChange={(e) => setListTypeDraft(e.target.value as LobbyListType)}
-                >
-                  <option value="all">Outdoor and Indoor objects</option>
-                  <option value="outside">Outdoor objects</option>
-                  <option value="inside">Indoor objects</option>
-                  <option value="demo">Demo Mode</option>
-                </select>
-              </label>
+                  <label className="lobby-settings-field">
+                    <span className="lobby-settings-label">What kind of objects do you want to search?</span>
+                    <select
+                      className="field-input"
+                      value={listTypeDraft}
+                      disabled={!isHost || pendingAction !== null}
+                      onChange={(e) => setListTypeDraft(e.target.value as LobbyListType)}
+                    >
+                      <option value="all">Outdoor and Indoor objects</option>
+                      <option value="outside">Outdoor objects</option>
+                      <option value="inside">Indoor objects</option>
+                      <option value="demo">Demo Mode</option>
+                    </select>
+                  </label>
 
-      <div className="lobby-settings-field">
-        <span className="lobby-settings-label">Singleplayer</span>
-        <label className="lobby-toggle-switch">
-          <input
-            type="checkbox"
-            checked={isSinglePlayerDraft === 1}
-            disabled={!isHost || pendingAction !== null}
-            onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
-          />
-          <span className="lobby-toggle-track" />
-        </label>
-      </div>
+                  <div className="lobby-settings-field">
+                    <span className="lobby-settings-label">Singleplayer</span>
+                    <label className="lobby-toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={isSinglePlayerDraft === 1}
+                        disabled={!isHost || pendingAction !== null}
+                        onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
+                      />
+                      <span className="lobby-toggle-track" />
+                    </label>
+                  </div>
 
-      {isHost && (
-        <button
-          className="vq-button"
-          disabled={pendingAction !== null}
-          onClick={() => void handleSaveSettings()}
-        >
-          {pendingAction === "settings" ? "Saving..." : "Save Settings"}
-        </button>
-      )}
-    </div>
-  </details>
-</section>
+                  {isHost && (
+                    <button
+                      className="vq-button"
+                      disabled={pendingAction !== null}
+                      onClick={() => void handleSaveSettings()}
+                    >
+                      {pendingAction === "settings" ? "Saving..." : "Save Settings"}
+                    </button>
+                  )}
+                </div>
+              </details>
+            </section>
 
-      {TEAM_SECTIONS.map((team) => {
-  const players = lobbyPlayers.filter((p) => p.team === team);
+            {TEAM_SECTIONS.map((team) => {
+              const players = lobbyPlayers.filter((p) => p.team === team);
+              if (players.length === 0) return null;
 
-  // If there are no players in this section, don't render anything
-  if (players.length === 0) return null;
+              return (
+                <section key={team ?? "none"} className="lobby-card lobby-team-card">
+                  <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
+                  <div className="lobby-team-list">
+                    {players.map((p) => (
+                      <LobbyPlayerCard
+                        key={p.id}
+                        player={p}
+                        isSelf={p.user.id === userId}
+                        onClick={() => openPlayerProfile(p)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
 
-  return (
-    <section key={team ?? "none"} className="lobby-card lobby-team-card">
-      <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
-      <div className="lobby-team-list">
-        {players.map((p) => (
-          <LobbyPlayerCard
-            key={p.id}
-            player={p}
-            isSelf={p.user.id === userId}
-            onClick={() => openPlayerProfile(p)}
-          />
-        ))}
-      </div>
-    </section>
-  );
-})}
             <section className="lobby-card lobby-action-bar">
               <button
                 className="vq-button lobby-action-btn"
@@ -507,19 +505,22 @@ export default function LobbyPage() {
             </div>
           </div>
         )}
-
-
-        
-      
       </main>
 
+      {/* GAME RULES OVERLAY */}
       <GameRulesOverlay 
         isOpen={showRules} 
         onClose={() => setShowRules(false)} 
         token={token} 
-      />        
+      />
 
-
+      {/* REUSABLE STATS OVERLAY INTEGRATION */}
+      <StatsOverlay 
+        isOpen={!!selectedUser}
+        onClose={() => setSelectedUser(null)}
+        gamesPlayed={selectedUser?.gamesPlayed ?? 0}
+        gamesWon={selectedUser?.gamesWon ?? 0}
+      />
     </div>
   );
 }

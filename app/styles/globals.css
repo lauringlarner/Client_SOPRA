@@ -976,6 +976,7 @@ justify-content: space-between;
   align-items: center;
   gap: 16px;
   padding: 8px 16px;
+  cursor: pointer ;
 }
 
 .lobby-player-item.is-self {

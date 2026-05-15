@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import StatsOverlay from "@/components/StatsOverlay"; // Adjust import path as needed
 
 const api = new ApiService();
 
@@ -84,10 +85,6 @@ export default function UserProfilePage() {
       setIsSubmitting(false);
     }
   };
-
-  const winRate = userData && userData.gamesPlayed > 0 
-    ? Math.round((userData.gamesWon / userData.gamesPlayed) * 100) 
-    : 0;
 
   if (!loaded || !isAuthenticated || !userData) return <div className="app-shell" />;
 
@@ -234,31 +231,13 @@ export default function UserProfilePage() {
         </div>
       )}
 
-      {/* STATS OVERLAY */}
-      {activeOverlay === "stats" && (
-        <div className="overlay-backdrop" onClick={closeOverlay}>
-          <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-            <h2 className="overlay-title">Statistics</h2>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-value">{userData.gamesPlayed}</span>
-                <span className="info-label">Games</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-value">{userData.gamesWon}</span>
-                <span className="info-label">Wins</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-value">{winRate}%</span>
-                <span className="info-label">Winrate</span>
-              </div>
-            </div>
-            <div className="overlay-actions-single">
-              <button type="button" className="btn-rules-confirm" onClick={closeOverlay}>Got it!</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* REUSABLE STATS OVERLAY COMPONENT */}
+      <StatsOverlay 
+        isOpen={activeOverlay === "stats"}
+        onClose={closeOverlay}
+        gamesPlayed={userData.gamesPlayed}
+        gamesWon={userData.gamesWon}
+      />
     </div>
   );
 }
