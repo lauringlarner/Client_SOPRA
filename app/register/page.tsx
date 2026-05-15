@@ -142,7 +142,7 @@ export default function RegisterPage() {
       <main className="phone-frame screen-gradient auth-layout">
         <div className="bingo-rain-container">
           {[...Array(12)].map((_, i) => (
-            <span key={i} className="rain-item">Visionquest</span>
+            <span key={i} className="rain-item">VisionQuest</span>
           ))}
         </div>
         <h1 className="auth-title">Create Your Account</h1>
