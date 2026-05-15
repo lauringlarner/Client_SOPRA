@@ -1868,7 +1868,7 @@ justify-content: space-between;
 /* --- PROFIL LAYOUT & LAYER SYSTEM --- */
 
 .user-profile-title {
-  color: var(--vq-aquamarine);
+  color: var(--vq-coral);
   font-size: 2.2rem;
   font-weight: 800;
   margin-top: 4rem;
@@ -1878,7 +1878,7 @@ justify-content: space-between;
 }
 
 .user-profile-card {
-  background-color: var(--vq-aquamarine); 
+  background-color: var(--vq-coral); 
   border-radius: var(--vq-radius);
   width: 85%;
   padding: 2rem 1.5rem;
@@ -2803,6 +2803,41 @@ input::-webkit-credentials-auto-fill-button {
 /* Removes the default arrow in some browsers for <summary> */
 summary::-webkit-details-marker {
   display: none;
+}
+
+.settings-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor:pointer;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgb(16 26 36 / 12%);
+  color: var(--vq-charcoal);
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.settings-summary:hover {
+  background: rgb(16 26 36 / 18%);
+}
+
+.settings-summary:active {
+  transform: scale(0.98);
+  background: rgb(16 26 36 / 22%);
+}
+
+.chevron {
+  transition: transform 0.25s ease;
+  width: 20px;
+  height: 20px;
+}
+
+/* Adds flip to Chevron when clicked */
+details[open] .chevron {
+  transform: rotate(180deg);
 }
 
 .range-slider {
