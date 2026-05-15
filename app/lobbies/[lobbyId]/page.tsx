@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
-import { GameRulesOverlay } from "@/components/GameRulesOverlay";
-import StatsOverlay from "@/components/StatsOverlay"; // Imported your new reusable component
+import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
+import StatsOverlay from "@/components/StatsOverlay"; 
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import {
@@ -66,7 +66,10 @@ export default function LobbyPage() {
   const autoStartSent = useRef(false);
   const latestLobbyRef = useRef<LobbyDetails | null>(null);
 
+  // Rules state managed at lobby level for pre-fetching
   const [showRules, setShowRules] = useState(false);
+  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
+  const [rulesLoading, setRulesLoading] = useState(false);
 
   const setPendingAction = (action: string | null) => {
     setPendingActionState(action);
@@ -228,6 +231,30 @@ export default function LobbyPage() {
       .finally(() => setPendingAction(null));
   }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, savedSinglePlayerMode]);
 
+  // Pre-fetch game rules helper
+  const handleOpenRules = async () => {
+    if (rulesLoading) return;
+
+    if (gameModes.length > 0) {
+      setShowRules(true);
+      return;
+    }
+
+    if (!token) return;
+
+    setRulesLoading(true);
+    setPageMessage(null);
+    try {
+      const data = await api.get<GameModeDTO[]>("/gameModes", token);
+      setGameModes(data);
+      setShowRules(true);
+    } catch (_error) {
+      setPageMessage({ text: "Failed to load game rules.", tone: "error" });
+    } finally {
+      setRulesLoading(false);
+    }
+  };
+
   const handleUpdateTeam = async (team: LobbySelectableTeam) => {
     if (!currentPlayer) return;
     setPendingAction(`team-${team}`);
@@ -307,7 +334,13 @@ export default function LobbyPage() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient lobby-layout">
         <div className="lobby-top-actions">
-          <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+          <button 
+            className={`menu-rules-trigger ${rulesLoading ? "is-loading" : ""}`} 
+            onClick={() => void handleOpenRules()}
+            disabled={rulesLoading}
+          >
+            {rulesLoading ? "..." : "i"}
+          </button>
           {profileLoading && <span className="profile-loading-spinner">...</span>}
         </div>
 
@@ -511,7 +544,7 @@ export default function LobbyPage() {
       <GameRulesOverlay 
         isOpen={showRules} 
         onClose={() => setShowRules(false)} 
-        token={token} 
+        gameModes={gameModes} 
       />
 
       {/* REUSABLE STATS OVERLAY INTEGRATION */}

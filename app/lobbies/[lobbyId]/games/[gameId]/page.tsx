@@ -6,7 +6,7 @@ import confetti from "canvas-confetti";
 import { createGameClient } from "@/api/gameService";
 import { createLobbyClient } from "@/api/lobbyService";
 import { FittedTileText } from "@/components/FittedTileText";
-import { GameRulesOverlay } from "@/components/GameRulesOverlay";
+import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
@@ -39,7 +39,6 @@ interface ChatMessageGetDTO {
   teamType: string;
 }
 
-
 const QUICK_MESSAGES = [
   "Too slow on the shutter! 🐢📸",
   "Mine now! 🚩",
@@ -70,7 +69,11 @@ export default function GameBoardPage() {
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
+  // Rules pre-fetch management states
   const [showRules, setShowRules] = useState(false);
+  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
+  const [rulesLoading, setRulesLoading] = useState(false);
+  
   const [showChat, setShowChat] = useState(false);
   const [shakingTile, setShakingTile] = useState<string | null>(null);
   const [showBingoBanner, setShowBingoBanner] = useState(false);
@@ -105,11 +108,10 @@ export default function GameBoardPage() {
     return () => document.body.classList.remove("no-scroll");
   }, [showRules, showChat, showBingoBanner]);
 
-  // --- 2. Redirect Logic (Updated) ---
+  // --- 2. Redirect Logic ---
   useEffect(() => {
     if (game?.status === "ENDED" && lobbyId && gameId) {
       clearLastSubmissionWord();
-      // Use a slight delay to ensure final state updates settle
       const timer = setTimeout(() => {
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
       }, 800);
@@ -166,7 +168,6 @@ export default function GameBoardPage() {
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
-
   
   const remainingSeconds = useMemo(() => {
     if (!game || game.status === "ENDED") return 0;
@@ -282,7 +283,9 @@ export default function GameBoardPage() {
           confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#95D6A2'] });
           if (Date.now() < end) requestAnimationFrame(frame);
         };
-        frame();
+        for (let idx = 0; idx < 1; idx++) {
+          frame();
+        }
       }
     }
 
@@ -306,6 +309,30 @@ export default function GameBoardPage() {
     previousStatuses.current = nextStatuses;
   }, [game, myTeamName]);
 
+  // --- Pre-fetch rules execution ---
+  const handleOpenRules = async () => {
+    if (rulesLoading) return;
+
+    if (gameModes.length > 0) {
+      setShowRules(true);
+      return;
+    }
+
+    if (!token) return;
+
+    setRulesLoading(true);
+    setPageMessage(null);
+    try {
+      const data = await api.get<GameModeDTO[]>("/gameModes", token);
+      setGameModes(data);
+      setShowRules(true);
+    } catch (_error) {
+      setPageMessage("Failed to load game rules.");
+    } finally {
+      setRulesLoading(false);
+    }
+  };
+
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
   const isSinglePlayerGame = game?.isSinglePlayer ?? storedSinglePlayerMode;
@@ -326,16 +353,26 @@ export default function GameBoardPage() {
         {game && myTeamName && (
           <div className="top-actions-bar">
             <div className="rules-trigger-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-
               <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </button>
               
-              <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
+              <button 
+                type="button"
+                className={`menu-rules-trigger ${rulesLoading ? "is-loading" : ""}`} 
+                onClick={() => void handleOpenRules()}
+                disabled={rulesLoading}
+              >
+                {rulesLoading ? "..." : "i"}
+              </button>
             </div>
           </div>
+        )}
+
+        {pageMessage && (
+          <div className="menu-status-card is-error" style={{ margin: "10px" }}>{pageMessage}</div>
         )}
 
         {game && myTeamName && (
@@ -400,13 +437,11 @@ export default function GameBoardPage() {
         )}
       </main>
 
-
-              <GameRulesOverlay 
-                isOpen={showRules} 
-                onClose={() => setShowRules(false)} 
-                token={token} 
-              />
-
+      <GameRulesOverlay 
+        isOpen={showRules}
+        onClose={() => setShowRules(false)} 
+        gameModes={gameModes}          
+      />
 
       {/* --- CHAT OVERLAY --- */}
       {showChat && (
