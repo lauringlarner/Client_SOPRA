@@ -147,7 +147,7 @@ export default function RegisterPage() {
         </div>
         <h1 className="auth-title">Create Your Account</h1>
 
-        <form className="auth-form-card" onSubmit={handleRegister}>
+        <form className="auth-form-card" onSubmit={handleRegister} noValidate>
           {error && (
             <div className="error-template">
               {error}

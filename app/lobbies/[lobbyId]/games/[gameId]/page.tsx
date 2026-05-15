@@ -22,6 +22,7 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
+import { playCountdown } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
@@ -83,9 +84,10 @@ export default function GameBoardPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledOnOpen = useRef(false);
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
-  const celebratedBingos = useRef<string[]>([]); 
-  const isFirstLoad = useRef(true); 
+  const celebratedBingos = useRef<string[]>([]);
+  const isFirstLoad = useRef(true);
   const latestGameRef = useRef<GameDetails | null>(null);
+  const countdownPlayedRef = useRef(false);
   
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
@@ -178,6 +180,13 @@ export default function GameBoardPage() {
     if (!game || remainingSeconds === null) return "100%";
     return `${Math.max(0, Math.min(100, (remainingSeconds / (game.gameDuration * 60)) * 100))}%`;
   }, [game, remainingSeconds]);
+
+  useEffect(() => {
+    if (remainingSeconds <= 20 && remainingSeconds > 0 && game?.status !== "ENDED" && !countdownPlayedRef.current) {
+      countdownPlayedRef.current = true;
+      playCountdown();
+    }
+  }, [remainingSeconds, game?.status]);
 
   // --- Auth & Team Sync ---
   useEffect(() => {

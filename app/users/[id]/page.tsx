@@ -129,7 +129,7 @@ export default function UserProfilePage() {
       {/* PASSWORD OVERLAY */}
       {activeOverlay === "edit" && (
         <div className="overlay-backdrop" onClick={closeOverlay}>
-          <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSavePassword}>
+          <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSavePassword} noValidate>
             <h2 className="overlay-title">Update Password</h2>
             {error && <div className="error-template">{error}</div>}
             {success && <div className="success-template">{success}</div>}

@@ -7,7 +7,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
-import { playCameraClick } from "@/utils/sounds";
+import { playCameraClick, successClick, errorClick } from "@/utils/sounds";
 
 const api = new ApiService();
 
@@ -281,6 +281,7 @@ function CameraContent() {
 
       await api.post<void>(`/games/${gameId}/submission`, formData, token);
 
+      successClick();
       setLastSubmissionWord(tileWord);
       router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
     } catch (error) {
@@ -288,6 +289,7 @@ function CameraContent() {
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
         return;
       }
+      errorClick();
       const errorMsg = getSubmissionErrorMessage(error);
       setSubmissionError(errorMsg);
       setIsSubmitting(false);
