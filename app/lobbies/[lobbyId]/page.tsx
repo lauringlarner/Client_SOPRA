@@ -458,8 +458,7 @@ export default function LobbyPage() {
     </section>
   );
 })}
-
-            <section className="lobby-action-bar">
+            <section className="lobby-card lobby-action-bar">
               <button
                 className="vq-button lobby-action-btn"
                 disabled={pendingAction !== null}
