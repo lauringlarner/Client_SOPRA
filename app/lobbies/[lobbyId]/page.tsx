@@ -373,8 +373,8 @@ export default function LobbyPage() {
             {/* Modified Game Settings Section */}
 <section className="lobby-card lobby-settings-card">
   <details className="settings-accordion">
-    <summary className="lobby-section-title" style={{ cursor: 'pointer', listStyle: 'none' }}>
-      Game Settings <span style={{ fontSize: '0.8rem', float: 'right' }}>▼</span>
+    <summary className="lobby-section-title settings-summary">
+      Game Settings <span className="chevron">▼</span>
     </summary>
 
     <div className="settings-content">
