@@ -1191,6 +1191,13 @@ justify-content: space-between;
   color: #9c4326c4;
 }
 
+@media (prefers-color-scheme: dark) {
+  .guard-action.primary-red {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
+}
+
 .guard-action.secondary-teal {
   background-color: #2a5c5c;
   color: #e0f2f2;
@@ -2223,13 +2230,20 @@ justify-content: space-between;
 .leaderboard-action-btn {
   flex: 1;
   padding: 16px;
-   border-radius: 14px;
-   font-weight: 800;
-   text-transform: uppercase;
+  border-radius: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
   background: #F0997B;
   color: #9c4326c4;
   border: 2px solid white;
   backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leaderboard-action-btn {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
 }
 
 .leaderboard-action-btn:hover {
@@ -2306,6 +2320,13 @@ justify-content: space-between;
 .confirm-btn.leave {
   background-color: #F0997B;
   color: #9c4326c4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .confirm-btn.leave {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
 }
 
 /* Maps to guard-action.secondary-teal */
