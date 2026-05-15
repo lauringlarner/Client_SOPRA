@@ -7,6 +7,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
+import { playCameraClick } from "@/utils/sounds";
 
 const api = new ApiService();
 
@@ -265,6 +266,7 @@ function CameraContent() {
       return;
     }
 
+    playCameraClick();
     setIsSubmitting(true);
     setSubmissionError(null);
 
