@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FittedTileText } from "@/components/FittedTileText";
 import { useApi } from "@/hooks/useApi";
 
@@ -21,7 +21,52 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
   const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    const cards = Array.from(element.querySelectorAll(".rules-card"));
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = cards.indexOf(entry.target as Element);
+            setActiveIndex(index);
+          }
+        });
+      },
+      {
+        root: element,
+        threshold: 0.6,
+      }
+    );
+
+    cards.forEach((card) => observer.observe(card));
+
+    return () => observer.disconnect();
+  }, [gameModes, isOpen]);
+
+
+  const scrollToIndex = (i: number) => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    const card = element.querySelectorAll(".rules-card")[i] as HTMLElement;
+    if (!card) return;
+
+    card.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
+  };
+
+  
   // Fetch only when opened and if we don't have data yet
   React.useEffect(() => {
     if (isOpen && gameModes.length === 0 && token) {
@@ -42,7 +87,7 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
           <h2 className="overlay-title">Game Rules</h2>
           
           <div className="rules-section">
-            <div className="rules-scroll-container">
+            <div className="rules-scroll-container" ref={scrollRef}>
               {loading ? (
                 <p className="overlay-error-bubble">Loading rules...</p>
               ) : error ? (
@@ -64,6 +109,17 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
                 </div>
               )}
             </div>
+            {gameModes.length > 1 && (
+              <div className="rules-dots">
+                {gameModes.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`dot ${i === activeIndex ? "active" : ""}`}
+                    onClick={() => scrollToIndex(i)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="rules-section">
