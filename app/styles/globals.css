@@ -2835,7 +2835,7 @@ summary::-webkit-details-marker {
   justify-content: space-between;
   align-items: center;
   cursor:pointer;
-  padding: 10px 14px;
+  padding: 14px 18px;
   border-radius: 999px;
   background: rgb(16 26 36 / 12%);
   color: var(--vq-charcoal);
@@ -2843,6 +2843,11 @@ summary::-webkit-details-marker {
   font-weight: 600;
   transition: background 0.2s ease, transform 0.1s ease;
   -webkit-tap-highlight-color: transparent;
+  margin-bottom: 0;
+}
+
+.settings-accordion[open] .settings-summary {
+  margin-bottom: 10px;
 }
 
 .settings-summary:hover {
