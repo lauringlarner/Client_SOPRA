@@ -55,6 +55,9 @@ export default function LobbyPage() {
   const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [pendingAction, setPendingActionState] = useState<string | null>(null);
   const [pageMessage, setPageMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
+  
+  // Specific error state underneath the ready up button
+  const [readyErrorMessage, setReadyErrorMessage] = useState<string | null>(null);
 
   const [_selectedPlayer, setSelectedPlayer] = useState<LobbyPlayer | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -82,6 +85,7 @@ export default function LobbyPage() {
   const isHost = currentPlayer?.isHost ?? false;
   const needsTeamSelection = currentPlayer?.team == null;
   const allPlayersReady = lobbyPlayers.length > 0 && lobbyPlayers.every((p) => p.isReady);
+  
   const hasRequiredTeamCoverage = savedSinglePlayerMode === 1
     ? LOBBY_TEAMS.some((team) => lobbyPlayers.some((p) => p.team === team))
     : LOBBY_TEAMS.every((team) => lobbyPlayers.some((p) => p.team === team));
@@ -258,8 +262,16 @@ export default function LobbyPage() {
   const handleUpdateTeam = async (team: LobbySelectableTeam) => {
     if (!currentPlayer) return;
     setPendingAction(`team-${team}`);
+    setReadyErrorMessage(null); // Clear errors on configuration change
+    
     try {
+      // Step 1: Update the team configuration
       await lobbyClient.updatePlayerTeam(lobbyId, currentPlayer.id, team);
+      
+      // Step 2: Force unready automatically if changing teams to avoid instant matches starting
+      if (currentPlayer.isReady) {
+        await lobbyClient.updatePlayerReady(lobbyId, currentPlayer.id, false);
+      }
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Update failed."), tone: "error" });
     } finally {
@@ -269,6 +281,31 @@ export default function LobbyPage() {
 
   const handleToggleReadyToggle = async () => {
     if (!currentPlayer) return;
+    setReadyErrorMessage(null);
+
+    // Only apply validation rules when attempting to toggle READY to true
+    if (!currentPlayer.isReady) {
+      const isSoloUser = lobbyPlayers.length === 1;
+
+      if (savedSinglePlayerMode === 0) {
+        // Validation Rule 1: Singleplayer mode is turned OFF, but user is entirely alone
+        if (isSoloUser) {
+          setReadyErrorMessage("Activate singleplayer in game settings to play alone.");
+          return;
+        }
+
+        // Validation Rule 2: Multi-player mode active, but one or more team alignments are totally empty
+        const missingCoverage = !LOBBY_TEAMS.every((team) => 
+          lobbyPlayers.some((p) => p.team === team)
+        );
+        
+        if (missingCoverage) {
+          setReadyErrorMessage("Both teams need at least one player.");
+          return;
+        }
+      }
+    }
+
     setPendingAction("ready");
     try {
       await lobbyClient.updatePlayerReady(lobbyId, currentPlayer.id, !currentPlayer.isReady);
@@ -286,6 +323,7 @@ export default function LobbyPage() {
       return;
     }
     setPendingAction("settings");
+    setReadyErrorMessage(null); // Clear errors when setting changes occur
     try {
       await lobbyClient.updateSettings(lobbyId, parsed, listTypeDraft);
       setSavedSinglePlayerMode(isSinglePlayerDraft);
@@ -400,6 +438,13 @@ export default function LobbyPage() {
                   >
                     {pendingAction === "ready" ? "Updating..." : currentPlayer.isReady ? "Not Ready" : "Ready"}
                   </button>
+                  
+                  {/* REAL-TIME ERROR NOTIFICATION BANNER DIRECTLY UNDER READY BUTTON */}
+                  {readyErrorMessage && (
+                    <div className="error-template">
+                      ⚠️ {readyErrorMessage}
+                    </div>
+                  )}
                 </>
               )}
             </section>
