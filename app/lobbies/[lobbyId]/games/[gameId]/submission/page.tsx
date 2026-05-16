@@ -8,23 +8,9 @@ import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
 import { playCameraClick, successClick, errorClick } from "@/utils/sounds";
+import { GameDetails, GameTileStatus } from "@/types/game";
 
 const api = new ApiService();
-
-interface Tile {
-  word: string;
-  value: number;
-  status: string;
-}
-
-interface GameDetails {
-  status: string;
-  submittedTiles?: string[];
-  usedTiles?: string[];
-  tiles?: string[];
-  completedTiles?: string[];
-  board?: Tile[][];
-}
 
 function CameraContent() {
   const router = useRouter();
@@ -209,24 +195,9 @@ function CameraContent() {
           return;
         }
 
-        let isClaimed = false;
-        const possibleProperties: (keyof GameDetails)[] = ["submittedTiles", "usedTiles", "tiles", "completedTiles"];
-        for (const prop of possibleProperties) {
-          const propertyVal = game[prop];
-          if (Array.isArray(propertyVal) && propertyVal.every((item) => typeof item === "string")) {
-            if (tileWord && (propertyVal as string[]).includes(tileWord)) {
-              isClaimed = true;
-              break;
-            }
-          }
-        }
-
-        if (!isClaimed && Array.isArray(game.board)) {
-          for (const row of game.board) {
-            const found = row.find((t: Tile) => t.word === tileWord && t.status === "CLAIMED");
-            if (found) { isClaimed = true; break; }
-          }
-        }
+        const isClaimed = game.tileGrid.some((row) =>
+          row.some((tile) => tile.word === tileWord && isClaimedTileStatus(tile.status))
+        );
 
         if (tileWord && isClaimed) {
           setClaimedOverlayMessage(`The tile "${tileWord}" has already been claimed.`);
@@ -436,6 +407,10 @@ function getSubmissionErrorMessage(error: unknown): string {
     return (error as { message: string }).message;
   }
   return "The submission could not be sent. Please try again.";
+}
+
+function isClaimedTileStatus(status: GameTileStatus): boolean {
+  return status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2";
 }
 
 function isGameEndedError(error: unknown): boolean {

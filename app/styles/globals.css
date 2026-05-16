@@ -2725,13 +2725,14 @@ a[href^="sms"] {
   width: 100% !important; /* Wichtig für die Ausrichtung */
 }
 
-/* Eigene Nachrichten nach LINKS */
+/* Eigene Nachrichten nach RECHTS */
 .chat-msg-wrapper.is-friendly-side {
-  align-items: flex-start !important;
+  align-items: flex-end !important;
 }
 .chat-msg-wrapper.is-friendly-side .chat-msg-bubble {
-  margin-right: auto !important;
-  margin-left: 0 !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  text-align: right;
 }
 
 .chat-msg-bubble {
@@ -2744,14 +2745,13 @@ a[href^="sms"] {
   width: fit-content; /* Bubble passt sich dem Text an */
 }
 
-/* Gegnerische Nachrichten nach RECHTS */
+/* Gegnerische Nachrichten nach LINKS */
 .chat-msg-wrapper.is-enemy-side {
-  align-items: flex-end !important;
+  align-items: flex-start !important;
 }
 .chat-msg-wrapper.is-enemy-side .chat-msg-bubble {
-  margin-left: auto !important;
-  margin-right: 0 !important;
-  text-align: right;
+  margin-right: auto !important;
+  margin-left: 0 !important;
 }
 
 /* --- Bubbles (Farben) --- */
@@ -2767,17 +2767,17 @@ a[href^="sms"] {
 /* Eigene Teamfarbe (Grün) */
 .chat-msg-bubble.chat-color-own {
   background-color: #95D6A2 !important; 
-  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
 }
 
 /* Gegner Teamfarbe (Orange/Gelb aus deinem Code) */
 .chat-msg-bubble.chat-color-enemy {
   background-color: #FFCB88 !important; 
-  border-bottom-right-radius: 2px;
+  border-bottom-left-radius: 2px;
 }
 
 /* Labels Ausrichtung passend zur Bubble */
-.chat-msg-wrapper.is-enemy-side .chat-sender-label {
+.chat-msg-wrapper.is-friendly-side .chat-sender-label {
   justify-content: flex-end;
 }
 
