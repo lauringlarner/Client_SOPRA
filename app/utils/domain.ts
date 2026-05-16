@@ -9,7 +9,7 @@ const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1"]);
  * In development, it returns "http://localhost:8080".
  */
 export function getApiDomain(): string {
-  if (typeof window !== "undefined" && LOCAL_HOSTNAMES.has(window.location.hostname)) {
+  if (typeof globalThis.location !== "undefined" && LOCAL_HOSTNAMES.has(globalThis.location.hostname)) {
     return process.env.NEXT_PUBLIC_LOCAL_API_URL || LOCAL_API_URL;
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
 import { createGameClient } from "@/api/gameService";
@@ -16,7 +16,6 @@ import {
   buildTeamScores,
   getTilePerspective,
   normalizeBackendTeamName,
-  TeamPerspective,
   TeamScoreViewModel,
 } from "@/utils/gamePerspective";
 import {
@@ -38,6 +37,23 @@ interface ChatMessageGetDTO {
   sentAt: string;     
   teamType: string;
 }
+
+interface ChatPreviewMessage extends ChatMessageGetDTO {
+  previewKey: string;
+}
+
+type ChatPreviewStyle = React.CSSProperties & Record<`--${string}`, string>;
+
+const CHAT_PREVIEW_LIMIT = 3;
+const CHAT_PREVIEW_TTL_MS = 5000;
+const CHAT_POLL_INTERVAL_MS = 1000;
+const CHAT_OPEN_POLL_INTERVAL_MS = 1000;
+const CHAT_PREVIEW_MIN_HEIGHT = 50;
+const CHAT_PREVIEW_SCORE_MARGIN = 15;
+const CHAT_PREVIEW_MIN_META_SIZE = 9;
+const CHAT_PREVIEW_MIN_TEXT_SIZE = 10;
+const CHAT_PREVIEW_MAX_META_SIZE = 12;
+const CHAT_PREVIEW_MAX_TEXT_SIZE = 16;
 
 const QUICK_MESSAGES = [
   "Too slow on the shutter! 🐢📸",
@@ -65,7 +81,7 @@ export default function GameBoardPage() {
   const [game, setGame] = useState<GameDetails | null>(null);
   const [myTeamName, setMyTeamName] = useState<BackendTeamName | null>(null);
   const [storedSinglePlayerMode, setStoredSinglePlayerMode] = useState(false);
-  const [connectionState, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
+  const [, setConnectionState] = useState<"connecting" | "live" | "error">("connecting");
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
@@ -81,11 +97,20 @@ export default function GameBoardPage() {
 
   // --- Chat States ---
   const [chatHistory, setChatHistory] = useState<ChatMessageGetDTO[]>([]);
+  const [chatPreviewMessages, setChatPreviewMessages] = useState<ChatPreviewMessage[]>([]);
+  const [chatPreviewHeight, setChatPreviewHeight] = useState(CHAT_PREVIEW_MIN_HEIGHT);
+  const [chatPreviewContentWidth, setChatPreviewContentWidth] = useState(0);
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(true);
   
   // --- Refs ---
+  const topActionsRef = useRef<HTMLDivElement>(null);
+  const scoreContainerRef = useRef<HTMLElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const hasAutoScrolledOnOpen = useRef(false);
+  const chatFetchRequestRef = useRef(0);
+  const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
+  const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
   const celebratedBingos = useRef<string[]>([]);
   const isFirstLoad = useRef(true);
@@ -94,6 +119,36 @@ export default function GameBoardPage() {
   
   const gameClient = useMemo(() => createGameClient({ api, token }), [api, token]);
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
+  const chatPreviewStyle = useMemo<ChatPreviewStyle>(() => {
+    const gap = chatPreviewHeight <= CHAT_PREVIEW_MIN_HEIGHT
+      ? 1
+      : clampNumber(Math.round(chatPreviewHeight * 0.03), 2, 6);
+    const desiredMetaSize = clampNumber(
+      Math.round(chatPreviewHeight * 0.13),
+      CHAT_PREVIEW_MIN_META_SIZE,
+      CHAT_PREVIEW_MAX_META_SIZE,
+    );
+    const desiredTextSize = clampNumber(
+      Math.round(chatPreviewHeight * 0.16),
+      CHAT_PREVIEW_MIN_TEXT_SIZE,
+      CHAT_PREVIEW_MAX_TEXT_SIZE,
+    );
+    const fittedSizes = getPreviewFontSizes({
+      availableWidth: chatPreviewContentWidth,
+      desiredMetaSize,
+      desiredTextSize,
+      messages: chatPreviewMessages,
+    });
+    const rowHeight = Math.max(15, Math.ceil(fittedSizes.textSize * 1.25));
+
+    return {
+      "--bingo-chat-preview-height": `${chatPreviewHeight}px`,
+      "--bingo-chat-preview-gap": `${gap}px`,
+      "--bingo-chat-preview-row-height": `${rowHeight}px`,
+      "--bingo-chat-preview-meta-size": `${fittedSizes.metaSize}px`,
+      "--bingo-chat-preview-text-size": `${fittedSizes.textSize}px`,
+    };
+  }, [chatPreviewContentWidth, chatPreviewHeight, chatPreviewMessages]);
   const tileSound = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { tileSound.current = new Audio('/sounds/ui_click_beep.wav'); }, []);
 
@@ -120,25 +175,140 @@ export default function GameBoardPage() {
   }, [game?.status, gameId, lobbyId, router]);
 
   // --- 3. Chat Logic & Smart Scrolling ---
-  const fetchChat = async () => {
+  const fetchChat = useCallback(async () => {
     if (!token || !gameId) return;
+    const requestId = chatFetchRequestRef.current + 1;
+    chatFetchRequestRef.current = requestId;
+
     try {
       const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
+      if (requestId !== chatFetchRequestRef.current) return;
       setChatHistory(messages);
     } catch (err) {
-      console.error("Chat fetch failed", err);
+      if (requestId === chatFetchRequestRef.current) {
+        console.error("Chat fetch failed", err);
+      }
     }
-  };
+  }, [api, gameId, token]);
 
   useEffect(() => {
-    if (!showChat || !isAuthenticated) {
-      hasAutoScrolledOnOpen.current = false;
+    const updatePageVisibility = () => {
+      setIsPageVisible(document.visibilityState === "visible");
+    };
+
+    updatePageVisibility();
+    document.addEventListener("visibilitychange", updatePageVisibility);
+    return () => document.removeEventListener("visibilitychange", updatePageVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded || !isAuthenticated || !token || !gameId || !isPageVisible || game?.status === "ENDED") {
       return;
     }
-    fetchChat();
-    const interval = setInterval(fetchChat, 3000);
-    return () => clearInterval(interval);
-  }, [showChat, isAuthenticated, gameId]);
+
+    void fetchChat();
+    const intervalMs = showChat ? CHAT_OPEN_POLL_INTERVAL_MS : CHAT_POLL_INTERVAL_MS;
+    const interval = setInterval(() => void fetchChat(), intervalMs);
+    return () => {
+      clearInterval(interval);
+      chatFetchRequestRef.current += 1;
+    };
+  }, [fetchChat, game?.status, gameId, isAuthenticated, isPageVisible, loaded, showChat, token]);
+
+  useEffect(() => {
+    const unseenMessages = chatHistory
+      .map((chat) => ({
+        ...chat,
+        previewKey: getChatMessageKey(chat),
+      }))
+      .filter((chat) => !seenPreviewMessageKeys.current.has(chat.previewKey))
+      .sort(compareChatPreviewMessages);
+
+    if (unseenMessages.length === 0) return;
+
+    unseenMessages.forEach((chat) => seenPreviewMessageKeys.current.add(chat.previewKey));
+    const nextPreviewMessages = unseenMessages.slice(-CHAT_PREVIEW_LIMIT);
+
+    nextPreviewMessages.forEach((chat) => {
+      const timer = setTimeout(() => {
+        setChatPreviewMessages((current) =>
+          current.filter((previewMessage) => previewMessage.previewKey !== chat.previewKey)
+        );
+        previewRemovalTimers.current.delete(chat.previewKey);
+      }, CHAT_PREVIEW_TTL_MS);
+
+      previewRemovalTimers.current.set(chat.previewKey, timer);
+    });
+
+    setChatPreviewMessages((current) => {
+      const nextMessages = [...current, ...nextPreviewMessages]
+        .sort(compareChatPreviewMessages)
+        .slice(-CHAT_PREVIEW_LIMIT);
+      const activeKeys = new Set(nextMessages.map((message) => message.previewKey));
+
+      previewRemovalTimers.current.forEach((timer, key) => {
+        if (!activeKeys.has(key)) {
+          clearTimeout(timer);
+          previewRemovalTimers.current.delete(key);
+        }
+      });
+
+      return nextMessages;
+    });
+  }, [chatHistory]);
+
+  useEffect(() => {
+    const timers = previewRemovalTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+      chatFetchRequestRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showChat) {
+      hasAutoScrolledOnOpen.current = false;
+    }
+  }, [showChat]);
+
+  useEffect(() => {
+    if (!game || !myTeamName) return;
+
+    let frameId = 0;
+    const updatePreviewHeight = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        const topActions = topActionsRef.current;
+        const scoreContainer = scoreContainerRef.current;
+        if (!topActions || !scoreContainer) return;
+
+        const topActionsRect = topActions.getBoundingClientRect();
+        const scoreRect = scoreContainer.getBoundingClientRect();
+        const availableHeight = Math.floor(scoreRect.top - topActionsRect.top - CHAT_PREVIEW_SCORE_MARGIN);
+        const nextHeight = Math.max(CHAT_PREVIEW_MIN_HEIGHT, availableHeight);
+        const nextContentWidth = Math.max(0, Math.floor(topActionsRect.width - 132 - 12));
+
+        setChatPreviewHeight((current) => current === nextHeight ? current : nextHeight);
+        setChatPreviewContentWidth((current) => current === nextContentWidth ? current : nextContentWidth);
+      });
+    };
+
+    updatePreviewHeight();
+    globalThis.addEventListener("resize", updatePreviewHeight);
+    globalThis.addEventListener("orientationchange", updatePreviewHeight);
+
+    const resizeObserver = new ResizeObserver(updatePreviewHeight);
+    if (topActionsRef.current) resizeObserver.observe(topActionsRef.current);
+    if (scoreContainerRef.current) resizeObserver.observe(scoreContainerRef.current);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+      globalThis.removeEventListener("resize", updatePreviewHeight);
+      globalThis.removeEventListener("orientationchange", updatePreviewHeight);
+    };
+  }, [game, myTeamName]);
 
   useEffect(() => {
     if (showChat && !hasAutoScrolledOnOpen.current) {
@@ -213,7 +383,7 @@ export default function GameBoardPage() {
         const team = normalizeBackendTeamName(currentPlayer?.team ?? null);
         setMyTeamName(team);
         setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
-      } catch (error) {
+      } catch {
         if (cancelled) return;
         setPageMessage("Unable to confirm your team.");
       }
@@ -326,7 +496,7 @@ export default function GameBoardPage() {
       const data = await api.get<GameModeDTO[]>("/gameModes", token);
       setGameModes(data);
       setShowRules(true);
-    } catch (_error) {
+    } catch {
       setPageMessage("Failed to load game rules.");
     } finally {
       setRulesLoading(false);
@@ -351,8 +521,8 @@ export default function GameBoardPage() {
 
       <main className="phone-frame screen-gradient bingo-frame-layout">
         {game && myTeamName && (
-          <div className="top-actions-bar">
-            <div className="rules-trigger-container" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <div className="top-actions-bar" ref={topActionsRef}>
+            <div className="rules-trigger-container">
               <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -368,6 +538,33 @@ export default function GameBoardPage() {
                 {rulesLoading ? "..." : "i"}
               </button>
             </div>
+
+            {chatPreviewMessages.length > 0 && (
+              <button
+                type="button"
+                className="bingo-chat-preview-stack"
+                onClick={() => setShowChat(true)}
+                aria-label="Open live chat"
+                style={chatPreviewStyle}
+              >
+                {chatPreviewMessages.map((chat) => {
+                  const isSameTeam = isChatFromSameTeam(chat.teamType, myTeamName);
+                  return (
+                    <span
+                      key={chat.previewKey}
+                      className={`bingo-chat-preview-message ${isSameTeam ? "is-friendly" : "is-enemy"}`}
+                    >
+                      <span className="bingo-chat-preview-meta">
+                        <span>{getChatTeamLabel(chat.teamType)}</span>
+                        <span className="label-divider">•</span>
+                        <span className="sender-name">{chat.sender}</span>
+                      </span>
+                      <span className="bingo-chat-preview-text">{chat.message}</span>
+                    </span>
+                  );
+                })}
+              </button>
+            )}
           </div>
         )}
 
@@ -377,7 +574,10 @@ export default function GameBoardPage() {
 
         {game && myTeamName && (
           <>
-            <section className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}>
+            <section
+              className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}
+              ref={scoreContainerRef}
+            >
               {teamScores.map((score) => (
                 <div key={score.label} className={`bingo-team-points-card ${score.label === "Team 1" ? "is-team1" : "is-team2"}`}>
                   <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
@@ -449,7 +649,7 @@ export default function GameBoardPage() {
           <div className="overlay-card chat-overlay-card" onClick={(e) => e.stopPropagation()}>
             <div className="chat-header">
               <h2 className="overlay-title">Live Chat</h2>
-              <button className="close-chat-btn" onClick={() => setShowChat(false)}>&times;</button>
+              <button type="button" className="close-chat-btn" onClick={() => setShowChat(false)}>&times;</button>
             </div>
 
             <div className="chat-messages-log">
@@ -480,6 +680,7 @@ export default function GameBoardPage() {
               <div className="quick-replies-grid">
                 {QUICK_MESSAGES.map((msg) => (
                   <button 
+                    type="button"
                     key={msg} 
                     className="btn-quick-chat" 
                     disabled={isSendingChat}
@@ -511,8 +712,116 @@ function getTileLoaderClass(status: GameTileStatus, myTeamName: BackendTeamName)
   return getTilePerspective(status, myTeamName) === "own" ? "is-friendly" : "is-enemy";
 }
 
-function getPerspectiveCardClass(perspective: TeamPerspective): string {
-  return perspective === "own" ? "is-friendly" : "is-enemy";
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getPreviewFontSizes({
+  availableWidth,
+  desiredMetaSize,
+  desiredTextSize,
+  messages,
+}: {
+  availableWidth: number;
+  desiredMetaSize: number;
+  desiredTextSize: number;
+  messages: ChatPreviewMessage[];
+}): { metaSize: number; textSize: number } {
+  if (availableWidth <= 0 || messages.length === 0) {
+    return { metaSize: CHAT_PREVIEW_MIN_META_SIZE, textSize: CHAT_PREVIEW_MIN_TEXT_SIZE };
+  }
+
+  const rows = buildPreviewFitRows(messages);
+  const desiredWidth = getWidestPreviewRowWidth(rows, desiredMetaSize, desiredTextSize);
+  if (desiredWidth <= availableWidth) {
+    return { metaSize: desiredMetaSize, textSize: desiredTextSize };
+  }
+
+  let low = CHAT_PREVIEW_MIN_TEXT_SIZE;
+  let high = desiredTextSize;
+  for (let i = 0; i < 8; i++) {
+    const nextTextSize = (low + high) / 2;
+    const nextMetaSize = getMetaSizeForTextSize(nextTextSize);
+    const nextWidth = getWidestPreviewRowWidth(rows, nextMetaSize, nextTextSize);
+
+    if (nextWidth <= availableWidth) low = nextTextSize;
+    else high = nextTextSize;
+  }
+
+  const textSize = Math.max(CHAT_PREVIEW_MIN_TEXT_SIZE, Math.floor(low * 10) / 10);
+  return {
+    metaSize: getMetaSizeForTextSize(textSize),
+    textSize,
+  };
+}
+
+function buildPreviewFitRows(messages: ChatPreviewMessage[]): { meta: string; text: string }[] {
+  return messages.flatMap((message) => {
+    const meta = `${getChatTeamLabel(message.teamType)} • ${message.sender}`;
+    return [
+      { meta, text: message.message },
+      ...QUICK_MESSAGES.map((quickMessage) => ({ meta, text: quickMessage })),
+    ];
+  });
+}
+
+function getMetaSizeForTextSize(textSize: number): number {
+  const ratio = CHAT_PREVIEW_MIN_META_SIZE / CHAT_PREVIEW_MIN_TEXT_SIZE;
+  return clampNumber(
+    Math.round(textSize * ratio * 10) / 10,
+    CHAT_PREVIEW_MIN_META_SIZE,
+    CHAT_PREVIEW_MAX_META_SIZE,
+  );
+}
+
+function getWidestPreviewRowWidth(
+  rows: { meta: string; text: string }[],
+  metaSize: number,
+  textSize: number,
+): number {
+  return rows.reduce((widest, row) => {
+    const rowWidth =
+      measurePreviewText(row.meta, metaSize, 800) +
+      5 +
+      measurePreviewText(row.text, textSize, 700);
+    return Math.max(widest, rowWidth);
+  }, 0);
+}
+
+function measurePreviewText(text: string, fontSize: number, fontWeight: number): number {
+  if (typeof document === "undefined") return text.length * fontSize * 0.6;
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) return text.length * fontSize * 0.6;
+
+  context.font = `${fontWeight} ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  return context.measureText(text).width;
+}
+
+function isChatFromSameTeam(teamType: string, myTeamName: BackendTeamName): boolean {
+  const chatTeamClean = teamType.replace(/\D/g, "");
+  const myTeamClean = myTeamName.replace(/\D/g, "");
+  return chatTeamClean === myTeamClean && chatTeamClean !== "";
+}
+
+function getChatTeamLabel(teamType: string): string {
+  if (teamType === "Team1" || teamType === "Team 1") return "Team 1";
+  if (teamType === "Team2" || teamType === "Team 2") return "Team 2";
+  return teamType;
+}
+
+function getChatMessageKey(chat: ChatMessageGetDTO): string {
+  return `${chat.sentAt}-${chat.teamType}-${chat.sender}-${chat.message}`;
+}
+
+function compareChatPreviewMessages(a: ChatPreviewMessage, b: ChatPreviewMessage): number {
+  return getChatMessageTime(a) - getChatMessageTime(b);
+}
+
+function getChatMessageTime(chat: ChatMessageGetDTO): number {
+  const time = new Date(chat.sentAt).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function isClaimedStatus(status: GameTileStatus): boolean {

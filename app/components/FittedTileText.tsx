@@ -32,7 +32,7 @@ export function FittedTileText({
     let frame = 0;
 
     const getAvailableWidth = () => {
-      const styles = window.getComputedStyle(container);
+      const styles = globalThis.getComputedStyle(container);
       const paddingLeft = parseFloat(styles.paddingLeft) || 0;
       const paddingRight = parseFloat(styles.paddingRight) || 0;
       return container.clientWidth - paddingLeft - paddingRight;
@@ -84,7 +84,7 @@ export function FittedTileText({
 
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", scheduleFitFontSize);
+      globalThis.addEventListener("resize", scheduleFitFontSize);
     } else {
       resizeObserver = new ResizeObserver(scheduleFitFontSize);
       resizeObserver.observe(container);
@@ -100,7 +100,7 @@ export function FittedTileText({
       isDisposed = true;
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
-      window.removeEventListener("resize", scheduleFitFontSize);
+      globalThis.removeEventListener("resize", scheduleFitFontSize);
       measure.textContent = "";
     };
   }, [maxFontSize, minFontSize, text]);

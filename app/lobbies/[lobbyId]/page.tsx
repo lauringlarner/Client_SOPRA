@@ -637,7 +637,6 @@ function LobbyPlayerCard({ player, isSelf, onClick }: { player: LobbyPlayer; isS
 }
 
 function formatJoinCode(v: string) { return v.toUpperCase().slice(0, 6); }
-function getConnectionLabel(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); }
 function getLobbyErrorMessage(e: unknown, f: string) { return (e as ApplicationError)?.message || f; }
 function isFatalApplicationError(e: unknown) {
   const status = (e as ApplicationError)?.status;

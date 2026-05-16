@@ -754,8 +754,8 @@ textarea {
 }
 
 .rules-trigger-container{
-display: flex;
-justify-content: space-between;
+  display: flex;
+  justify-content: space-between;
 }
 
 .btn-rules-confirm {
@@ -2618,6 +2618,10 @@ a[href^="sms"] {
   pointer-events: none; /* Erlaubt Klicks auf das Spielfeld zwischen den Icons */
 }
 
+.top-actions-bar .rules-trigger-container {
+  width: 100%;
+}
+
 /* Gemeinsame Basis für Rules- und Chat-Icon (Basierend auf deinem Rules-Style) */
 .menu-rules-trigger,
 .chat-trigger-btn {
@@ -2665,6 +2669,111 @@ a[href^="sms"] {
   width: 26px;
   height: 26px;
   stroke: currentColor; /* Übernimmt die Textfarbe (vq-text-dark oder weiß bei Hover) */
+}
+
+.bingo-chat-preview-stack {
+  position: absolute;
+  top: 0;
+  left: 66px;
+  right: 66px;
+  height: var(--bingo-chat-preview-height, 50px);
+  min-height: 50px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: var(--bingo-chat-preview-gap, 1px);
+  overflow: hidden;
+  cursor: pointer;
+  box-sizing: border-box;
+  text-align: left;
+  pointer-events: auto;
+  transition: transform 0.18s ease;
+}
+
+.bingo-chat-preview-stack:hover {
+  transform: translateY(-1px);
+}
+
+.bingo-chat-preview-stack:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.bingo-chat-preview-stack:focus-visible {
+  outline: 3px solid skyblue;
+  outline-offset: 2px;
+}
+
+.bingo-chat-preview-message {
+  max-width: 100%;
+  min-width: 0;
+  height: var(--bingo-chat-preview-row-height, 15px);
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 5px;
+  box-sizing: border-box;
+  color: var(--vq-text-light);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 75%);
+  animation: bingo-chat-preview-fade 5s linear forwards;
+}
+
+.bingo-chat-preview-message.is-friendly {
+  text-align: left;
+}
+
+.bingo-chat-preview-message.is-enemy {
+  text-align: left;
+}
+
+.bingo-chat-preview-meta {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  max-width: 100%;
+  color: rgb(255 255 255 / 72%);
+  font-size: var(--bingo-chat-preview-meta-size, 9px);
+  font-weight: 700;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.bingo-chat-preview-message.is-friendly .bingo-chat-preview-meta {
+  justify-content: flex-start;
+}
+
+.bingo-chat-preview-meta .sender-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bingo-chat-preview-text {
+  max-width: 100%;
+  color: var(--vq-text-light);
+  font-size: var(--bingo-chat-preview-text-size, 10px);
+  font-weight: 650;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+@keyframes bingo-chat-preview-fade {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 /* --- 2. Chat Overlay & Layout --- */

@@ -42,9 +42,9 @@ const channelCache = new Map<string, CachedChannel>();
 
 function getPusher() {
   if (!pusher) {
-    // deno-lint-ignore no-process-global
+    // deno-lint-ignore no-process-globals
     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
-    // deno-lint-ignore no-process-global
+    // deno-lint-ignore no-process-globals
     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
 
     if (!key || !cluster) {
