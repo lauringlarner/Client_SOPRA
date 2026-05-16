@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createLobbyClient } from "@/api/lobbyService";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
-import { GameRulesOverlay } from "@/components/GameRulesOverlay";
+import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
 import { ApplicationError } from "@/types/error";
 import {
   clearStoredActiveLobbyId,
@@ -15,18 +15,22 @@ import {
   setStoredActiveLobbyId,
 } from "@/utils/lobbySession";
 
-
 export default function MenuPage() {
   const router = useRouter();
   const api = useApi();
   const { loaded, isAuthenticated, logout, token, userId, username } = useAuthSession();
   
-  const [activeOverlay, setActiveOverlay] = useState<"join" | "rules" | null>(null);
+  const [activeOverlay, setActiveOverlay] = useState<"join" | null>(null);
   const [activeLobbyId, setActiveLobbyId] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [menuMessage, setMenuMessage] = useState<string | null>(null);
   const [overlayError, setOverlayError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"create" | "join" | "resume" | null>(null);
+
+  // Rules state managed at menu level for pre-fetching
+  const [showRules, setShowRules] = useState(false);
+  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
+  const [rulesLoading, setRulesLoading] = useState(false);
 
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
 
@@ -35,15 +39,13 @@ export default function MenuPage() {
     return username.trim().charAt(0).toUpperCase() || "U";
   }, [username]);
 
-  const [showRules, setShowRules] = useState(false);
-
-  // Auth Schutz
+  // Auth Protection
   useEffect(() => {
     if (!loaded) return;
     if (!isAuthenticated) router.replace("/");
   }, [isAuthenticated, loaded, router]);
 
-  // Lade gespeicherte Lobby nur wenn User Daten da sind
+  // Load saved lobby session
   useEffect(() => {
     if (!loaded || !isAuthenticated || !userId || userId.trim() === "") return;
 
@@ -71,6 +73,31 @@ export default function MenuPage() {
       cancelled = true;
     };
   }, [isAuthenticated, loaded, lobbyClient, userId]);
+
+  // Pre-fetch rules handler
+  const handleOpenRules = async () => {
+    if (rulesLoading) return;
+    
+    // If we already have the rules data cache, open it immediately
+    if (gameModes.length > 0) {
+      setShowRules(true);
+      return;
+    }
+
+    if (!token) return;
+
+    setRulesLoading(true);
+    setMenuMessage(null);
+    try {
+      const data = await api.get<GameModeDTO[]>("/gameModes", token);
+      setGameModes(data);
+      setShowRules(true); // Only open when data has completely arrived
+    } catch (_error) {
+      setMenuMessage("Failed to load game rules.");
+    } finally {
+      setRulesLoading(false);
+    }
+  };
 
   if (!loaded || !isAuthenticated) {
     return <div className="app-shell" />;
@@ -108,9 +135,7 @@ export default function MenuPage() {
   };
 
   const handleResumeSession = async () => {
-    if (!activeLobbyId) {
-      return;
-    }
+    if (!activeLobbyId) return;
 
     setMenuMessage(null);
     setPendingAction("resume");
@@ -134,7 +159,6 @@ export default function MenuPage() {
         setMenuMessage("Your last lobby is no longer available.");
         return;
       }
-
       setMenuMessage("Unable to reconnect to your current lobby right now.");
     } finally {
       setPendingAction(null);
@@ -160,11 +184,16 @@ export default function MenuPage() {
           <section className="menu-panel">
             <div className="rules-trigger-container">
               <button type="button" className="menu-profile" onClick={() => router.push(`/users/${userId}`)}>
-              <span className="menu-avatar">{avatarInitial}</span>
-              <span className="menu-username">{username || "User"}</span>
-            </button>
-           <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
-
+                <span className="menu-avatar">{avatarInitial}</span>
+                <span className="menu-username">{username || "User"}</span>
+              </button>
+              <button 
+                className={`menu-rules-trigger ${rulesLoading ? "is-loading" : ""}`} 
+                onClick={() => void handleOpenRules()}
+                disabled={rulesLoading}
+              >
+                {rulesLoading ? "..." : "i"}
+              </button>
             </div>
             <div className="menu-main-actions">
               <button type="button" className="vq-button menu-main-btn" onClick={() => void handleCreateLobby()} disabled={pendingAction !== null}>
@@ -194,42 +223,36 @@ export default function MenuPage() {
         {activeOverlay && (
           <div className="overlay-backdrop" onClick={closeOverlay}>
             <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
-              
-              {activeOverlay === "join" && (
-                <>
-                  <h2 className="overlay-title">Join Lobby</h2>
-                  {overlayError && <div className="overlay-error-bubble">{overlayError}</div>}
-                  <input
-                    className="overlay-input"
-                    placeholder="CODE"
-                    value={joinCode}
-                    maxLength={6}
-                    autoFocus
-                    onChange={(e) => {
-                      setOverlayError(null);
-                      setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase());
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && joinCode.length === 6 && pendingAction === null) {
-                        void handleJoinLobby();
-                      }
-                    }}
-                  />
-                  <div className="overlay-actions">
-                    <button type="button" className="vq-button btn-cancel" onClick={closeOverlay}>Cancel</button>
-                    <button 
-                      type="button"
-                      className="vq-button btn-confirm" 
-                      disabled={joinCode.length < 6 || pendingAction !== null} 
-                      onClick={() => void handleJoinLobby()}
-                    >
-                      {pendingAction === "join" ? "..." : "Join"}
-                    </button>
-                  </div>
-                </>
-              )}
-
-               
+              <h2 className="overlay-title">Join Lobby</h2>
+              {overlayError && <div className="overlay-error-bubble">{overlayError}</div>}
+              <input
+                className="overlay-input"
+                placeholder="CODE"
+                value={joinCode}
+                maxLength={6}
+                autoFocus
+                onChange={(e) => {
+                  setOverlayError(null);
+                  setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase());
+                }}
+                onChangeCapture={() => {}}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && joinCode.length === 6 && pendingAction === null) {
+                    void handleJoinLobby();
+                  }
+                }}
+              />
+              <div className="overlay-actions">
+                <button type="button" className="vq-button btn-cancel" onClick={closeOverlay}>Cancel</button>
+                <button 
+                  type="button"
+                  className="vq-button btn-confirm" 
+                  disabled={joinCode.length < 6 || pendingAction !== null} 
+                  onClick={() => void handleJoinLobby()}
+                >
+                  {pendingAction === "join" ? "..." : "Join"}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -238,9 +261,8 @@ export default function MenuPage() {
       <GameRulesOverlay 
         isOpen={showRules} 
         onClose={() => setShowRules(false)} 
-        token={token} 
+        gameModes={gameModes}
       />
-
     </div>
   );
 }
