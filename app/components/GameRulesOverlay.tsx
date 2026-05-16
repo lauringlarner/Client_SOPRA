@@ -2,32 +2,26 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { FittedTileText } from "@/components/FittedTileText";
-import { useApi } from "@/hooks/useApi";
 
-interface GameModeDTO {
+export interface GameModeDTO {
   id: string;
   name: string;
   rules: string[];
 }
 
 interface Props {
-  token: string | null;
   isOpen: boolean;
   onClose: () => void;
+  gameModes: GameModeDTO[];
 }
 
-export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
-  const api = useApi();
-  const [gameModes, setGameModes] = useState<GameModeDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function GameRulesOverlay({ isOpen, onClose, gameModes }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
-
   useEffect(() => {
     const element = scrollRef.current;
-    if (!element) return;
+    if (!element || !isOpen) return;
 
     const cards = Array.from(element.querySelectorAll(".rules-card"));
 
@@ -36,7 +30,9 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const index = cards.indexOf(entry.target as Element);
-            setActiveIndex(index);
+            if (index !== -1) {
+              setActiveIndex(index);
+            }
           }
         });
       },
@@ -47,10 +43,8 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
     );
 
     cards.forEach((card) => observer.observe(card));
-
     return () => observer.disconnect();
   }, [gameModes, isOpen]);
-
 
   const scrollToIndex = (i: number) => {
     const element = scrollRef.current;
@@ -66,18 +60,6 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
     });
   };
 
-  
-  // Fetch only when opened and if we don't have data yet
-  React.useEffect(() => {
-    if (isOpen && gameModes.length === 0 && token) {
-      setLoading(true);
-      api.get<GameModeDTO[]>("/gameModes", token)
-        .then(setGameModes)
-        .catch(() => setError("Failed to load game modes."))
-        .finally(() => setLoading(false));
-    }
-  }, [isOpen, token, api, gameModes.length]);
-
   if (!isOpen) return null;
 
   return (
@@ -88,26 +70,20 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
           
           <div className="rules-section">
             <div className="rules-scroll-container" ref={scrollRef}>
-              {loading ? (
-                <p className="overlay-error-bubble">Loading rules...</p>
-              ) : error ? (
-                <p className="overlay-error-bubble">{error}</p>
-              ) : (
-                <div className="rules-horizontal-list">
-                  {gameModes.map((mode) => (
-                    <div key={mode.id} className="rules-card">
-                      <h3 className="rules-subtitle">{mode.name}</h3>
-                      <ul className="rules-bullet-list">
-                        {mode.rules.map((rule, i) => (
-                          <li key={i}>
-                            <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="rules-horizontal-list">
+                {gameModes.map((mode) => (
+                  <div key={mode.id} className="rules-card">
+                    <h3 className="rules-subtitle">{mode.name}</h3>
+                    <ul className="rules-bullet-list">
+                      {mode.rules.map((rule, i) => (
+                        <li key={i}>
+                          <strong>{["Find", "Capture", "Submission", "Win"][i] || "Rule"}:</strong> {rule}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             </div>
             {gameModes.length > 1 && (
               <div className="rules-dots">
@@ -125,27 +101,31 @@ export function GameRulesOverlay({ token, isOpen, onClose }: Props) {
           <div className="rules-section">
             <h3 className="rules-subtitle">Tile Examples</h3>
             <div className="rules-tile-grid">
-               <div className="rules-tile-item">
-                <div className="bingo-field-button" style={{ pointerEvents: 'none' }}>
-                    <FittedTileText text="Tree" maxFontSize={10} />
+              <div className="rules-tile-item">
+                <div className="bingo-field-button" style={{ pointerEvents: "none" }}>
+                  <FittedTileText text="Tree" maxFontSize={10} />
                 </div>
                 <span>Unclaimed</span>
               </div>
               <div className="rules-tile-item">
-                <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: 'none' }}>
-                    <div className="loader is-friendly"></div>
+                <div className="bingo-field-button is-processing-friendly is-analyzing" style={{ pointerEvents: "none" }}>
+                  <div className="loader is-friendly"></div>
                 </div>
                 <span>In Validation</span>
               </div>
               <div className="rules-tile-item">
-                <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: 'none' }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
+                <div className="bingo-field-button is-claimed is-claimed-friendly" style={{ pointerEvents: "none" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
                 </div>
                 <span>Claimed Team 1</span>
               </div>
               <div className="rules-tile-item">
-                <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: 'none' }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg"><path d="M20 6L9 17l-5-5" /></svg>
+                <div className="bingo-field-button is-claimed is-claimed-enemy" style={{ pointerEvents: "none" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" className="claimed-icon-svg">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
                 </div>
                 <span>Claimed Team 2</span>
               </div>
