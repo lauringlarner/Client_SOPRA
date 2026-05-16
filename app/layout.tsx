@@ -30,27 +30,49 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable}`}
       >
+        {/* --- GLOBAL ORIENTATION BLOCKER --- */}
+        <div className="orientation-blocker">
+          <div className="blocker-container">
+            <svg 
+              className="blocker-svg"
+              viewBox="0 0 24 24" 
+              width="56" 
+              height="56" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            >
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+              <path d="M12 18h.01" />
+            </svg>
+            <h3 className="blocker-title">Rotate Device</h3>
+            <p className="blocker-text">
+              VisionQuest is optimized for portrait mode only. Please flip your device vertically.
+            </p>
+          </div>
+        </div>
+
+        {/* --- ANT DESIGN & CORE GLOBAL PROVIDERS --- */}
         <ConfigProvider
           theme={{
             algorithm: theme.defaultAlgorithm,
             token: {
-              // general theme options are set in token, meaning all primary elements (button, menu, ...) will have this color
-              colorPrimary: "#22426b", // selected input field boarder will have this color as well
+              // General theme tokens mapped from your project structure variables
+              colorPrimary: "#22426b", 
               borderRadius: 8,
               colorText: "#fff",
               fontSize: 16,
-
-              // Alias Token
               colorBgContainer: "#16181D",
             },
-            // if a component type needs special styling, setting here will override default options set in token
             components: {
               Button: {
-                colorPrimary: "#75bd9d", // this will color all buttons in #75bd9d, overriding the default primaryColor #22426b set in token line 35
+                colorPrimary: "#75bd9d", 
                 controlHeight: 38,
               },
               Input: {
-                colorBorder: "gray", // color boarder selected is not overridden but instead is set by primary color in line 35
+                colorBorder: "gray", 
                 colorTextPlaceholder: "#888888",
               },
               Form: {
