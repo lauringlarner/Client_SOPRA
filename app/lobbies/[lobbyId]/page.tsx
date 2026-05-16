@@ -56,7 +56,7 @@ export default function LobbyPage() {
   const [pendingAction, setPendingActionState] = useState<string | null>(null);
   const [pageMessage, setPageMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
   
-  // Specific error state underneath the ready up button
+  // Local interface warning message
   const [readyErrorMessage, setReadyErrorMessage] = useState<string | null>(null);
 
   const [_selectedPlayer, setSelectedPlayer] = useState<LobbyPlayer | null>(null);
@@ -199,6 +199,32 @@ export default function LobbyPage() {
     }
   }, [lobby]);
 
+  // AUTOMATIC DISABLE SINGLEPLAYER WHEN MULTIPLE PLAYERS ARE PRESENT
+  useEffect(() => {
+    if (!lobby || !isHost || pendingAction !== null) return;
+
+    if (lobbyPlayers.length > 1 && savedSinglePlayerMode === 1) {
+      setPendingAction("settings");
+      setReadyErrorMessage(null);
+      
+      const targetDuration = Number.parseInt(durationDraft, 10) || lobby.gameDuration;
+
+      lobbyClient.updateSettings(lobbyId, targetDuration, listTypeDraft)
+        .then(() => {
+          setSavedSinglePlayerMode(0);
+          setIsSinglePlayerDraft(0);
+          setStoredSinglePlayerMode(userId, lobbyId, 0);
+          setPageMessage({ text: "Switched to multiplayer because players joined.", tone: "info" });
+        })
+        .catch((err) => {
+          setPageMessage({ text: getLobbyErrorMessage(err, "Failed to update layout mode automatically."), tone: "error" });
+        })
+        .finally(() => {
+          setPendingAction(null);
+        });
+    }
+  }, [lobbyPlayers.length, savedSinglePlayerMode, isHost, lobby, lobbyId, durationDraft, listTypeDraft, userId, lobbyClient, pendingAction]);
+
   useEffect(() => {
     setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
   }, [currentPlayer?.team, lobbyId, userId]);
@@ -235,7 +261,6 @@ export default function LobbyPage() {
       .finally(() => setPendingAction(null));
   }, [canAutoStart, isHost, lobby, lobbyClient, lobbyId, pendingAction, router, savedSinglePlayerMode]);
 
-  // Pre-fetch game rules helper
   const handleOpenRules = async () => {
     if (rulesLoading) return;
 
@@ -262,13 +287,11 @@ export default function LobbyPage() {
   const handleUpdateTeam = async (team: LobbySelectableTeam) => {
     if (!currentPlayer) return;
     setPendingAction(`team-${team}`);
-    setReadyErrorMessage(null); // Clear errors on configuration change
+    setReadyErrorMessage(null); 
     
     try {
-      // Step 1: Update the team configuration
       await lobbyClient.updatePlayerTeam(lobbyId, currentPlayer.id, team);
       
-      // Step 2: Force unready automatically if changing teams to avoid instant matches starting
       if (currentPlayer.isReady) {
         await lobbyClient.updatePlayerReady(lobbyId, currentPlayer.id, false);
       }
@@ -283,24 +306,21 @@ export default function LobbyPage() {
     if (!currentPlayer) return;
     setReadyErrorMessage(null);
 
-    // Only apply validation rules when attempting to toggle READY to true
     if (!currentPlayer.isReady) {
       const isSoloUser = lobbyPlayers.length === 1;
 
       if (savedSinglePlayerMode === 0) {
-        // Validation Rule 1: Singleplayer mode is turned OFF, but user is entirely alone
         if (isSoloUser) {
           setReadyErrorMessage("Activate singleplayer in game settings to play alone.");
           return;
         }
 
-        // Validation Rule 2: Multi-player mode active, but one or more team alignments are totally empty
         const missingCoverage = !LOBBY_TEAMS.every((team) => 
           lobbyPlayers.some((p) => p.team === team)
         );
         
         if (missingCoverage) {
-          setReadyErrorMessage("Both teams need at least one player.");
+          setReadyErrorMessage("Both teams need at least one player to start.");
           return;
         }
       }
@@ -323,7 +343,7 @@ export default function LobbyPage() {
       return;
     }
     setPendingAction("settings");
-    setReadyErrorMessage(null); // Clear errors when setting changes occur
+    setReadyErrorMessage(null); 
     try {
       await lobbyClient.updateSettings(lobbyId, parsed, listTypeDraft);
       setSavedSinglePlayerMode(isSinglePlayerDraft);
@@ -439,7 +459,6 @@ export default function LobbyPage() {
                     {pendingAction === "ready" ? "Updating..." : currentPlayer.isReady ? "Not Ready" : "Ready"}
                   </button>
                   
-                  {/* REAL-TIME ERROR NOTIFICATION BANNER DIRECTLY UNDER READY BUTTON */}
                   {readyErrorMessage && (
                     <div className="error-template">
                       ⚠️ {readyErrorMessage}
@@ -493,7 +512,8 @@ export default function LobbyPage() {
                       <input
                         type="checkbox"
                         checked={isSinglePlayerDraft === 1}
-                        disabled={!isHost || pendingAction !== null}
+                        /* LOCKED BLOCK LOGIC: Disable interaction if multiple players exist and it is currently false */
+                        disabled={!isHost || pendingAction !== null || (lobbyPlayers.length > 1 && savedSinglePlayerMode === 0)}
                         onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
                       />
                       <span className="lobby-toggle-track" />
@@ -585,14 +605,12 @@ export default function LobbyPage() {
         )}
       </main>
 
-      {/* GAME RULES OVERLAY */}
       <GameRulesOverlay 
         isOpen={showRules} 
         onClose={() => setShowRules(false)} 
         gameModes={gameModes} 
       />
 
-      {/* REUSABLE STATS OVERLAY INTEGRATION */}
       <StatsOverlay 
         isOpen={!!selectedUser}
         onClose={() => setSelectedUser(null)}
