@@ -1,12 +1,13 @@
 import { ApiService } from "@/api/apiService";
 import { ApplicationError } from "@/types/error";
-import { GameDetails, GameStatus, GameTile, GameTileStatus } from "@/types/game";
+import { GameDetails, GameStatus, GameTile, GameTileStatus, ChatMessageGetDTO } from "@/types/game";
 import Pusher, { Channel } from "pusher-js";
 
 
 type SubscribeToGame = (
   gameId: string,
-  onUpdate: (details: GameDetails) => void,
+  onGameUpdate: (details: GameDetails) => void,
+  onChatUpdate: (chat: ChatMessageGetDTO) => void,
   onError: (error: ApplicationError) => void,
 ) => () => void;
 
@@ -25,6 +26,10 @@ interface CachedChannel {
   subscribers: number;
 }
 
+let pusher: Pusher | null = null;
+const channelCache = new Map<string, CachedChannel>();
+
+
 export function createGameClient(options: CreateGameClientOptions): GameClient {
   const { api, token } = options;
 
@@ -36,9 +41,6 @@ export function createGameClient(options: CreateGameClientOptions): GameClient {
     },
   };
 }
-
-let pusher: Pusher | null = null;
-const channelCache = new Map<string, CachedChannel>();
 
 function getPusher() {
   if (!pusher) {
@@ -62,9 +64,12 @@ function getPusher() {
   return pusher;
 }
 
+
+
 function createRemoteGameSubscriber(): SubscribeToGame {
-  return (gameId, onUpdate, onError) => {
+  return (gameId, onGameUpdate, onChatUpdate, onError) => {
     let pusherInstance: Pusher;
+
     try {
       pusherInstance = getPusher();
     } catch (err) {
@@ -73,14 +78,24 @@ function createRemoteGameSubscriber(): SubscribeToGame {
     }
 
     const channelName = `game-${gameId}`;
-    const eventName = "GameUpdate";
+    const gameEventName = "GameUpdate";
+    const chatEventName = "ChatUpdate";
 
-    const handler = (data: unknown) => {
+    const gameHandler = (data: unknown) => {
       try {
         const game = normalizeGameDetails(data);
-        onUpdate(game);
+        onGameUpdate(game);
       } catch {
         onError(createApplicationError("Invalid game update", 500));
+      }
+    };
+
+    const chatHandler = (data: unknown) => {
+      try {
+        const chat = data as ChatMessageGetDTO;
+        onChatUpdate(chat);
+      } catch {
+        onError(createApplicationError("Invalid chat update", 500));
       }
     };
 
@@ -89,6 +104,7 @@ function createRemoteGameSubscriber(): SubscribeToGame {
     };
 
     let channelEntry = channelCache.get(channelName);
+
     if (channelEntry) {
       channelEntry.subscribers += 1;
     } else {
@@ -98,13 +114,16 @@ function createRemoteGameSubscriber(): SubscribeToGame {
       };
       channelCache.set(channelName, channelEntry);
     }
+
     const channel = channelEntry.channel;
 
-    channel.bind(eventName, handler);
+    channel.bind(gameEventName, gameHandler);
+    channel.bind(chatEventName, chatHandler);
     pusherInstance.connection.bind("error", errorHandler);
-
+    
     return () => {
-      channel.unbind(eventName, handler);
+      channel.unbind(gameEventName, gameHandler);
+      channel.unbind(chatEventName, chatHandler); 
       pusherInstance.connection.unbind("error", errorHandler);
 
       const activeChannelEntry = channelCache.get(channelName);
@@ -113,6 +132,7 @@ function createRemoteGameSubscriber(): SubscribeToGame {
       }
 
       activeChannelEntry.subscribers -= 1;
+
       if (activeChannelEntry.subscribers <= 0) {
         pusherInstance.unsubscribe(channelName);
         channelCache.delete(channelName);

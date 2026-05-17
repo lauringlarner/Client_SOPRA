@@ -26,3 +26,10 @@ export interface GameDetails {
   wordList: string[];
   wordListScore: string[];
 }
+
+export interface ChatMessageGetDTO {
+  message: string;
+  sender: string;     
+  sentAt: string;     
+  teamType: string;
+}

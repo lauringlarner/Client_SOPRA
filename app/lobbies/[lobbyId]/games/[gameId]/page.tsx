@@ -10,7 +10,7 @@ import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
-import { GameDetails, GameTileStatus, GameTile } from "@/types/game";
+import { GameDetails, GameTileStatus, GameTile, ChatMessageGetDTO } from "@/types/game";
 import {
   BackendTeamName,
   buildTeamScores,
@@ -31,13 +31,6 @@ import {
 
 // --- Interfaces ---
 
-interface ChatMessageGetDTO {
-  message: string;
-  sender: string;     
-  sentAt: string;     
-  teamType: string;
-}
-
 interface ChatPreviewMessage extends ChatMessageGetDTO {
   previewKey: string;
 }
@@ -46,8 +39,6 @@ type ChatPreviewStyle = React.CSSProperties & Record<`--${string}`, string>;
 
 const CHAT_PREVIEW_LIMIT = 3;
 const CHAT_PREVIEW_TTL_MS = 5000;
-const CHAT_POLL_INTERVAL_MS = 1000;
-const CHAT_OPEN_POLL_INTERVAL_MS = 1000;
 const CHAT_PREVIEW_MIN_HEIGHT = 50;
 const CHAT_PREVIEW_SCORE_MARGIN = 15;
 const CHAT_PREVIEW_MIN_META_SIZE = 9;
@@ -109,8 +100,8 @@ export default function GameBoardPage() {
   const topActionsRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const optimisticMessageKeys = useRef<Set<string>>(new Set());
   const hasAutoScrolledOnOpen = useRef(false);
-  const chatFetchRequestRef = useRef(0);
   const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
   const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
@@ -184,22 +175,6 @@ export default function GameBoardPage() {
   }, [game?.status, gameId, lobbyId, router]);
 
   // --- 3. Chat Logic & Smart Scrolling ---
-  const fetchChat = useCallback(async () => {
-    if (!token || !gameId) return;
-    const requestId = chatFetchRequestRef.current + 1;
-    chatFetchRequestRef.current = requestId;
-
-    try {
-      const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
-      if (requestId !== chatFetchRequestRef.current) return;
-      setChatHistory(messages);
-    } catch (err) {
-      if (requestId === chatFetchRequestRef.current) {
-        console.error("Chat fetch failed", err);
-      }
-    }
-  }, [api, gameId, token]);
-
   useEffect(() => {
     const updatePageVisibility = () => {
       setIsPageVisible(document.visibilityState === "visible");
@@ -211,18 +186,29 @@ export default function GameBoardPage() {
   }, []);
 
   useEffect(() => {
-    if (!loaded || !isAuthenticated || !token || !gameId || !isPageVisible || game?.status === "ENDED") {
-      return;
-    }
+    if (!loaded || !isAuthenticated || !token || !gameId) return;
 
-    void fetchChat();
-    const intervalMs = showChat ? CHAT_OPEN_POLL_INTERVAL_MS : CHAT_POLL_INTERVAL_MS;
-    const interval = setInterval(() => void fetchChat(), intervalMs);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const history = await api.get<ChatMessageGetDTO[]>(
+          `/games/${gameId}/chat`,
+          token
+        );
+
+        if (cancelled) return;
+
+        setChatHistory(history);
+      } catch (err) {
+        console.error("Failed to load chat history", err);
+      }
+    })();
+
     return () => {
-      clearInterval(interval);
-      chatFetchRequestRef.current += 1;
+      cancelled = true;
     };
-  }, [fetchChat, game?.status, gameId, isAuthenticated, isPageVisible, loaded, showChat, token]);
+  }, [loaded, isAuthenticated, token, gameId, api]);
 
   useEffect(() => {
     const unseenMessages = chatHistory
@@ -271,7 +257,6 @@ export default function GameBoardPage() {
     return () => {
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
-      chatFetchRequestRef.current += 1;
     };
   }, []);
 
@@ -328,13 +313,23 @@ export default function GameBoardPage() {
 
   const sendQuickMessage = async (msg: string) => {
     if (isSendingChat || !token) return;
+
     setIsSendingChat(true);
+
+    const optimisticKey = `optimistic-${Date.now()}-${msg}`;
+    optimisticMessageKeys.current.add(optimisticKey);
+
+    const optimisticMessage: ChatMessageGetDTO = {
+      message: msg,
+      sender: "You",
+      teamType: myTeamName ?? "Team1",
+      sentAt: new Date().toISOString(),
+    };
+
+    setChatHistory((prev) => [...prev, optimisticMessage]);
+
     try {
       await api.post(`/games/${gameId}/chat`, { message: msg }, token);
-      await fetchChat();
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 50);
     } catch (err) {
       console.error("Chat send failed", err);
     } finally {
@@ -413,6 +408,18 @@ export default function GameBoardPage() {
       setPageMessage(null);
     };
 
+    const handleChatUpdate = (chat: ChatMessageGetDTO) => {
+      setChatHistory((prev) => {
+        const key = getChatMessageKey(chat);
+
+        const exists = prev.some((c) => getChatMessageKey(c) === key);
+
+        if (exists) return prev;
+
+        return [...prev, chat];
+      });
+    };
+
     const handleGameError = (error: unknown, fallback: string) => {
       if (cancelled) return;
       const message = getGameErrorMessage(error, fallback);
@@ -424,7 +431,7 @@ export default function GameBoardPage() {
       setPageMessage(message);
     };
 
-    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (error) => {
+    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, handleChatUpdate, (error) => {
       handleGameError(error, "Connection lost. Reconnecting...");
     });
 
