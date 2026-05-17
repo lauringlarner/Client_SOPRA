@@ -33,10 +33,10 @@ export interface LobbyDetails {
   gameDuration: number;
   gameId?: string;
   id: string;
+  isSinglePlayer?: boolean;
   joinCode: string;
   lobbyPlayers: LobbyPlayer[];
   listType?: LobbyListType;
-
 }
 
 export interface JoinLobbyResult {

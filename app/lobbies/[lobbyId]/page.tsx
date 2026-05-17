@@ -77,9 +77,10 @@ export default function LobbyPage() {
   const lobbyPlayers = lobby?.lobbyPlayers ?? [];
   const currentPlayer = lobbyPlayers.find((p) => p.user.id === userId) ?? null;
   const isHost = currentPlayer?.isHost ?? false;
-  const needsTeamSelection = currentPlayer?.team == null;
+  const isSinglePlayer = lobby?.isSinglePlayer ?? (savedSinglePlayerMode === 1);
+  const needsTeamSelection = !isSinglePlayer && currentPlayer?.team == null;
   const allPlayersReady = lobbyPlayers.length > 0 && lobbyPlayers.every((p) => p.isReady);
-  const hasRequiredTeamCoverage = savedSinglePlayerMode === 1
+  const hasRequiredTeamCoverage = isSinglePlayer
     ? LOBBY_TEAMS.some((team) => lobbyPlayers.some((p) => p.team === team))
     : LOBBY_TEAMS.every((team) => lobbyPlayers.some((p) => p.team === team));
 
@@ -347,18 +348,20 @@ export default function LobbyPage() {
 
               {currentPlayer && (
                 <>
-                  <div className="lobby-team-selector">
-                    {LOBBY_TEAMS.map((team) => (
-                      <button
-                        key={team}
-                        className={`vq-button lobby-team-option ${currentPlayer.team === team ? "is-selected" : ""}`}
-                        disabled={pendingAction !== null}
-                        onClick={() => void handleUpdateTeam(team)}
-                      >
-                        {getLobbyTeamLabel(team)}
-                      </button>
-                    ))}
-                  </div>
+                  {!isSinglePlayer && (
+                    <div className="lobby-team-selector">
+                      {LOBBY_TEAMS.map((team) => (
+                        <button
+                          key={team}
+                          className={`vq-button lobby-team-option ${currentPlayer.team === team ? "is-selected" : ""}`}
+                          disabled={pendingAction !== null}
+                          onClick={() => void handleUpdateTeam(team)}
+                        >
+                          {getLobbyTeamLabel(team)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <button
                     className={`vq-button lobby-ready-toggle ${currentPlayer.isReady ? "is-ready" : ""}`}
                     disabled={pendingAction !== null || needsTeamSelection}
