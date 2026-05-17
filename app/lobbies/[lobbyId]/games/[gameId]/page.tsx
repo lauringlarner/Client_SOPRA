@@ -22,7 +22,7 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { playCountdown } from "@/utils/sounds";
+import { playCountdown, getSoundEnabled, setSoundEnabled } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
@@ -70,6 +70,7 @@ export default function GameBoardPage() {
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   
+  const [soundEnabled, setSoundEnabledState] = useState(true);
   const [showRules, setShowRules] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [shakingTile, setShakingTile] = useState<string | null>(null);
@@ -93,6 +94,13 @@ export default function GameBoardPage() {
   const lobbyClient = useMemo(() => createLobbyClient({ api, token }), [api, token]);
   const tileSound = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { tileSound.current = new Audio('/sounds/ui_click_beep.wav'); }, []);
+  useEffect(() => { setSoundEnabledState(getSoundEnabled()); }, []);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setSoundEnabledState(next);
+  };
 
   // --- 1. Background Scroll Lock ---
   useEffect(() => {
@@ -329,11 +337,28 @@ export default function GameBoardPage() {
 
             <button className="menu-rules-trigger" onClick={() => setShowRules(true)}>i</button>
 
-              <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-              </button>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button type="button" className="chat-trigger-btn" onClick={toggleSound} aria-label="Toggle sound">
+                  {soundEnabled ? (
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                      <line x1="23" y1="9" x2="17" y2="15"/>
+                      <line x1="17" y1="9" x2="23" y2="15"/>
+                    </svg>
+                  )}
+                </button>
+                <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -378,7 +403,7 @@ export default function GameBoardPage() {
                           type="button"
                           className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
                           disabled={isClaimed || isProcessing}
-                          onClick={() => { tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
+                          onClick={() => { if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
                             <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>
