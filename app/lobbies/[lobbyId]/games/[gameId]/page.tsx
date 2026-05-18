@@ -64,7 +64,7 @@ const QUICK_MESSAGES = [
 export default function GameBoardPage() {
   const api = useApi();
   const router = useRouter();
-  const { loaded, isAuthenticated, token, userId } = useAuthSession();
+  const { loaded, isAuthenticated, token, userId, username } = useAuthSession();
   const params = useParams<{ lobbyId: string; gameId: string }>();
   const { lobbyId, gameId } = params;
 
@@ -323,10 +323,13 @@ export default function GameBoardPage() {
 
     const optimisticMessage: ChatMessageGetDTO = {
       message: msg,
-      sender: "You",
+      sender: username,
       teamType: myTeamName ?? "Team1",
       sentAt: new Date().toISOString(),
     };
+
+    const key = getChatMessageKey(optimisticMessage);
+    optimisticMessageKeys.current.add(key);
 
     setChatHistory((prev) => [...prev, optimisticMessage]);
 
@@ -437,7 +440,15 @@ export default function GameBoardPage() {
       setChatHistory((prev) => {
         const key = getChatMessageKey(chat);
 
-        const exists = prev.some((c) => getChatMessageKey(c) === key);
+        if (optimisticMessageKeys.current.has(key)) {
+          optimisticMessageKeys.current.delete(key);
+          return prev;
+        }
+
+        const exists = prev.some((c) =>
+          c.message === chat.message &&
+          c.sender === chat.sender
+        );
 
         if (exists) return prev;
 
@@ -715,6 +726,7 @@ export default function GameBoardPage() {
                     const chatTeamClean = chat.teamType.replace(/\D/g, "");
                     const myTeamClean = (myTeamName || "").replace(/\D/g, "");
                     const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
+                    const isMine = chat.sender === username;
 
                     return (
                         <div key={i} className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}>
@@ -723,7 +735,12 @@ export default function GameBoardPage() {
                                     {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
                                 </span>
                                 <span className="label-divider">•</span>
-                                <span className="sender-name">{chat.sender}</span>
+                                
+
+                                <span className="sender-name">
+                                  {chat.sender}
+                                  {isMine ? " (You)" : ""}
+                                </span>
                             </div>
                             <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
                                 <p style={{ margin: 0 }}>{chat.message}</p>
