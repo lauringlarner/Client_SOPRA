@@ -85,6 +85,7 @@ export default function LobbyPage() {
   const isHost = currentPlayer?.isHost ?? false;
   const needsTeamSelection = currentPlayer?.team == null;
   const allPlayersReady = lobbyPlayers.length > 0 && lobbyPlayers.every((p) => p.isReady);
+  const isMultiplayer = savedSinglePlayerMode !== 1;
   
   const hasRequiredTeamCoverage = savedSinglePlayerMode === 1
     ? LOBBY_TEAMS.some((team) => lobbyPlayers.some((p) => p.team === team))
@@ -190,6 +191,9 @@ export default function LobbyPage() {
     const storedMode = getStoredSinglePlayerMode(userId, lobbyId);
     setSavedSinglePlayerMode(storedMode);
     setIsSinglePlayerDraft(storedMode);
+    if (storedMode === 1) {
+      setStoredSinglePlayerMode(userId, lobbyId, 1);
+    }
   }, [lobbyId, userId]);
 
   useEffect(() => {
@@ -198,6 +202,25 @@ export default function LobbyPage() {
       setListTypeDraft(lobby.listType ?? "all");
     }
   }, [lobby]);
+
+  useEffect(() => {
+  if (!lobby || !currentPlayer) return;
+
+  const isPractice = getStoredSinglePlayerMode(userId, lobbyId) === 1;
+
+  if (!isPractice) return;
+
+  const assignAndReady = async () => {
+    try {
+      if (!currentPlayer.team) {
+        await lobbyClient.updatePlayerTeam(lobbyId, currentPlayer.id, "Team1");
+      }
+
+    } catch {}
+  };
+
+  void assignAndReady();
+}, [lobby, currentPlayer, lobbyId, userId, lobbyClient]);
 
   // AUTOMATIC DISABLE SINGLEPLAYER WHEN MULTIPLE PLAYERS ARE PRESENT
   useEffect(() => {
@@ -307,15 +330,9 @@ export default function LobbyPage() {
     setReadyErrorMessage(null);
 
     if (!currentPlayer.isReady) {
-      const isSoloUser = lobbyPlayers.length === 1;
 
       if (savedSinglePlayerMode === 0) {
-        if (isSoloUser) {
-          setReadyErrorMessage("Activate singleplayer in game settings to play alone.");
-          return;
-        }
-
-        const missingCoverage = !LOBBY_TEAMS.every((team) => 
+                const missingCoverage = !LOBBY_TEAMS.every((team) => 
           lobbyPlayers.some((p) => p.team === team)
         );
         
@@ -386,22 +403,12 @@ export default function LobbyPage() {
     }
   };
 
-  if (!loaded || !isAuthenticated) return <div className="app-shell" />;
+  const renderMultiplayerLayout = () => {
+    if (!lobby) return null;
 
-  return (
-    <div className="app-shell">
-      <main className="phone-frame screen-gradient lobby-layout">
-        <div className="lobby-top-actions">
-          <button 
-            className={`menu-rules-trigger ${rulesLoading ? "is-loading" : ""}`} 
-            onClick={() => void handleOpenRules()}
-            disabled={rulesLoading}
-          >
-            {rulesLoading ? "..." : "i"}
-          </button>
-          {profileLoading && <span className="profile-loading-spinner">...</span>}
-        </div>
-
+    return (
+      <>
+        {/* JOIN CODE CARD */}
         <section className="lobby-card lobby-code-card">
           <div className="lobby-code-header">
             <div>
@@ -410,155 +417,263 @@ export default function LobbyPage() {
             </div>
           </div>
           <div className="lobby-code-box">
-            {lobby?.joinCode ? formatJoinCode(lobby.joinCode) : "Loading..."}
+            {lobby.joinCode ? formatJoinCode(lobby.joinCode) : "Loading..."}
           </div>
         </section>
 
+        {/* YOUR SEAT */}
+        <section className="lobby-card lobby-me-card">
+          <div className="lobby-me-header">
+            <div>
+              <h2 className="lobby-section-title">Your Seat</h2>
+              <p className="lobby-muted-note">
+                {currentPlayer?.user.username}
+                {currentPlayer?.isHost ? " • Host" : ""}
+              </p>
+            </div>
+
+            {currentPlayer && (
+              <span
+                className={`lobby-player-badge ${
+                  currentPlayer.isReady ? "is-ready" : "is-pending"
+                }`}
+              >
+                {currentPlayer.isReady ? "Ready" : "Not Ready"}
+              </span>
+            )}
+          </div>
+
+          {currentPlayer && (
+            <>
+              <div className="lobby-team-selector">
+                {LOBBY_TEAMS.map((team) => (
+                  <button
+                    key={team}
+                    className={`vq-button lobby-team-option ${
+                      currentPlayer.team === team ? "is-selected" : ""
+                    }`}
+                    disabled={pendingAction !== null}
+                    onClick={() => void handleUpdateTeam(team)}
+                  >
+                    {getLobbyTeamLabel(team)}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                className={`vq-button lobby-ready-toggle ${
+                  currentPlayer.isReady ? "is-ready" : ""
+                }`}
+                disabled={pendingAction !== null || needsTeamSelection}
+                onClick={() => void handleToggleReadyToggle()}
+              >
+                {pendingAction === "ready"
+                  ? "Updating..."
+                  : currentPlayer.isReady
+                  ? "Not Ready"
+                  : "Ready"}
+              </button>
+
+              {readyErrorMessage && (
+                <div className="error-template">⚠️ {readyErrorMessage}</div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* SETTINGS */}
+        {renderSettingsCard()}
+
+        {/* TEAMS */}
+        {TEAM_SECTIONS.map((team) => {
+          const players = lobbyPlayers.filter((p) => p.team === team);
+          if (players.length === 0) return null;
+
+          return (
+            <section key={team ?? "none"} className="lobby-card lobby-team-card">
+              <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
+              <div className="lobby-team-list">
+                {players.map((p) => (
+                  <LobbyPlayerCard
+                    key={p.id}
+                    player={p}
+                    isSelf={p.user.id === userId}
+                    onClick={() => openPlayerProfile(p)}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </>
+    );
+  };
+
+  const renderSingleplayerLayout = () => {
+    if (!lobby) return null;
+
+    return (
+      <>
+        <section className="lobby-card lobby-me-card-single-player">
+          <div className="lobby-me-header">
+            <div>
+              <h2 className="lobby-section-title">Your Profile</h2>
+              <p className="lobby-muted-note">
+                {currentPlayer?.user.username}
+              </p>
+            </div>
+
+            {currentPlayer && (
+              <span
+                className={`lobby-player-badge ${
+                  currentPlayer.isReady ? "is-ready" : "is-pending"
+                }`}
+              >
+                {currentPlayer.isReady ? "Ready" : "Not Ready"}
+              </span>
+            )}
+          </div>
+
+          {currentPlayer && (
+            <>
+              <div className="singleplayer-profile-center">
+                <LobbyPlayerCard
+                  player={currentPlayer}
+                  isSelf={true}
+                  onClick={() => openPlayerProfile(currentPlayer)}
+                />
+              </div>
+
+              <button
+                className={`vq-button lobby-ready-toggle ${
+                  currentPlayer.isReady ? "is-ready" : ""
+                }`}
+                disabled={pendingAction !== null}
+                onClick={() => void handleToggleReadyToggle()}
+              >
+                {pendingAction === "ready"
+                  ? "Updating..."
+                  : currentPlayer.isReady
+                  ? "Not Ready"
+                  : "Ready"}
+              </button>
+
+              {readyErrorMessage && (
+                <div className="error-template">⚠️ {readyErrorMessage}</div>
+              )}
+            </>
+          )}
+        </section>
+
+        {renderSettingsCard()}
+      </>
+    );
+  };
+
+  const renderSettingsCard = () => (
+    <section className="lobby-card lobby-settings-card">
+      <details className="settings-accordion">
+        <summary className="lobby-section-title settings-summary">
+          Game Settings <span className="chevron">▼</span>
+        </summary>
+
+        <div className="settings-content">
+          <label className="lobby-settings-field">
+            <span className="lobby-settings-label">
+              Round duration: <strong>{durationDraft}</strong> min
+            </span>
+            <input
+              className="range-slider"
+              type="range"
+              min={MIN_GAME_DURATION}
+              max={MAX_GAME_DURATION}
+              step="1"
+              value={durationDraft}
+              disabled={!isHost || pendingAction !== null}
+              onChange={(e) => setDurationDraft(e.target.value)}
+            />
+          </label>
+
+          <label className="lobby-settings-field">
+            <span className="lobby-settings-label">
+              What kind of objects do you want to search?
+            </span>
+            <select
+              className="field-input"
+              value={listTypeDraft}
+              disabled={!isHost || pendingAction !== null}
+              onChange={(e) =>
+                setListTypeDraft(e.target.value as LobbyListType)
+              }
+            >
+              <option value="all">Outdoor and Indoor objects</option>
+              <option value="outside">Outdoor objects</option>
+              <option value="inside">Indoor objects</option>
+              <option value="demo">Demo Mode</option>
+            </select>
+          </label>
+
+          {isHost && (
+            <button
+              className="vq-button"
+              disabled={pendingAction !== null}
+              onClick={() => void handleSaveSettings()}
+            >
+              {pendingAction === "settings" ? "Saving..." : "Save Settings"}
+            </button>
+          )}
+        </div>
+      </details>
+    </section>
+  );
+
+  if (!loaded || !isAuthenticated) return <div className="app-shell" />;
+
+  return (
+    <div className="app-shell">
+      <main className="phone-frame screen-gradient lobby-layout">
+        
+        {/* TOP ACTIONS */}
+        <div className="lobby-top-actions">
+          <button
+            className={`menu-rules-trigger ${rulesLoading ? "is-loading" : ""}`}
+            onClick={() => void handleOpenRules()}
+            disabled={rulesLoading}
+          >
+            {rulesLoading ? "..." : "i"}
+          </button>
+
+          {profileLoading && <span className="profile-loading-spinner">...</span>}
+        </div>
+
+        {/* FEEDBACK MESSAGE */}
         {pageMessage && (
-          <section className={`lobby-card lobby-feedback-card ${pageMessage.tone === "error" ? "is-error" : "is-info"}`}>
+          <section
+            className={`lobby-card lobby-feedback-card ${
+              pageMessage.tone === "error" ? "is-error" : "is-info"
+            }`}
+          >
             <p className="lobby-feedback-text">{pageMessage.text}</p>
           </section>
         )}
 
+        {/* MAIN CONTENT */}
         {lobby && (
           <>
-            <section className="lobby-card lobby-me-card">
-              <div className="lobby-me-header">
-                <div>
-                  <h2 className="lobby-section-title">Your Seat</h2>
-                  <p className="lobby-muted-note">
-                    {currentPlayer?.user.username}{currentPlayer?.isHost ? " • Host" : ""}
-                  </p>
-                </div>
-                {currentPlayer && (
-                  <span className={`lobby-player-badge ${currentPlayer.isReady ? "is-ready" : "is-pending"}`}>
-                    {currentPlayer.isReady ? "Ready" : "Not Ready"}
-                  </span>
-                )}
-              </div>
+            {isMultiplayer
+              ? renderMultiplayerLayout()
+              : renderSingleplayerLayout()}
 
-              {currentPlayer && (
-                <>
-                  <div className="lobby-team-selector">
-                    {LOBBY_TEAMS.map((team) => (
-                      <button
-                        key={team}
-                        className={`vq-button lobby-team-option ${currentPlayer.team === team ? "is-selected" : ""}`}
-                        disabled={pendingAction !== null}
-                        onClick={() => void handleUpdateTeam(team)}
-                      >
-                        {getLobbyTeamLabel(team)}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    className={`vq-button lobby-ready-toggle ${currentPlayer.isReady ? "is-ready" : ""}`}
-                    disabled={pendingAction !== null || needsTeamSelection}
-                    onClick={() => void handleToggleReadyToggle()}
-                  >
-                    {pendingAction === "ready" ? "Updating..." : currentPlayer.isReady ? "Not Ready" : "Ready"}
-                  </button>
-                  
-                  {readyErrorMessage && (
-                    <div className="error-template">
-                      ⚠️ {readyErrorMessage}
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-
-            <section className="lobby-card lobby-settings-card">
-              <details className="settings-accordion">
-                <summary className="lobby-section-title settings-summary">
-                  Game Settings <span className="chevron">▼</span>
-                </summary>
-
-                <div className="settings-content">
-                  <label className="lobby-settings-field">
-                    <span className="lobby-settings-label">
-                      Round duration: <strong>{durationDraft}</strong> min
-                    </span>
-                    <input
-                      className="range-slider"
-                      type="range"
-                      min={MIN_GAME_DURATION}
-                      max={MAX_GAME_DURATION}
-                      step="1"
-                      value={durationDraft}
-                      disabled={!isHost || pendingAction !== null}
-                      onChange={(e) => setDurationDraft(e.target.value)}
-                    />
-                  </label>
-
-                  <label className="lobby-settings-field">
-                    <span className="lobby-settings-label">What kind of objects do you want to search?</span>
-                    <select
-                      className="field-input"
-                      value={listTypeDraft}
-                      disabled={!isHost || pendingAction !== null}
-                      onChange={(e) => setListTypeDraft(e.target.value as LobbyListType)}
-                    >
-                      <option value="all">Outdoor and Indoor objects</option>
-                      <option value="outside">Outdoor objects</option>
-                      <option value="inside">Indoor objects</option>
-                      <option value="demo">Demo Mode</option>
-                    </select>
-                  </label>
-
-                  <div className="lobby-settings-field">
-                    <span className="lobby-settings-label">Singleplayer</span>
-                    <label className="lobby-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={isSinglePlayerDraft === 1}
-                        /* LOCKED BLOCK LOGIC: Disable interaction if multiple players exist and it is currently false */
-                        disabled={!isHost || pendingAction !== null || (lobbyPlayers.length > 1 && savedSinglePlayerMode === 0)}
-                        onChange={(e) => setIsSinglePlayerDraft(e.target.checked ? 1 : 0)}
-                      />
-                      <span className="lobby-toggle-track" />
-                    </label>
-                  </div>
-
-                  {isHost && (
-                    <button
-                      className="vq-button"
-                      disabled={pendingAction !== null}
-                      onClick={() => void handleSaveSettings()}
-                    >
-                      {pendingAction === "settings" ? "Saving..." : "Save Settings"}
-                    </button>
-                  )}
-                </div>
-              </details>
-            </section>
-
-            {TEAM_SECTIONS.map((team) => {
-              const players = lobbyPlayers.filter((p) => p.team === team);
-              if (players.length === 0) return null;
-
-              return (
-                <section key={team ?? "none"} className="lobby-card lobby-team-card">
-                  <h2 className="lobby-section-title">{getLobbyTeamLabel(team)}</h2>
-                  <div className="lobby-team-list">
-                    {players.map((p) => (
-                      <LobbyPlayerCard
-                        key={p.id}
-                        player={p}
-                        isSelf={p.user.id === userId}
-                        onClick={() => openPlayerProfile(p)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-
+            {/* ACTION BAR */}
             <section className="lobby-card lobby-action-bar">
               <button
                 className="vq-button lobby-action-btn"
                 disabled={pendingAction !== null}
-                onClick={() => (isHost ? setShowDeleteModal(true) : setShowLeaveModal(true))}
+                onClick={() =>
+                  isHost
+                    ? setShowDeleteModal(true)
+                    : setShowLeaveModal(true)
+                }
               >
                 {isHost ? "Delete Lobby" : "Leave Lobby"}
               </button>
@@ -566,13 +681,31 @@ export default function LobbyPage() {
           </>
         )}
 
+        {/* LOADING STATE (optional but recommended) */}
+        {!lobby && (
+          <section className="lobby-card">
+            <p className="lobby-muted-note">Loading lobby...</p>
+          </section>
+        )}
+
+        {/* MODALS */}
         {showDeleteModal && (
           <div className="guard-backdrop" onClick={() => setShowDeleteModal(false)}>
             <div className="guard-panel" onClick={(e) => e.stopPropagation()}>
               <h2 className="guard-title">Delete Lobby</h2>
               <div className="guard-flow">
-                <button className="guard-action primary-red" onClick={() => void confirmDeleteLobby()}>Delete</button>
-                <button className="guard-action secondary-teal" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                <button
+                  className="guard-action primary-red"
+                  onClick={() => void confirmDeleteLobby()}
+                >
+                  Delete
+                </button>
+                <button
+                  className="guard-action secondary-teal"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
@@ -583,8 +716,18 @@ export default function LobbyPage() {
             <div className="guard-panel" onClick={(e) => e.stopPropagation()}>
               <h2 className="guard-title">Leave Lobby</h2>
               <div className="guard-flow">
-                <button className="guard-action primary-red" onClick={() => void confirmLeaveLobby()}>Leave</button>
-                <button className="guard-action secondary-teal" onClick={() => setShowLeaveModal(false)}>Stay</button>
+                <button
+                  className="guard-action primary-red"
+                  onClick={() => void confirmLeaveLobby()}
+                >
+                  Leave
+                </button>
+                <button
+                  className="guard-action secondary-teal"
+                  onClick={() => setShowLeaveModal(false)}
+                >
+                  Stay
+                </button>
               </div>
             </div>
           </div>
@@ -598,20 +741,21 @@ export default function LobbyPage() {
                 The host has deleted the lobby. You will now be redirected to the menu.
               </p>
               <div className="guard-loader-container">
-                <div className="guard-loader"></div>
+                <div className="guard-loader" />
               </div>
             </div>
           </div>
         )}
       </main>
 
-      <GameRulesOverlay 
-        isOpen={showRules} 
-        onClose={() => setShowRules(false)} 
-        gameModes={gameModes} 
+      {/* OVERLAYS */}
+      <GameRulesOverlay
+        isOpen={showRules}
+        onClose={() => setShowRules(false)}
+        gameModes={gameModes}
       />
 
-      <StatsOverlay 
+      <StatsOverlay
         isOpen={!!selectedUser}
         onClose={() => setSelectedUser(null)}
         gamesPlayed={selectedUser?.gamesPlayed ?? 0}
