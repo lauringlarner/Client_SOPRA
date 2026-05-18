@@ -204,23 +204,22 @@ export default function LobbyPage() {
   }, [lobby]);
 
   useEffect(() => {
-  if (!lobby || !currentPlayer) return;
+    if (!lobby || !currentPlayer) return;
 
-  const isPractice = getStoredSinglePlayerMode(userId, lobbyId) === 1;
+    const isPractice = getStoredSinglePlayerMode(userId, lobbyId) === 1;
 
-  if (!isPractice) return;
+    if (!isPractice) return;
 
-  const assignAndReady = async () => {
-    try {
-      if (!currentPlayer.team) {
-        await lobbyClient.updatePlayerTeam(lobbyId, currentPlayer.id, "Team1");
-      }
+    const assignAndReady = async () => {
+      try {
+        if (!currentPlayer.team) {
+          await lobbyClient.updatePlayerTeam(lobbyId, currentPlayer.id, "Team1");
+        }
+      } catch {}
+    };
 
-    } catch {}
-  };
-
-  void assignAndReady();
-}, [lobby, currentPlayer, lobbyId, userId, lobbyClient]);
+    void assignAndReady();
+  }, [lobby, currentPlayer, lobbyId, userId, lobbyClient]);
 
   // AUTOMATIC DISABLE SINGLEPLAYER WHEN MULTIPLE PLAYERS ARE PRESENT
   useEffect(() => {
@@ -228,7 +227,7 @@ export default function LobbyPage() {
 
     if (lobbyPlayers.length > 1 && savedSinglePlayerMode === 1) {
       setPendingAction("settings");
-      setReadyErrorMessage(null);
+      setReadyErrorMessage(null); 
       
       const targetDuration = Number.parseInt(durationDraft, 10) || lobby.gameDuration;
 
@@ -330,9 +329,8 @@ export default function LobbyPage() {
     setReadyErrorMessage(null);
 
     if (!currentPlayer.isReady) {
-
       if (savedSinglePlayerMode === 0) {
-                const missingCoverage = !LOBBY_TEAMS.every((team) => 
+        const missingCoverage = !LOBBY_TEAMS.every((team) => 
           lobbyPlayers.some((p) => p.team === team)
         );
         
@@ -402,6 +400,63 @@ export default function LobbyPage() {
       setPendingAction(null);
     }
   };
+
+  const renderSettingsCard = () => (
+    <section className="lobby-card lobby-settings-card">
+      <details className="settings-accordion">
+        <summary className="lobby-section-title settings-summary">
+          Game Settings <span className="chevron">▼</span>
+        </summary>
+
+        <div className="settings-content">
+          <label className="lobby-settings-field">
+            <span className="lobby-settings-label">
+              Round duration: <strong>{durationDraft}</strong> min
+            </span>
+            <input
+              className="range-slider"
+              type="range"
+              min={MIN_GAME_DURATION}
+              max={MAX_GAME_DURATION}
+              step="1"
+              value={durationDraft}
+              disabled={!isHost || pendingAction !== null}
+              onChange={(e) => setDurationDraft(e.target.value)}
+            />
+          </label>
+
+          <label className="lobby-settings-field">
+            <span className="lobby-settings-label">
+              What kind of objects do you want to search?
+            </span>
+            <select
+              className="field-input"
+              value={listTypeDraft}
+              disabled={!isHost || pendingAction !== null}
+              onChange={(e) =>
+                setListTypeDraft(e.target.value as LobbyListType)
+              }
+            >
+              <option value="all">Outdoor and Indoor objects</option>
+              <option value="outside">Outdoor objects</option>
+              <option value="inside">Indoor objects</option>
+              <option value="demo">Demo Mode</option>
+            </select>
+          </label>
+
+          {isHost && (
+            <button
+              className="vq-button lobby-save-btn"
+              disabled={pendingAction !== null}
+              onClick={() => void handleSaveSettings()}
+            >
+              {pendingAction === "settings" ? "Saving..." : "Save Settings"}
+            </button>
+          )}
+        </div>
+      </details>
+    </section>
+  );
 
   const renderMultiplayerLayout = () => {
     if (!lobby) return null;
@@ -570,62 +625,6 @@ export default function LobbyPage() {
     );
   };
 
-  const renderSettingsCard = () => (
-    <section className="lobby-card lobby-settings-card">
-      <details className="settings-accordion">
-        <summary className="lobby-section-title settings-summary">
-          Game Settings <span className="chevron">▼</span>
-        </summary>
-
-        <div className="settings-content">
-          <label className="lobby-settings-field">
-            <span className="lobby-settings-label">
-              Round duration: <strong>{durationDraft}</strong> min
-            </span>
-            <input
-              className="range-slider"
-              type="range"
-              min={MIN_GAME_DURATION}
-              max={MAX_GAME_DURATION}
-              step="1"
-              value={durationDraft}
-              disabled={!isHost || pendingAction !== null}
-              onChange={(e) => setDurationDraft(e.target.value)}
-            />
-          </label>
-
-          <label className="lobby-settings-field">
-            <span className="lobby-settings-label">
-              What kind of objects do you want to search?
-            </span>
-            <select
-              className="field-input"
-              value={listTypeDraft}
-              disabled={!isHost || pendingAction !== null}
-              onChange={(e) =>
-                setListTypeDraft(e.target.value as LobbyListType)
-              }
-            >
-              <option value="all">Outdoor and Indoor objects</option>
-              <option value="outside">Outdoor objects</option>
-              <option value="inside">Indoor objects</option>
-              <option value="demo">Demo Mode</option>
-            </select>
-          </label>
-
-                  {isHost && (
-                    <button
-                      className="vq-button lobby-save-btn"
-                      disabled={pendingAction !== null}
-                      onClick={() => void handleSaveSettings()}
-                    >
-                      {pendingAction === "settings" ? "Saving..." : "Save Settings"}
-                    </button>
-                  )}
-                </div>
-              </details>
-            </section>
-
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
   return (
@@ -680,7 +679,7 @@ export default function LobbyPage() {
           </>
         )}
 
-        {/* LOADING STATE (optional but recommended) */}
+        {/* LOADING STATE */}
         {!lobby && (
           <section className="lobby-card">
             <p className="lobby-muted-note">Loading lobby...</p>
@@ -779,8 +778,15 @@ function LobbyPlayerCard({ player, isSelf, onClick }: { player: LobbyPlayer; isS
   );
 }
 
-function formatJoinCode(v: string) { return v.toUpperCase().slice(0, 6); }
-function getLobbyErrorMessage(e: unknown, f: string) { return (e as ApplicationError)?.message || f; }
+function formatJoinCode(v: string) { 
+  if (!v) return "";
+  return v.toUpperCase().slice(0, 6); 
+}
+
+function getLobbyErrorMessage(e: unknown, f: string) { 
+  return (e as ApplicationError)?.message || f; 
+}
+
 function isFatalApplicationError(e: unknown) {
   const status = (e as ApplicationError)?.status;
   return status === 403 || status === 404;
