@@ -150,7 +150,7 @@ function CameraContent() {
           }
         } catch (err) {
           console.error("Camera access error:", err);
-          setSubmissionError("Failed to open camera. Please check permissions.");
+          setSubmissionError("Failed to open camera. Please check permissions & then refresh page.");
         }
       })();
     }
