@@ -1274,11 +1274,10 @@ textarea {
 
 /* Explicit styling for the black disclaimer text */
 .singleplayer-warning-note {
-  color: #000000 !important;
-  font-size: 0.9rem;
+  margin: 6px 0 0;
+  color: rgb(30 30 30 / 78%);
+  font-size: 13px;
   line-height: 1.4;
-  margin-top: 6px;
-  font-weight: 500;
   text-align: center;
 }
 
