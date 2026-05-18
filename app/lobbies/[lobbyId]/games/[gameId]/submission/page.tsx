@@ -207,8 +207,11 @@ function CameraContent() {
 
     void checkAndRedirect();
     const unsubscribe = gameClient.subscribeToGame(gameId, (details: GameDetails) => {
-      if (details.status === "ENDED") redirectToLeaderboard();
-    }, () => {});
+        if (details.status === "ENDED") redirectToLeaderboard();
+      },
+      () => {}, 
+      (error) => {}
+    );
 
     return () => unsubscribe();
   }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router, tileWord]);
