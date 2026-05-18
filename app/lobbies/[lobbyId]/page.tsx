@@ -613,19 +613,18 @@ export default function LobbyPage() {
             </select>
           </label>
 
-          {isHost && (
-            <button
-              className="vq-button"
-              disabled={pendingAction !== null}
-              onClick={() => void handleSaveSettings()}
-            >
-              {pendingAction === "settings" ? "Saving..." : "Save Settings"}
-            </button>
-          )}
-        </div>
-      </details>
-    </section>
-  );
+                  {isHost && (
+                    <button
+                      className="vq-button lobby-save-btn"
+                      disabled={pendingAction !== null}
+                      onClick={() => void handleSaveSettings()}
+                    >
+                      {pendingAction === "settings" ? "Saving..." : "Save Settings"}
+                    </button>
+                  )}
+                </div>
+              </details>
+            </section>
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 

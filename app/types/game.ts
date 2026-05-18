@@ -28,8 +28,9 @@ export interface GameDetails {
 }
 
 export interface ChatMessageGetDTO {
+  id?: string;
   message: string;
-  sender: string;     
-  sentAt: string;     
+  sender: string;
+  sentAt: string;
   teamType: string;
 }
