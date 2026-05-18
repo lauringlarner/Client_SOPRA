@@ -23,7 +23,7 @@ export default function UserProfilePage() {
   const [activeOverlay, setActiveOverlay] = useState<"edit" | "stats" | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Visibility states for the password inputs
@@ -49,10 +49,9 @@ export default function UserProfilePage() {
   }, [isAuthenticated, loaded, router, fetchUserData]);
 
   const closeOverlay = () => {
-    if (isSubmitting) return;
+    if (isSubmitting || isLoggingOut) return;
     setActiveOverlay(null);
     setError("");
-    setSuccess("");
     setShowOldPassword(false);
     setShowNewPassword(false);
   };
@@ -71,7 +70,6 @@ export default function UserProfilePage() {
     event.preventDefault();
     setIsSubmitting(true);
     setError("");
-    setSuccess("");
     
     const formData = new FormData(event.currentTarget);
     const oldPassword = formData.get("oldPassword") as string;
@@ -85,7 +83,12 @@ export default function UserProfilePage() {
 
     try {
       await api.put(`/users/${userId}/password`, { oldPassword, newPassword }, token);
-      setSuccess("Password updated! Logging out...");
+      
+      // Close the password modal layout but keep backdrop active for visual transition
+      setActiveOverlay(null);
+      // Trigger the specialized loading backdrop view
+      setIsLoggingOut(true);
+
       setTimeout(() => {
         logout();
         router.replace("/");
@@ -139,13 +142,12 @@ export default function UserProfilePage() {
         </section>
       </main>
 
-      {/* PASSWORD OVERLAY */}
+      {/* PASSWORD EDIT OVERLAY */}
       {activeOverlay === "edit" && (
         <div className="overlay-backdrop" onClick={closeOverlay}>
           <form className="overlay-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSavePassword} noValidate>
             <h2 className="overlay-title">Update Password</h2>
             {error && <div className="error-template">{error}</div>}
-            {success && <div className="success-template">{success}</div>}
             
             <div className="edit-form-stack">
               {/* Current Password */}
@@ -160,21 +162,21 @@ export default function UserProfilePage() {
                     placeholder="Enter current password" 
                     required 
                     autoComplete="current-password"
-                    disabled={isSubmitting || !!success} 
+                    disabled={isSubmitting} 
                     style={{ paddingRight: "3.5rem", width: "100%" }}
                   />
                   <button
                     type="button"
                     onMouseDown={handleToggleOldPassword}
                     onTouchStart={handleToggleOldPassword}
-                    disabled={isSubmitting || !!success}
+                    disabled={isSubmitting}
                     aria-label={showOldPassword ? "Hide current password" : "Show current password"}
                     style={{
                       position: "absolute",
                       right: "0.75rem",
                       background: "transparent",
                       border: "none",
-                      cursor: (isSubmitting || !!success) ? "not-allowed" : "pointer",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
                       color: "#000000",
                       padding: "0.25rem",
                       display: "flex",
@@ -204,21 +206,21 @@ export default function UserProfilePage() {
                     placeholder="Enter new password" 
                     required 
                     autoComplete="new-password"
-                    disabled={isSubmitting || !!success} 
+                    disabled={isSubmitting} 
                     style={{ paddingRight: "3.5rem", width: "100%" }}
                   />
                   <button
                     type="button"
                     onMouseDown={handleToggleNewPassword}
                     onTouchStart={handleToggleNewPassword}
-                    disabled={isSubmitting || !!success}
+                    disabled={isSubmitting}
                     aria-label={showNewPassword ? "Hide new password" : "Show new password"}
                     style={{
                       position: "absolute",
                       right: "0.75rem",
                       background: "transparent",
                       border: "none",
-                      cursor: (isSubmitting || !!success) ? "not-allowed" : "pointer",
+                      cursor: isSubmitting ? "not-allowed" : "pointer",
                       color: "#000000",
                       padding: "0.25rem",
                       display: "flex",
@@ -239,12 +241,27 @@ export default function UserProfilePage() {
 
             <div className="overlay-actions">
               <button type="button" className="vq-button btn-cancel" onClick={closeOverlay} disabled={isSubmitting}>Cancel</button>
-              <button type="submit" className="vq-button btn-confirm" disabled={isSubmitting || !!success}>
+              <button type="submit" className="vq-button btn-confirm" disabled={isSubmitting}>
                 {isSubmitting ? "..." : "Update"}
               </button>
             </div>
           </form>
         </div>
+      )}
+
+      {/* DISCONNECT / REDIRECT LOADING OVERLAY */}
+      {isLoggingOut && (
+          <div className="guard-backdrop">
+            <div className="guard-panel">
+              <h2 className="guard-title" style={{color: "#2ecc71"}}>Password Updated!</h2>
+              <p className="guard-description">
+              You will now be logged out.
+              </p>
+              <div className="guard-loader-container">
+                <div className="guard-loader"></div>
+              </div>
+            </div>
+          </div>
       )}
 
       {/* REUSABLE STATS OVERLAY COMPONENT */}
