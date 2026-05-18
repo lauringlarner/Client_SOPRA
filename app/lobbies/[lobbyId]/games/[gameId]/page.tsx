@@ -101,6 +101,8 @@ export default function GameBoardPage() {
   const scoreContainerRef = useRef<HTMLElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const optimisticMessageKeys = useRef<Set<string>>(new Set());
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollChatRef = useRef(true);
   const hasAutoScrolledOnOpen = useRef(false);
   const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
   const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -336,6 +338,29 @@ export default function GameBoardPage() {
       setIsSendingChat(false);
     }
   };
+
+  useEffect(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      shouldAutoScrollChatRef.current = isUserNearBottom(el);
+    };
+
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!showChat) return;
+
+    const el = chatContainerRef.current;
+    if (!el) return;
+
+    if (shouldAutoScrollChatRef.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatHistory, showChat]);
 
   // --- Game Timer ---
   useEffect(() => {
@@ -685,7 +710,7 @@ export default function GameBoardPage() {
               <button type="button" className="close-chat-btn" onClick={() => setShowChat(false)}>&times;</button>
             </div>
 
-            <div className="chat-messages-log">
+            <div className="chat-messages-log" ref={chatContainerRef}>
                 {chatHistory.map((chat, i) => {
                     const chatTeamClean = chat.teamType.replace(/\D/g, "");
                     const myTeamClean = (myTeamName || "").replace(/\D/g, "");
@@ -901,4 +926,8 @@ function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   for (let i = 0; i < size; i++) { if (!isF(grid[i][size - 1 - i])) d2Match = false; d2Tiles.push(`${i}-${size - 1 - i}`); }
   if (d2Match) results.push({ id: "diag-2", tiles: d2Tiles });
   return results;
+}
+
+function isUserNearBottom(element: HTMLElement, threshold = 80): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
 }
