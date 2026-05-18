@@ -117,7 +117,6 @@ export default function LeaderboardPage() {
   };
 
   const handleReturnToLobby = () => {
-    clearStoredSinglePlayerMode(userId, lobbyId);
     clearStoredPusherTransportTLS();
     router.push(`/lobbies/${lobbyId}`);
   };

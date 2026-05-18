@@ -13,6 +13,7 @@ import {
   clearStoredSinglePlayerMode,
   getStoredActiveLobbyId,
   setStoredActiveLobbyId,
+  setStoredSinglePlayerMode,
 } from "@/utils/lobbySession";
 
 export default function MenuPage() {
@@ -134,6 +135,21 @@ export default function MenuPage() {
     }
   };
 
+  const handlePractice = async () => {
+    setMenuMessage(null);
+    setPendingAction("create");
+    try {
+      const createdLobby = await lobbyClient.createLobby();
+      setStoredActiveLobbyId(userId, createdLobby.lobbyId);
+      setStoredSinglePlayerMode(userId, createdLobby.lobbyId, 1);
+      router.push(`/lobbies/${createdLobby.lobbyId}`);
+    } catch {
+      setMenuMessage("Unable to start practice mode.");
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
   const handleResumeSession = async () => {
     if (!activeLobbyId) return;
 
@@ -200,6 +216,9 @@ export default function MenuPage() {
                 {pendingAction === "create" ? "Creating..." : "Create Lobby"}
               </button>
               <button type="button" className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>Join Lobby</button>
+              <button type="button" className="vq-button menu-main-btn" onClick={() => void handlePractice()} disabled={pendingAction !== null}>
+              {pendingAction === "create" ? "Starting..." : "Singleplayer"}
+            </button>
             </div>
           </section>
 
