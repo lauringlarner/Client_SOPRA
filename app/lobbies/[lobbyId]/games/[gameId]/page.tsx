@@ -100,7 +100,6 @@ export default function GameBoardPage() {
   const topActionsRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const optimisticMessageKeys = useRef<Set<string>>(new Set());
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChatRef = useRef(true);
   const hasAutoScrolledOnOpen = useRef(false);
@@ -318,21 +317,6 @@ export default function GameBoardPage() {
 
     setIsSendingChat(true);
 
-    const optimisticKey = `optimistic-${Date.now()}-${msg}`;
-    optimisticMessageKeys.current.add(optimisticKey);
-
-    const optimisticMessage: ChatMessageGetDTO = {
-      message: msg,
-      sender: username,
-      teamType: myTeamName ?? "Team1",
-      sentAt: new Date().toISOString(),
-    };
-
-    const key = getChatMessageKey(optimisticMessage);
-    optimisticMessageKeys.current.add(key);
-
-    setChatHistory((prev) => [...prev, optimisticMessage]);
-
     try {
       await api.post(`/games/${gameId}/chat`, { message: msg }, token);
     } catch (err) {
@@ -438,20 +422,9 @@ export default function GameBoardPage() {
 
     const handleChatUpdate = (chat: ChatMessageGetDTO) => {
       setChatHistory((prev) => {
-        const key = getChatMessageKey(chat);
-
-        if (optimisticMessageKeys.current.has(key)) {
-          optimisticMessageKeys.current.delete(key);
+        if (prev.some(c => getChatMessageKey(c) === getChatMessageKey(chat))) {
           return prev;
         }
-
-        const exists = prev.some((c) =>
-          c.message === chat.message &&
-          c.sender === chat.sender
-        );
-
-        if (exists) return prev;
-
         return [...prev, chat];
       });
     };
@@ -887,7 +860,7 @@ function getChatTeamLabel(teamType: string): string {
 }
 
 function getChatMessageKey(chat: ChatMessageGetDTO): string {
-  return `${chat.sentAt}-${chat.teamType}-${chat.sender}-${chat.message}`;
+  return `${chat.teamType}-${chat.sender}-${chat.sentAt}-${chat.message}`;
 }
 
 function compareChatPreviewMessages(a: ChatPreviewMessage, b: ChatPreviewMessage): number {
