@@ -297,6 +297,16 @@ textarea {
   outline-offset: 2px;
 }
 
+.field-input:-webkit-autofill,
+.field-input:-webkit-autofill:hover, 
+.field-input:-webkit-autofill:focus, 
+.field-input:-webkit-autofill:active {
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: var(--vq-text-muted) !important;
+  transition: background-color 5000s ease-in-out 0s; 
+  box-shadow: inset 0 0 0 20px transparent !important;
+}
+
 .home-action-btn {
   width: 100%;
   min-height: 75px; 
@@ -2105,6 +2115,18 @@ textarea {
 
 .edit-input-field::placeholder{
   font-size: small;
+}
+
+
+.edit-input-field:-webkit-autofill,
+.edit-input-field:-webkit-autofill:hover, 
+.edit-input-field:-webkit-autofill:focus, 
+.edit-input-field:-webkit-autofill:active {
+  -webkit-background-clip: text !important;
+  /* Nutzt exakt deine Variable für die Textfarbe */
+  -webkit-text-fill-color: var(--vq-charcoal) !important; 
+  transition: background-color 99999s ease-in-out 0s;
+  box-shadow: inset 0 0 0 1000px transparent !important;
 }
 
 /* --- FEEDBACK MESSAGES --- */

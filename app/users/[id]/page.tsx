@@ -57,6 +57,16 @@ export default function UserProfilePage() {
     setShowNewPassword(false);
   };
 
+  const handleToggleOldPassword = (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setShowOldPassword((prev) => !prev);
+  };
+
+  const handleToggleNewPassword = (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setShowNewPassword((prev) => !prev);
+  };
+
   const handleSavePassword = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -149,12 +159,14 @@ export default function UserProfilePage() {
                     className="edit-input-field" 
                     placeholder="Enter current password" 
                     required 
+                    autoComplete="current-password"
                     disabled={isSubmitting || !!success} 
                     style={{ paddingRight: "3.5rem", width: "100%" }}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowOldPassword(!showOldPassword)}
+                    onMouseDown={handleToggleOldPassword}
+                    onTouchStart={handleToggleOldPassword}
                     disabled={isSubmitting || !!success}
                     aria-label={showOldPassword ? "Hide current password" : "Show current password"}
                     style={{
@@ -168,6 +180,7 @@ export default function UserProfilePage() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      zIndex: 10,
                     }}
                   >
                     {showOldPassword ? (
@@ -190,12 +203,14 @@ export default function UserProfilePage() {
                     className="edit-input-field" 
                     placeholder="Enter new password" 
                     required 
+                    autoComplete="new-password"
                     disabled={isSubmitting || !!success} 
                     style={{ paddingRight: "3.5rem", width: "100%" }}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    onMouseDown={handleToggleNewPassword}
+                    onTouchStart={handleToggleNewPassword}
                     disabled={isSubmitting || !!success}
                     aria-label={showNewPassword ? "Hide new password" : "Show new password"}
                     style={{
@@ -209,6 +224,7 @@ export default function UserProfilePage() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      zIndex: 10,
                     }}
                   >
                     {showNewPassword ? (

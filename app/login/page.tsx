@@ -58,6 +58,13 @@ export default function LoginPage() {
     }
   };
 
+  const handleTogglePassword = (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
+    // Verhindert, dass das Input-Feld bei Klick auf den Button den Fokus verliert 
+    // und das mobile Autofill-System irritiert wird.
+    event.preventDefault();
+    setShowPassword((prev) => !prev);
+  };
+
   const handleLogin = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     playUiBeep();
@@ -159,6 +166,7 @@ export default function LoginPage() {
               required
               disabled={isSubmitting}
               maxLength={15}
+              autoComplete="username"
               onBeforeInput={handleUsernameBeforeInput}
               onKeyDown={handleUsernameKeyDown}
               onChange={(e) => validateField("username", e.target.value)}
@@ -184,12 +192,14 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 minLength={8}
                 maxLength={30}
+                autoComplete="current-password"
                 onChange={(e) => validateField("password", e.target.value)}
                 style={{ paddingRight: "3.5rem" }}
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onMouseDown={handleTogglePassword}
+                onTouchStart={handleTogglePassword}
                 disabled={isSubmitting}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 style={{
@@ -203,6 +213,7 @@ export default function LoginPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  zIndex: 10,
                 }}
               >
                 {showPassword ? (
