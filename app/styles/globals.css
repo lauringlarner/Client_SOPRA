@@ -38,6 +38,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.no-scroll {
+  overflow: hidden; 
+}
+
 * {
   box-sizing: border-box;
 }
@@ -83,7 +87,7 @@ textarea {
 }
 
 /* Triggers automatically when a mobile/tablet viewport tilts into landscape width */
-@media screen and (orientation: landscape) and (max-width: 1024px) {
+@media screen and (orientation: landscape) and (max-width: 1024px) and (hover: none){
   .orientation-blocker {
     display: flex;
     position: fixed;
@@ -297,6 +301,7 @@ textarea {
   outline-offset: 2px;
 }
 
+
 .home-action-btn {
   width: 100%;
   min-height: 75px; 
@@ -479,6 +484,7 @@ textarea {
   cursor: pointer;
 }
 
+
 .menu-avatar {
   width: 42px;
   height: 42px;
@@ -488,6 +494,12 @@ textarea {
   display: grid;
   place-items: center;
   font-weight: 800;
+  outline: 2px solid transparent;
+  transition: outline-color 0.15s ease;
+}
+
+.menu-profile:hover .menu-avatar {
+  outline-color: white;
 }
 
 .menu-username {
@@ -496,7 +508,10 @@ textarea {
   font-size: 1.1rem;
 }
 
-
+.menu-profile:hover .menu-username {
+  text-decoration: underline solid white 1.5px !important;
+  text-underline-offset: 4px !important;
+}
 
 
 
@@ -510,6 +525,10 @@ textarea {
   font-weight: 800;
   text-transform: uppercase;
   margin-top: 10px;
+}
+
+.menu-main-btn:hover{
+  border: 1.5px solid white !important;
 }
 
 .secondary-actions {
@@ -536,8 +555,11 @@ textarea {
 .menu-secondary-btn.logout {
   background: #d97757 !important;
   color: #ffffff !important;
-  border: 1.5px solid white !important;
   z-index: 22;
+}
+
+.menu-secondary-btn.logout:hover{
+  border: 1.5px solid white !important;
 }
 
 .menu-status-card {
@@ -1035,11 +1057,22 @@ textarea {
   gap: 10px;
 }
 
+.lobby-team-option,
+.lobby-ready-toggle {
+  border: 1.5px solid transparent !important;
+}
+
+.lobby-team-option:hover,
+.lobby-ready-toggle:hover {
+  filter: none !important;
+  border-color: white !important;
+}
+
 .lobby-team-option.is-selected,
 .lobby-ready-toggle.is-ready {
   background: #2a5272;
   color: white;
-  border: 2px solid white;
+  border: 2px solid white !important;
 }
 
 .lobby-team-list {
@@ -1152,7 +1185,21 @@ textarea {
   padding: 10px 6px;
   background: #d97757 !important;
   color: #ffffff !important;
-  border: 1.5px solid white !important;
+  border: 1.5px solid transparent !important;
+}
+
+.lobby-action-btn:hover {
+  filter: none !important;
+  border-color: white !important;
+}
+
+.lobby-save-btn {
+  border: 1.5px solid transparent !important;
+}
+
+.lobby-save-btn:hover {
+  filter: none !important;
+  border-color: white !important;
 }
 
 .lobby-action-note {
@@ -1460,13 +1507,13 @@ textarea {
 
 /* --- TEAM FARBEN & STATES --- */
 .bingo-field-button.is-claimed-friendly {
-  background-color: var(--vq-aquamarine) !important;
-  border-color: var(--vq-aquamarine) !important;
+  background-color: #97C459 !important;
+  border-color: #ffffff !important;
 }
 
 .bingo-field-button.is-claimed-enemy {
-  background-color: #F0997B !important;
-  border-color: #F0997B !important;
+  background-color: #fb8600f2!important;
+  border-color: #ffffff !important;
 }
 
 .bingo-field-button.is-processing-friendly {
@@ -1639,6 +1686,7 @@ textarea {
   border-radius: 12px;
   height: 140px;
   box-sizing: border-box;
+  border: 1px solid white;
 }
 
 .bingo-team-points-container.is-solo .bingo-team-points-card {
@@ -1654,11 +1702,11 @@ textarea {
 }
 
 .bingo-team-points-card.is-team1 {
-  background: var(--vq-aquamarine);
+  background:  #97C459;
 }
 
 .bingo-team-points-card.is-team2 {
-  background: #F0997B;
+  background:   #fb8600f2  ;
 }
 
 .bingo-team-points-card-text {
@@ -2107,6 +2155,7 @@ textarea {
   font-size: small;
 }
 
+
 /* --- FEEDBACK MESSAGES --- */
 .success-template {
   background: rgba(46, 125, 50, 0.15);
@@ -2314,19 +2363,27 @@ textarea {
   text-transform: uppercase;
   background: #F0997B;
   color: #9c4326c4;
-  border: 2px solid white;
-  backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s ease;
+  border: 2px solid transparent;
+  backdrop-filter: blur(10px); cursor: pointer; transition: border-color 0.2s ease;
 }
 
 @media (prefers-color-scheme: dark) {
   .leaderboard-action-btn {
-    background-color: #c96a52; 
-    color: #ffe6df;           
+    background-color: #c96a52;
+    color: #ffe6df;
   }
 }
 
 .leaderboard-action-btn:hover {
-  background: color-mix(in srgb, #F0997B 85%, white 15%);
+  background: #F0997B;
+  border-color: white;
+  filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leaderboard-action-btn:hover {
+    background: #c96a52;
+  }
 }
 
 /* --- THE RECTANGLE OVERLAY --- */
@@ -2384,11 +2441,15 @@ textarea {
 .confirm-btn {
   padding: 14px;
   border-radius: 12px;
-  border: none;
+  border: 1.5px solid transparent;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s;
+}
+
+.confirm-btn:hover {
+  border-color: white;
 }
 
 .confirm-btn:active {
@@ -2629,8 +2690,8 @@ a[href^="sms"] {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid white;
-  background: transparent;
+  border: 2px solid transparent;
+  background: var(--vq-charcoal);
   color: white;
   font-weight: bold;
   font-size: larger;
@@ -2644,8 +2705,8 @@ a[href^="sms"] {
 /* Hover-Zustand für beide */
 .menu-rules-trigger:hover,
 .chat-trigger-btn:hover {
-  background: var(--vq-text-dark);
-  color: white; 
+  border-color: white;
+  color: white;
   transform: scale(1.05);
 }
 
@@ -2875,13 +2936,13 @@ a[href^="sms"] {
 
 /* Eigene Teamfarbe (Grün) */
 .chat-msg-bubble.chat-color-own {
-  background-color: #95D6A2 !important; 
+  background-color: #97C459 !important;
   border-bottom-right-radius: 2px;
 }
 
 /* Gegner Teamfarbe (Orange/Gelb aus deinem Code) */
 .chat-msg-bubble.chat-color-enemy {
-  background-color: #FFCB88 !important; 
+  background-color: #fb8600f2 !important;
   border-bottom-left-radius: 2px;
 }
 

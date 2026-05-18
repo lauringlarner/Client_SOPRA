@@ -522,7 +522,7 @@ export default function LobbyPage() {
 
                   {isHost && (
                     <button
-                      className="vq-button"
+                      className="vq-button lobby-save-btn"
                       disabled={pendingAction !== null}
                       onClick={() => void handleSaveSettings()}
                     >

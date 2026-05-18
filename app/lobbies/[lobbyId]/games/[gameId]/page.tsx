@@ -10,7 +10,12 @@ import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
-import { GameDetails, GameTileStatus, GameTile } from "@/types/game";
+import {
+  ChatMessageGetDTO,
+  GameDetails,
+  GameTile,
+  GameTileStatus,
+} from "@/types/game";
 import {
   BackendTeamName,
   buildTeamScores,
@@ -29,15 +34,6 @@ import {
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
 
-// --- Interfaces ---
-
-interface ChatMessageGetDTO {
-  message: string;
-  sender: string;     
-  sentAt: string;     
-  teamType: string;
-}
-
 interface ChatPreviewMessage extends ChatMessageGetDTO {
   previewKey: string;
 }
@@ -46,8 +42,7 @@ type ChatPreviewStyle = React.CSSProperties & Record<`--${string}`, string>;
 
 const CHAT_PREVIEW_LIMIT = 3;
 const CHAT_PREVIEW_TTL_MS = 5000;
-const CHAT_POLL_INTERVAL_MS = 1000;
-const CHAT_OPEN_POLL_INTERVAL_MS = 1000;
+const CHAT_FALLBACK_FETCH_INTERVAL_MS = 3000;
 const CHAT_PREVIEW_MIN_HEIGHT = 50;
 const CHAT_PREVIEW_SCORE_MARGIN = 15;
 const CHAT_PREVIEW_MIN_META_SIZE = 9;
@@ -73,7 +68,7 @@ const QUICK_MESSAGES = [
 export default function GameBoardPage() {
   const api = useApi();
   const router = useRouter();
-  const { loaded, isAuthenticated, token, userId } = useAuthSession();
+  const { loaded, isAuthenticated, token, userId, username } = useAuthSession();
   const params = useParams<{ lobbyId: string; gameId: string }>();
   const { lobbyId, gameId } = params;
 
@@ -109,8 +104,11 @@ export default function GameBoardPage() {
   const topActionsRef = useRef<HTMLDivElement>(null);
   const scoreContainerRef = useRef<HTMLElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollChatRef = useRef(true);
   const hasAutoScrolledOnOpen = useRef(false);
   const chatFetchRequestRef = useRef(0);
+  const hasHydratedChatHistory = useRef(false);
   const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
   const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
@@ -185,6 +183,10 @@ export default function GameBoardPage() {
   }, [game?.status, gameId, lobbyId, router]);
 
   // --- 3. Chat Logic & Smart Scrolling ---
+  const appendChatMessage = useCallback((message: ChatMessageGetDTO) => {
+    setChatHistory((current) => mergeChatMessages(current, [message]));
+  }, []);
+
   const fetchChat = useCallback(async () => {
     if (!token || !gameId) return;
     const requestId = chatFetchRequestRef.current + 1;
@@ -193,7 +195,15 @@ export default function GameBoardPage() {
     try {
       const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
       if (requestId !== chatFetchRequestRef.current) return;
-      setChatHistory(messages);
+
+      if (!hasHydratedChatHistory.current) {
+        messages.forEach((chat) =>
+          seenPreviewMessageKeys.current.add(getChatMessageKey(chat)),
+        );
+        hasHydratedChatHistory.current = true;
+      }
+
+      setChatHistory((current) => mergeChatMessages(current, messages));
     } catch (err) {
       if (requestId === chatFetchRequestRef.current) {
         console.error("Chat fetch failed", err);
@@ -212,20 +222,51 @@ export default function GameBoardPage() {
   }, []);
 
   useEffect(() => {
-    if (!loaded || !isAuthenticated || !token || !gameId || !isPageVisible || game?.status === "ENDED") {
+    if (
+      !loaded ||
+      !isAuthenticated ||
+      !token ||
+      !gameId ||
+      !isPageVisible ||
+      game?.status === "ENDED"
+    ) {
       return;
     }
 
+    const unsubscribe = gameClient.subscribeToChat(
+      gameId,
+      appendChatMessage,
+      (error) => {
+        console.error("Chat subscription failed", error);
+      },
+    );
+
     void fetchChat();
-    const intervalMs = showChat ? CHAT_OPEN_POLL_INTERVAL_MS : CHAT_POLL_INTERVAL_MS;
-    const interval = setInterval(() => void fetchChat(), intervalMs);
+    const fallbackFetchInterval = setInterval(
+      () => void fetchChat(),
+      CHAT_FALLBACK_FETCH_INTERVAL_MS,
+    );
+
     return () => {
-      clearInterval(interval);
+      clearInterval(fallbackFetchInterval);
+      unsubscribe();
       chatFetchRequestRef.current += 1;
     };
-  }, [fetchChat, game?.status, gameId, isAuthenticated, isPageVisible, loaded, showChat, token]);
+  }, [
+    appendChatMessage,
+    fetchChat,
+    game?.status,
+    gameClient,
+    gameId,
+    isAuthenticated,
+    isPageVisible,
+    loaded,
+    token,
+  ]);
 
   useEffect(() => {
+    if (!hasHydratedChatHistory.current) return;
+
     const unseenMessages = chatHistory
       .map((chat) => ({
         ...chat,
@@ -236,13 +277,16 @@ export default function GameBoardPage() {
 
     if (unseenMessages.length === 0) return;
 
-    unseenMessages.forEach((chat) => seenPreviewMessageKeys.current.add(chat.previewKey));
+    unseenMessages.forEach((chat) =>
+      seenPreviewMessageKeys.current.add(chat.previewKey),
+    );
+
     const nextPreviewMessages = unseenMessages.slice(-CHAT_PREVIEW_LIMIT);
 
     nextPreviewMessages.forEach((chat) => {
       const timer = setTimeout(() => {
         setChatPreviewMessages((current) =>
-          current.filter((previewMessage) => previewMessage.previewKey !== chat.previewKey)
+          current.filter((previewMessage) => previewMessage.previewKey !== chat.previewKey),
         );
         previewRemovalTimers.current.delete(chat.previewKey);
       }, CHAT_PREVIEW_TTL_MS);
@@ -254,6 +298,7 @@ export default function GameBoardPage() {
       const nextMessages = [...current, ...nextPreviewMessages]
         .sort(compareChatPreviewMessages)
         .slice(-CHAT_PREVIEW_LIMIT);
+
       const activeKeys = new Set(nextMessages.map((message) => message.previewKey));
 
       previewRemovalTimers.current.forEach((timer, key) => {
@@ -329,9 +374,15 @@ export default function GameBoardPage() {
 
   const sendQuickMessage = async (msg: string) => {
     if (isSendingChat || !token) return;
+
     setIsSendingChat(true);
+
     try {
-      await api.post(`/games/${gameId}/chat`, { message: msg }, token);
+      await api.post<ChatMessageGetDTO>(
+        `/games/${gameId}/chat`,
+        { message: msg },
+        token,
+      );
       await fetchChat();
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -342,6 +393,29 @@ export default function GameBoardPage() {
       setIsSendingChat(false);
     }
   };
+
+  useEffect(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      shouldAutoScrollChatRef.current = isUserNearBottom(el);
+    };
+
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    if (!showChat) return;
+
+    const el = chatContainerRef.current;
+    if (!el) return;
+
+    if (shouldAutoScrollChatRef.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatHistory, showChat]);
 
   // --- Game Timer ---
   useEffect(() => {
@@ -558,11 +632,14 @@ export default function GameBoardPage() {
                     </svg>
                   )}
                 </button>
-                <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
-                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                </button>
+                  {!isSinglePlayerGame && (
+
+                    <button type="button" className="chat-trigger-btn" onClick={() => setShowChat(true)}>
+                      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                    </button>
+                  )}
               </div>
 
               <button
@@ -688,20 +765,29 @@ export default function GameBoardPage() {
               <button type="button" className="close-chat-btn" onClick={() => setShowChat(false)}>&times;</button>
             </div>
 
-            <div className="chat-messages-log">
-                {chatHistory.map((chat, i) => {
+            <div className="chat-messages-log" ref={chatContainerRef}>
+                {chatHistory.map((chat) => {
                     const chatTeamClean = chat.teamType.replace(/\D/g, "");
                     const myTeamClean = (myTeamName || "").replace(/\D/g, "");
                     const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
+                    const isMine = chat.sender === username;
 
                     return (
-                        <div key={i} className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}>
+                        <div
+                          key={getChatMessageKey(chat)}
+                          className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}
+                        >
                             <div className="chat-sender-label">
                                 <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
                                     {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
                                 </span>
                                 <span className="label-divider">•</span>
-                                <span className="sender-name">{chat.sender}</span>
+                                
+
+                                <span className="sender-name">
+                                  {chat.sender}
+                                  {isMine ? " (You)" : ""}
+                                </span>
                             </div>
                             <div className={`chat-msg-bubble ${isSameTeam ? 'chat-color-own' : 'chat-color-enemy'}`}>
                                 <p style={{ margin: 0 }}>{chat.message}</p>
@@ -848,11 +934,43 @@ function getChatTeamLabel(teamType: string): string {
 }
 
 function getChatMessageKey(chat: ChatMessageGetDTO): string {
-  return `${chat.sentAt}-${chat.teamType}-${chat.sender}-${chat.message}`;
+  return chat.id ?? `${chat.teamType}-${chat.sender}-${chat.sentAt}-${chat.message}`;
+}
+
+function mergeChatMessages(
+  currentMessages: ChatMessageGetDTO[],
+  incomingMessages: ChatMessageGetDTO[],
+): ChatMessageGetDTO[] {
+  const messageIds = new Set<string>();
+  const fallbackKeys = new Set<string>();
+  const nextMessages: ChatMessageGetDTO[] = [];
+
+  [...currentMessages, ...incomingMessages]
+    .sort(compareChatMessages)
+    .forEach((message) => {
+      const messageId = message.id;
+      if (messageId) {
+        if (messageIds.has(messageId)) return;
+        messageIds.add(messageId);
+        nextMessages.push(message);
+        return;
+      }
+
+      const fallbackKey = getChatMessageKey(message);
+      if (fallbackKeys.has(fallbackKey)) return;
+      fallbackKeys.add(fallbackKey);
+      nextMessages.push(message);
+    });
+
+  return nextMessages;
+}
+
+function compareChatMessages(a: ChatMessageGetDTO, b: ChatMessageGetDTO): number {
+  return getChatMessageTime(a) - getChatMessageTime(b);
 }
 
 function compareChatPreviewMessages(a: ChatPreviewMessage, b: ChatPreviewMessage): number {
-  return getChatMessageTime(a) - getChatMessageTime(b);
+  return compareChatMessages(a, b);
 }
 
 function getChatMessageTime(chat: ChatMessageGetDTO): number {
@@ -904,4 +1022,8 @@ function getDetailedBingos(grid: GameTile[][], team: BackendTeamName) {
   for (let i = 0; i < size; i++) { if (!isF(grid[i][size - 1 - i])) d2Match = false; d2Tiles.push(`${i}-${size - 1 - i}`); }
   if (d2Match) results.push({ id: "diag-2", tiles: d2Tiles });
   return results;
+}
+
+function isUserNearBottom(element: HTMLElement, threshold = 80): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
 }
