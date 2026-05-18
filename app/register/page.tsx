@@ -57,13 +57,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleTogglePassword = (event: React.MouseEvent<HTMLButtonElement> | React.TouchEvent<HTMLButtonElement>) => {
-    // Verhindert, dass das Input-Feld bei Klick auf den Button den Fokus verliert 
-    // und das mobile Autofill-System irritiert wird.
-    event.preventDefault();
-    setShowPassword((prev) => !prev);
-  };
-
   const handleRegister = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     playUiBeep();
@@ -170,7 +163,6 @@ export default function RegisterPage() {
               required
               disabled={isSubmitting}
               maxLength={15}
-              autoComplete="username"
               onBeforeInput={handleUsernameBeforeInput}
               onKeyDown={handleUsernameKeyDown}
               onChange={(e) => validateField("username", e.target.value)}
@@ -196,14 +188,12 @@ export default function RegisterPage() {
                 disabled={isSubmitting}
                 minLength={8}
                 maxLength={30}
-                autoComplete="new-password"
                 onChange={(e) => validateField("password", e.target.value)}
                 style={{ paddingRight: "3.5rem" }}
               />
               <button
                 type="button"
-                onMouseDown={handleTogglePassword}
-                onTouchStart={handleTogglePassword}
+                onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 style={{
@@ -217,10 +207,9 @@ export default function RegisterPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  zIndex: 10,
                 }}
               >
-                {showPassword ? (
+              {showPassword ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
