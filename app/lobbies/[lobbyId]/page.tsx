@@ -569,56 +569,55 @@ export default function LobbyPage() {
 
     return (
       <>
-        <section className="lobby-card lobby-me-card-single-player">
-          <div className="lobby-me-header">
-            <div>
-              <h2 className="lobby-section-title">Your Profile</h2>
-              <p className="lobby-muted-note">
-                {currentPlayer?.user.username}
-              </p>
-            </div>
+        {/* SINGLEPLAYER INFO CARD */}
+<section className="lobby-card singleplayer-info-card">
+  <h2 className="lobby-section-title singleplayer-title">Singleplayer Mode</h2>
+  <p className="singleplayer-warning-note">
+    Practice session. Matches played in this mode do not affect your global stats.
+  </p>
+</section>
 
-            {currentPlayer && (
-              <span
-                className={`lobby-player-badge ${
-                  currentPlayer.isReady ? "is-ready" : "is-pending"
-                }`}
-              >
-                {currentPlayer.isReady ? "Ready" : "Not Ready"}
-              </span>
-            )}
-          </div>
+{/* PROFILE CARD */}
+<section className="lobby-card lobby-me-card-single-player">
+  <div className="lobby-me-header">
+    <div>
+      <h2 className="lobby-section-title">Your Profile</h2>
+      <p className="lobby-muted-note">
+        {currentPlayer?.user.username}
+      </p>
+    </div>
+  </div>
 
-          {currentPlayer && (
-            <>
-              <div className="singleplayer-profile-center">
-                <LobbyPlayerCard
-                  player={currentPlayer}
-                  isSelf={true}
-                  onClick={() => openPlayerProfile(currentPlayer)}
-                />
-              </div>
+  {currentPlayer && (
+    <>
+      <div className="singleplayer-profile-center">
+        <LobbyPlayerCard
+          player={currentPlayer}
+          isSelf={true}
+          onClick={() => openPlayerProfile(currentPlayer)}
+        />
+      </div>
 
-              <button
-                className={`vq-button lobby-ready-toggle ${
-                  currentPlayer.isReady ? "is-ready" : ""
-                }`}
-                disabled={pendingAction !== null}
-                onClick={() => void handleToggleReadyToggle()}
-              >
-                {pendingAction === "ready"
-                  ? "Updating..."
-                  : currentPlayer.isReady
-                  ? "Not Ready"
-                  : "Ready"}
-              </button>
+      <button
+        className={`vq-button lobby-ready-toggle ${
+          currentPlayer.isReady ? "is-ready" : ""
+        }`}
+        disabled={pendingAction !== null}
+        onClick={() => void handleToggleReadyToggle()}
+      >
+        {pendingAction === "ready"
+          ? "Updating..."
+          : currentPlayer.isReady
+          ? "Not Ready"
+          : "Ready"}
+      </button>
 
-              {readyErrorMessage && (
-                <div className="error-template">⚠️ {readyErrorMessage}</div>
-              )}
-            </>
-          )}
-        </section>
+      {readyErrorMessage && (
+        <div className="error-template">⚠️ {readyErrorMessage}</div>
+      )}
+    </>
+  )}
+</section>
 
         {renderSettingsCard()}
       </>

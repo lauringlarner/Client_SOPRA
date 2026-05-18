@@ -951,6 +951,13 @@ textarea {
   margin-bottom: 10px;
 }
 
+.singleplayer-title {
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  color: #111111; /* Deeper black for strong visual hierarchy */
+  margin-bottom: 4px; /* Pulls the description closer */
+}
+
 .lobby-muted-note {
   margin: 0;
   color: rgb(30 30 30 / 72%);
@@ -1256,6 +1263,35 @@ textarea {
   }
 }
 
+
+.singleplayer-info-card {
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  margin-top: 16px;    /* Adds space between the top rules button/actions and this card */
+  margin-bottom: 4px;  /* Tightens the space between this card and the profile card below */
+}
+
+/* Explicit styling for the black disclaimer text */
+.singleplayer-warning-note {
+  color: #000000 !important;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-top: 6px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* This will only affect the singleplayer layout */
+.singleplayer-info-card {
+  margin-top: 1.5rem !important; /* Forces the exact space you want below the rules button */
+  margin-bottom: 0;            /* Overwrites global card bottom margins */
+}
+
+/* Target the profile card ONLY when it sits directly under the info card */
+.singleplayer-info-card + .lobby-me-card-single-player {
+  margin-top: 2px !important;  /* Overwrites the default lobby-card margin-top */
+}
 
 
 /* Der alles abdeckende Hintergrund */
