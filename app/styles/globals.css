@@ -489,6 +489,7 @@ textarea {
   cursor: pointer;
 }
 
+
 .menu-avatar {
   width: 42px;
   height: 42px;
@@ -506,7 +507,10 @@ textarea {
   font-size: 1.1rem;
 }
 
-
+.menu-username:hover {
+  text-decoration: underline solid white 1.5px !important;
+  text-underline-offset: 4px !important; /* Hier den gewünschten Abstand einstellen */
+}
 
 
 
@@ -520,6 +524,10 @@ textarea {
   font-weight: 800;
   text-transform: uppercase;
   margin-top: 10px;
+}
+
+.menu-main-btn:hover{
+  border: 1.5px solid white !important;
 }
 
 .secondary-actions {
@@ -546,8 +554,11 @@ textarea {
 .menu-secondary-btn.logout {
   background: #d97757 !important;
   color: #ffffff !important;
-  border: 1.5px solid white !important;
   z-index: 22;
+}
+
+.menu-secondary-btn.logout:hover{
+  border: 1.5px solid white !important;
 }
 
 .menu-status-card {
