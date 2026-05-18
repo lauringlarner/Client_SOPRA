@@ -103,6 +103,8 @@ export default function GameBoardPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChatRef = useRef(true);
   const hasAutoScrolledOnOpen = useRef(false);
+  const isInitialChatLoad = useRef(true);
+  const hasHydratedChatHistory = useRef(false);
   const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
   const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
@@ -201,6 +203,12 @@ export default function GameBoardPage() {
         if (cancelled) return;
 
         setChatHistory(history);
+
+        hasHydratedChatHistory.current = true;
+
+        history.forEach((chat) =>
+          seenPreviewMessageKeys.current.add(getChatMessageKey(chat))
+        );
       } catch (err) {
         console.error("Failed to load chat history", err);
       }
@@ -212,46 +220,52 @@ export default function GameBoardPage() {
   }, [loaded, isAuthenticated, token, gameId, api]);
 
   useEffect(() => {
-    const unseenMessages = chatHistory
-      .map((chat) => ({
-        ...chat,
-        previewKey: getChatMessageKey(chat),
-      }))
-      .filter((chat) => !seenPreviewMessageKeys.current.has(chat.previewKey))
-      .sort(compareChatPreviewMessages);
+  if (!hasHydratedChatHistory.current) return; 
 
-    if (unseenMessages.length === 0) return;
+  const unseenMessages = chatHistory
+    .map((chat) => ({
+      ...chat,
+      previewKey: getChatMessageKey(chat),
+    }))
+    .filter((chat) => !seenPreviewMessageKeys.current.has(chat.previewKey))
+    .sort(compareChatPreviewMessages);
 
-    unseenMessages.forEach((chat) => seenPreviewMessageKeys.current.add(chat.previewKey));
-    const nextPreviewMessages = unseenMessages.slice(-CHAT_PREVIEW_LIMIT);
+  if (unseenMessages.length === 0) return;
 
-    nextPreviewMessages.forEach((chat) => {
-      const timer = setTimeout(() => {
-        setChatPreviewMessages((current) =>
-          current.filter((previewMessage) => previewMessage.previewKey !== chat.previewKey)
-        );
-        previewRemovalTimers.current.delete(chat.previewKey);
-      }, CHAT_PREVIEW_TTL_MS);
+  unseenMessages.forEach((chat) =>
+    seenPreviewMessageKeys.current.add(chat.previewKey)
+  );
 
-      previewRemovalTimers.current.set(chat.previewKey, timer);
+  const nextPreviewMessages = unseenMessages.slice(-CHAT_PREVIEW_LIMIT);
+
+  nextPreviewMessages.forEach((chat) => {
+    const timer = setTimeout(() => {
+      setChatPreviewMessages((current) =>
+        current.filter((p) => p.previewKey !== chat.previewKey)
+      );
+      previewRemovalTimers.current.delete(chat.previewKey);
+    }, CHAT_PREVIEW_TTL_MS);
+
+    previewRemovalTimers.current.set(chat.previewKey, timer);
+  });
+
+  setChatPreviewMessages((current) => {
+    const nextMessages = [...current, ...nextPreviewMessages]
+      .sort(compareChatPreviewMessages)
+      .slice(-CHAT_PREVIEW_LIMIT);
+
+    const activeKeys = new Set(nextMessages.map((m) => m.previewKey));
+
+    previewRemovalTimers.current.forEach((timer, key) => {
+      if (!activeKeys.has(key)) {
+        clearTimeout(timer);
+        previewRemovalTimers.current.delete(key);
+      }
     });
 
-    setChatPreviewMessages((current) => {
-      const nextMessages = [...current, ...nextPreviewMessages]
-        .sort(compareChatPreviewMessages)
-        .slice(-CHAT_PREVIEW_LIMIT);
-      const activeKeys = new Set(nextMessages.map((message) => message.previewKey));
-
-      previewRemovalTimers.current.forEach((timer, key) => {
-        if (!activeKeys.has(key)) {
-          clearTimeout(timer);
-          previewRemovalTimers.current.delete(key);
-        }
-      });
-
-      return nextMessages;
-    });
-  }, [chatHistory]);
+    return nextMessages;
+  });
+}, [chatHistory]);
 
   useEffect(() => {
     const timers = previewRemovalTimers.current;
