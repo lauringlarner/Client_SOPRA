@@ -38,6 +38,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.no-scroll {
+  overflow: hidden; 
+}
+
 * {
   box-sizing: border-box;
 }
@@ -297,15 +301,6 @@ textarea {
   outline-offset: 2px;
 }
 
-.field-input:-webkit-autofill,
-.field-input:-webkit-autofill:hover, 
-.field-input:-webkit-autofill:focus, 
-.field-input:-webkit-autofill:active {
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: var(--vq-text-muted) !important;
-  transition: background-color 5000s ease-in-out 0s; 
-  box-shadow: inset 0 0 0 20px transparent !important;
-}
 
 .home-action-btn {
   width: 100%;
@@ -499,6 +494,12 @@ textarea {
   display: grid;
   place-items: center;
   font-weight: 800;
+  outline: 2px solid transparent;
+  transition: outline-color 0.15s ease;
+}
+
+.menu-profile:hover .menu-avatar {
+  outline-color: white;
 }
 
 .menu-username {
@@ -507,9 +508,9 @@ textarea {
   font-size: 1.1rem;
 }
 
-.menu-username:hover {
+.menu-profile:hover .menu-username {
   text-decoration: underline solid white 1.5px !important;
-  text-underline-offset: 4px !important; /* Hier den gewünschten Abstand einstellen */
+  text-underline-offset: 4px !important;
 }
 
 
@@ -950,6 +951,13 @@ textarea {
   margin-bottom: 10px;
 }
 
+.singleplayer-title {
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  color: #111111; /* Deeper black for strong visual hierarchy */
+  margin-bottom: 4px; /* Pulls the description closer */
+}
+
 .lobby-muted-note {
   margin: 0;
   color: rgb(30 30 30 / 72%);
@@ -1064,11 +1072,22 @@ textarea {
   gap: 10px;
 }
 
+.lobby-team-option,
+.lobby-ready-toggle {
+  border: 1.5px solid transparent !important;
+}
+
+.lobby-team-option:hover,
+.lobby-ready-toggle:hover {
+  filter: none !important;
+  border-color: white !important;
+}
+
 .lobby-team-option.is-selected,
 .lobby-ready-toggle.is-ready {
   background: #2a5272;
   color: white;
-  border: 2px solid white;
+  border: 2px solid white !important;
 }
 
 .lobby-team-list {
@@ -1181,7 +1200,21 @@ textarea {
   padding: 10px 6px;
   background: #d97757 !important;
   color: #ffffff !important;
-  border: 1.5px solid white !important;
+  border: 1.5px solid transparent !important;
+}
+
+.lobby-action-btn:hover {
+  filter: none !important;
+  border-color: white !important;
+}
+
+.lobby-save-btn {
+  border: 1.5px solid transparent !important;
+}
+
+.lobby-save-btn:hover {
+  filter: none !important;
+  border-color: white !important;
 }
 
 .lobby-action-note {
@@ -1230,6 +1263,35 @@ textarea {
   }
 }
 
+
+.singleplayer-info-card {
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  margin-top: 16px;    /* Adds space between the top rules button/actions and this card */
+  margin-bottom: 4px;  /* Tightens the space between this card and the profile card below */
+}
+
+/* Explicit styling for the black disclaimer text */
+.singleplayer-warning-note {
+  color: #000000 !important;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-top: 6px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* This will only affect the singleplayer layout */
+.singleplayer-info-card {
+  margin-top: 1.5rem !important; /* Forces the exact space you want below the rules button */
+  margin-bottom: 0;            /* Overwrites global card bottom margins */
+}
+
+/* Target the profile card ONLY when it sits directly under the info card */
+.singleplayer-info-card + .lobby-me-card-single-player {
+  margin-top: 2px !important;  /* Overwrites the default lobby-card margin-top */
+}
 
 
 /* Der alles abdeckende Hintergrund */
@@ -1489,13 +1551,13 @@ textarea {
 
 /* --- TEAM FARBEN & STATES --- */
 .bingo-field-button.is-claimed-friendly {
-  background-color: var(--vq-aquamarine) !important;
-  border-color: var(--vq-aquamarine) !important;
+  background-color: #97C459 !important;
+  border-color: #ffffff !important;
 }
 
 .bingo-field-button.is-claimed-enemy {
-  background-color: #F0997B !important;
-  border-color: #F0997B !important;
+  background-color: #fb8600f2!important;
+  border-color: #ffffff !important;
 }
 
 .bingo-field-button.is-processing-friendly {
@@ -1668,6 +1730,7 @@ textarea {
   border-radius: 12px;
   height: 140px;
   box-sizing: border-box;
+  border: 1px solid white;
 }
 
 .bingo-team-points-container.is-solo .bingo-team-points-card {
@@ -1683,11 +1746,11 @@ textarea {
 }
 
 .bingo-team-points-card.is-team1 {
-  background: var(--vq-aquamarine);
+  background:  #97C459;
 }
 
 .bingo-team-points-card.is-team2 {
-  background: #F0997B;
+  background:   #fb8600f2  ;
 }
 
 .bingo-team-points-card-text {
@@ -2137,17 +2200,6 @@ textarea {
 }
 
 
-.edit-input-field:-webkit-autofill,
-.edit-input-field:-webkit-autofill:hover, 
-.edit-input-field:-webkit-autofill:focus, 
-.edit-input-field:-webkit-autofill:active {
-  -webkit-background-clip: text !important;
-  /* Nutzt exakt deine Variable für die Textfarbe */
-  -webkit-text-fill-color: var(--vq-charcoal) !important; 
-  transition: background-color 99999s ease-in-out 0s;
-  box-shadow: inset 0 0 0 1000px transparent !important;
-}
-
 /* --- FEEDBACK MESSAGES --- */
 .success-template {
   background: rgba(46, 125, 50, 0.15);
@@ -2355,19 +2407,27 @@ textarea {
   text-transform: uppercase;
   background: #F0997B;
   color: #9c4326c4;
-  border: 2px solid white;
-  backdrop-filter: blur(10px); cursor: pointer; transition: all 0.2s ease;
+  border: 2px solid transparent;
+  backdrop-filter: blur(10px); cursor: pointer; transition: border-color 0.2s ease;
 }
 
 @media (prefers-color-scheme: dark) {
   .leaderboard-action-btn {
-    background-color: #c96a52; 
-    color: #ffe6df;           
+    background-color: #c96a52;
+    color: #ffe6df;
   }
 }
 
 .leaderboard-action-btn:hover {
-  background: color-mix(in srgb, #F0997B 85%, white 15%);
+  background: #F0997B;
+  border-color: white;
+  filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leaderboard-action-btn:hover {
+    background: #c96a52;
+  }
 }
 
 /* --- THE RECTANGLE OVERLAY --- */
@@ -2425,11 +2485,15 @@ textarea {
 .confirm-btn {
   padding: 14px;
   border-radius: 12px;
-  border: none;
+  border: 1.5px solid transparent;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s;
+}
+
+.confirm-btn:hover {
+  border-color: white;
 }
 
 .confirm-btn:active {
@@ -2670,8 +2734,8 @@ a[href^="sms"] {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  border: 2px solid white;
-  background: transparent;
+  border: 2px solid transparent;
+  background: var(--vq-charcoal);
   color: white;
   font-weight: bold;
   font-size: larger;
@@ -2685,8 +2749,8 @@ a[href^="sms"] {
 /* Hover-Zustand für beide */
 .menu-rules-trigger:hover,
 .chat-trigger-btn:hover {
-  background: var(--vq-text-dark);
-  color: white; 
+  border-color: white;
+  color: white;
   transform: scale(1.05);
 }
 
@@ -2916,13 +2980,13 @@ a[href^="sms"] {
 
 /* Eigene Teamfarbe (Grün) */
 .chat-msg-bubble.chat-color-own {
-  background-color: #95D6A2 !important; 
+  background-color: #97C459 !important;
   border-bottom-right-radius: 2px;
 }
 
 /* Gegner Teamfarbe (Orange/Gelb aus deinem Code) */
 .chat-msg-bubble.chat-color-enemy {
-  background-color: #FFCB88 !important; 
+  background-color: #fb8600f2 !important;
   border-bottom-left-radius: 2px;
 }
 

@@ -7,7 +7,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
-import { playCameraClick, successClick, errorClick } from "@/utils/sounds";
+import { playCameraClick } from "@/utils/sounds";
 import { GameDetails, GameTileStatus } from "@/types/game";
 
 const api = new ApiService();
@@ -150,7 +150,7 @@ function CameraContent() {
           }
         } catch (err) {
           console.error("Camera access error:", err);
-          setSubmissionError("Failed to open camera. Please check permissions.");
+          setSubmissionError("Failed to open camera. Please check permissions & then refresh page.");
         }
       })();
     }
@@ -207,11 +207,8 @@ function CameraContent() {
 
     void checkAndRedirect();
     const unsubscribe = gameClient.subscribeToGame(gameId, (details: GameDetails) => {
-        if (details.status === "ENDED") redirectToLeaderboard();
-      },
-      () => {}, 
-      (error) => {}
-    );
+      if (details.status === "ENDED") redirectToLeaderboard();
+    }, () => {});
 
     return () => unsubscribe();
   }, [gameClient, gameId, isAuthenticated, loaded, lobbyId, router, tileWord]);
@@ -255,7 +252,6 @@ function CameraContent() {
 
       await api.post<void>(`/games/${gameId}/submission`, formData, token);
 
-      successClick();
       setLastSubmissionWord(tileWord);
       router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
     } catch (error) {
@@ -263,7 +259,6 @@ function CameraContent() {
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
         return;
       }
-      errorClick();
       const errorMsg = getSubmissionErrorMessage(error);
       setSubmissionError(errorMsg);
       setIsSubmitting(false);

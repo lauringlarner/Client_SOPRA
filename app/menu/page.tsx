@@ -217,7 +217,7 @@ export default function MenuPage() {
               </button>
               <button type="button" className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>Join Lobby</button>
               <button type="button" className="vq-button menu-main-btn" onClick={() => void handlePractice()} disabled={pendingAction !== null}>
-              {pendingAction === "create" ? "Starting..." : "Practice"}
+              {pendingAction === "create" ? "Starting..." : "Singleplayer"}
             </button>
             </div>
           </section>

@@ -10,7 +10,12 @@ import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
 import { useApi } from "@/hooks/useApi";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApplicationError } from "@/types/error";
-import { GameDetails, GameTileStatus, GameTile, ChatMessageGetDTO } from "@/types/game";
+import {
+  ChatMessageGetDTO,
+  GameDetails,
+  GameTile,
+  GameTileStatus,
+} from "@/types/game";
 import {
   BackendTeamName,
   buildTeamScores,
@@ -21,15 +26,13 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { playCountdown, getSoundEnabled, setSoundEnabled } from "@/utils/sounds";
+import { playCountdown, getSoundEnabled, setSoundEnabled, successClick, errorClick } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
   setStoredActiveLobbyId,
   setStoredLobbyTeam,
 } from "@/utils/lobbySession";
-
-// --- Interfaces ---
 
 interface ChatPreviewMessage extends ChatMessageGetDTO {
   previewKey: string;
@@ -39,6 +42,7 @@ type ChatPreviewStyle = React.CSSProperties & Record<`--${string}`, string>;
 
 const CHAT_PREVIEW_LIMIT = 3;
 const CHAT_PREVIEW_TTL_MS = 5000;
+const CHAT_FALLBACK_FETCH_INTERVAL_MS = 3000;
 const CHAT_PREVIEW_MIN_HEIGHT = 50;
 const CHAT_PREVIEW_SCORE_MARGIN = 15;
 const CHAT_PREVIEW_MIN_META_SIZE = 9;
@@ -103,11 +107,12 @@ export default function GameBoardPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollChatRef = useRef(true);
   const hasAutoScrolledOnOpen = useRef(false);
-  const isInitialChatLoad = useRef(true);
+  const chatFetchRequestRef = useRef(0);
   const hasHydratedChatHistory = useRef(false);
   const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
   const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
+  const previousScores = useRef<{ score_1: number; score_2: number } | null>(null);
   const celebratedBingos = useRef<string[]>([]);
   const isFirstLoad = useRef(true);
   const latestGameRef = useRef<GameDetails | null>(null);
@@ -178,6 +183,34 @@ export default function GameBoardPage() {
   }, [game?.status, gameId, lobbyId, router]);
 
   // --- 3. Chat Logic & Smart Scrolling ---
+  const appendChatMessage = useCallback((message: ChatMessageGetDTO) => {
+    setChatHistory((current) => mergeChatMessages(current, [message]));
+  }, []);
+
+  const fetchChat = useCallback(async () => {
+    if (!token || !gameId) return;
+    const requestId = chatFetchRequestRef.current + 1;
+    chatFetchRequestRef.current = requestId;
+
+    try {
+      const messages = await api.get<ChatMessageGetDTO[]>(`/games/${gameId}/chat`, token);
+      if (requestId !== chatFetchRequestRef.current) return;
+
+      if (!hasHydratedChatHistory.current) {
+        messages.forEach((chat) =>
+          seenPreviewMessageKeys.current.add(getChatMessageKey(chat)),
+        );
+        hasHydratedChatHistory.current = true;
+      }
+
+      setChatHistory((current) => mergeChatMessages(current, messages));
+    } catch (err) {
+      if (requestId === chatFetchRequestRef.current) {
+        console.error("Chat fetch failed", err);
+      }
+    }
+  }, [api, gameId, token]);
+
   useEffect(() => {
     const updatePageVisibility = () => {
       setIsPageVisible(document.visibilityState === "visible");
@@ -189,89 +222,102 @@ export default function GameBoardPage() {
   }, []);
 
   useEffect(() => {
-    if (!loaded || !isAuthenticated || !token || !gameId) return;
+    if (
+      !loaded ||
+      !isAuthenticated ||
+      !token ||
+      !gameId ||
+      !isPageVisible ||
+      game?.status === "ENDED"
+    ) {
+      return;
+    }
 
-    let cancelled = false;
+    const unsubscribe = gameClient.subscribeToChat(
+      gameId,
+      appendChatMessage,
+      (error) => {
+        console.error("Chat subscription failed", error);
+      },
+    );
 
-    (async () => {
-      try {
-        const history = await api.get<ChatMessageGetDTO[]>(
-          `/games/${gameId}/chat`,
-          token
-        );
-
-        if (cancelled) return;
-
-        setChatHistory(history);
-
-        hasHydratedChatHistory.current = true;
-
-        history.forEach((chat) =>
-          seenPreviewMessageKeys.current.add(getChatMessageKey(chat))
-        );
-      } catch (err) {
-        console.error("Failed to load chat history", err);
-      }
-    })();
+    void fetchChat();
+    const fallbackFetchInterval = setInterval(
+      () => void fetchChat(),
+      CHAT_FALLBACK_FETCH_INTERVAL_MS,
+    );
 
     return () => {
-      cancelled = true;
+      clearInterval(fallbackFetchInterval);
+      unsubscribe();
+      chatFetchRequestRef.current += 1;
     };
-  }, [loaded, isAuthenticated, token, gameId, api]);
+  }, [
+    appendChatMessage,
+    fetchChat,
+    game?.status,
+    gameClient,
+    gameId,
+    isAuthenticated,
+    isPageVisible,
+    loaded,
+    token,
+  ]);
 
   useEffect(() => {
-  if (!hasHydratedChatHistory.current) return; 
+    if (!hasHydratedChatHistory.current) return;
 
-  const unseenMessages = chatHistory
-    .map((chat) => ({
-      ...chat,
-      previewKey: getChatMessageKey(chat),
-    }))
-    .filter((chat) => !seenPreviewMessageKeys.current.has(chat.previewKey))
-    .sort(compareChatPreviewMessages);
+    const unseenMessages = chatHistory
+      .map((chat) => ({
+        ...chat,
+        previewKey: getChatMessageKey(chat),
+      }))
+      .filter((chat) => !seenPreviewMessageKeys.current.has(chat.previewKey))
+      .sort(compareChatPreviewMessages);
 
-  if (unseenMessages.length === 0) return;
+    if (unseenMessages.length === 0) return;
 
-  unseenMessages.forEach((chat) =>
-    seenPreviewMessageKeys.current.add(chat.previewKey)
-  );
+    unseenMessages.forEach((chat) =>
+      seenPreviewMessageKeys.current.add(chat.previewKey),
+    );
 
-  const nextPreviewMessages = unseenMessages.slice(-CHAT_PREVIEW_LIMIT);
+    const nextPreviewMessages = unseenMessages.slice(-CHAT_PREVIEW_LIMIT);
 
-  nextPreviewMessages.forEach((chat) => {
-    const timer = setTimeout(() => {
-      setChatPreviewMessages((current) =>
-        current.filter((p) => p.previewKey !== chat.previewKey)
-      );
-      previewRemovalTimers.current.delete(chat.previewKey);
-    }, CHAT_PREVIEW_TTL_MS);
+    nextPreviewMessages.forEach((chat) => {
+      const timer = setTimeout(() => {
+        setChatPreviewMessages((current) =>
+          current.filter((previewMessage) => previewMessage.previewKey !== chat.previewKey),
+        );
+        previewRemovalTimers.current.delete(chat.previewKey);
+      }, CHAT_PREVIEW_TTL_MS);
 
-    previewRemovalTimers.current.set(chat.previewKey, timer);
-  });
-
-  setChatPreviewMessages((current) => {
-    const nextMessages = [...current, ...nextPreviewMessages]
-      .sort(compareChatPreviewMessages)
-      .slice(-CHAT_PREVIEW_LIMIT);
-
-    const activeKeys = new Set(nextMessages.map((m) => m.previewKey));
-
-    previewRemovalTimers.current.forEach((timer, key) => {
-      if (!activeKeys.has(key)) {
-        clearTimeout(timer);
-        previewRemovalTimers.current.delete(key);
-      }
+      previewRemovalTimers.current.set(chat.previewKey, timer);
     });
 
-    return nextMessages;
-  });
-}, [chatHistory]);
+    setChatPreviewMessages((current) => {
+      const nextMessages = [...current, ...nextPreviewMessages]
+        .sort(compareChatPreviewMessages)
+        .slice(-CHAT_PREVIEW_LIMIT);
+
+      const activeKeys = new Set(nextMessages.map((message) => message.previewKey));
+
+      previewRemovalTimers.current.forEach((timer, key) => {
+        if (!activeKeys.has(key)) {
+          clearTimeout(timer);
+          previewRemovalTimers.current.delete(key);
+        }
+      });
+
+      return nextMessages;
+    });
+  }, [chatHistory]);
 
   useEffect(() => {
     const timers = previewRemovalTimers.current;
     return () => {
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
+      chatFetchRequestRef.current += 1;
     };
   }, []);
 
@@ -332,7 +378,15 @@ export default function GameBoardPage() {
     setIsSendingChat(true);
 
     try {
-      await api.post(`/games/${gameId}/chat`, { message: msg }, token);
+      await api.post<ChatMessageGetDTO>(
+        `/games/${gameId}/chat`,
+        { message: msg },
+        token,
+      );
+      await fetchChat();
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
     } catch (err) {
       console.error("Chat send failed", err);
     } finally {
@@ -434,15 +488,6 @@ export default function GameBoardPage() {
       setPageMessage(null);
     };
 
-    const handleChatUpdate = (chat: ChatMessageGetDTO) => {
-      setChatHistory((prev) => {
-        if (prev.some(c => getChatMessageKey(c) === getChatMessageKey(chat))) {
-          return prev;
-        }
-        return [...prev, chat];
-      });
-    };
-
     const handleGameError = (error: unknown, fallback: string) => {
       if (cancelled) return;
       const message = getGameErrorMessage(error, fallback);
@@ -454,7 +499,7 @@ export default function GameBoardPage() {
       setPageMessage(message);
     };
 
-    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, handleChatUpdate, (error) => {
+    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (error) => {
       handleGameError(error, "Connection lost. Reconnecting...");
     });
 
@@ -511,11 +556,20 @@ export default function GameBoardPage() {
               confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 }, colors: ["#95D6A2", "#FFFFFF"] });
             }, 600);
           }
+        } else if (prev && isFriendlyProcessing(prev, myTeamName) && tile.status === "UNCLAIMED") {
+          errorClick();
         }
         nextStatuses.set(key, tile.status);
       });
     });
     previousStatuses.current = nextStatuses;
+
+    if (previousScores.current !== null) {
+      const myScore = myTeamName === "Team 1" ? game.score_1 : game.score_2;
+      const prevMyScore = myTeamName === "Team 1" ? previousScores.current.score_1 : previousScores.current.score_2;
+      if (myScore > prevMyScore) successClick();
+    }
+    previousScores.current = { score_1: game.score_1, score_2: game.score_2 };
   }, [game, myTeamName]);
 
   // --- Pre-fetch rules execution ---
@@ -712,14 +766,17 @@ export default function GameBoardPage() {
             </div>
 
             <div className="chat-messages-log" ref={chatContainerRef}>
-                {chatHistory.map((chat, i) => {
+                {chatHistory.map((chat) => {
                     const chatTeamClean = chat.teamType.replace(/\D/g, "");
                     const myTeamClean = (myTeamName || "").replace(/\D/g, "");
                     const isSameTeam = chatTeamClean === myTeamClean && chatTeamClean !== "";
                     const isMine = chat.sender === username;
 
                     return (
-                        <div key={i} className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}>
+                        <div
+                          key={getChatMessageKey(chat)}
+                          className={`chat-msg-wrapper ${isSameTeam ? 'is-friendly-side' : 'is-enemy-side'}`}
+                        >
                             <div className="chat-sender-label">
                                 <span className={`team-tag ${isSameTeam ? 'text-own' : 'text-enemy'}`}>
                                     {chat.teamType === "Team1" ? "Team 1" : "Team 2"}
@@ -877,11 +934,43 @@ function getChatTeamLabel(teamType: string): string {
 }
 
 function getChatMessageKey(chat: ChatMessageGetDTO): string {
-  return `${chat.teamType}-${chat.sender}-${chat.sentAt}-${chat.message}`;
+  return chat.id ?? `${chat.teamType}-${chat.sender}-${chat.sentAt}-${chat.message}`;
+}
+
+function mergeChatMessages(
+  currentMessages: ChatMessageGetDTO[],
+  incomingMessages: ChatMessageGetDTO[],
+): ChatMessageGetDTO[] {
+  const messageIds = new Set<string>();
+  const fallbackKeys = new Set<string>();
+  const nextMessages: ChatMessageGetDTO[] = [];
+
+  [...currentMessages, ...incomingMessages]
+    .sort(compareChatMessages)
+    .forEach((message) => {
+      const messageId = message.id;
+      if (messageId) {
+        if (messageIds.has(messageId)) return;
+        messageIds.add(messageId);
+        nextMessages.push(message);
+        return;
+      }
+
+      const fallbackKey = getChatMessageKey(message);
+      if (fallbackKeys.has(fallbackKey)) return;
+      fallbackKeys.add(fallbackKey);
+      nextMessages.push(message);
+    });
+
+  return nextMessages;
+}
+
+function compareChatMessages(a: ChatMessageGetDTO, b: ChatMessageGetDTO): number {
+  return getChatMessageTime(a) - getChatMessageTime(b);
 }
 
 function compareChatPreviewMessages(a: ChatPreviewMessage, b: ChatPreviewMessage): number {
-  return getChatMessageTime(a) - getChatMessageTime(b);
+  return compareChatMessages(a, b);
 }
 
 function getChatMessageTime(chat: ChatMessageGetDTO): number {
