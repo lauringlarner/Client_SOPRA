@@ -83,7 +83,7 @@ textarea {
 }
 
 /* Triggers automatically when a mobile/tablet viewport tilts into landscape width */
-@media screen and (orientation: landscape) and (max-width: 1024px) {
+@media screen and (orientation: landscape) and (max-width: 1024px) and (hover: none){
   .orientation-blocker {
     display: flex;
     position: fixed;
