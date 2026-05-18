@@ -1,18 +1,29 @@
 import { ApiService } from "@/api/apiService";
 import { ApplicationError } from "@/types/error";
-import { GameDetails, GameStatus, GameTile, GameTileStatus, ChatMessageGetDTO } from "@/types/game";
+import {
+  ChatMessageGetDTO,
+  GameDetails,
+  GameStatus,
+  GameTile,
+  GameTileStatus,
+} from "@/types/game";
 import Pusher, { Channel } from "pusher-js";
-
 
 type SubscribeToGame = (
   gameId: string,
-  onGameUpdate: (details: GameDetails) => void,
-  onChatUpdate: (chat: ChatMessageGetDTO) => void,
+  onUpdate: (details: GameDetails) => void,
+  onError: (error: ApplicationError) => void,
+) => () => void;
+
+type SubscribeToChat = (
+  gameId: string,
+  onMessage: (message: ChatMessageGetDTO) => void,
   onError: (error: ApplicationError) => void,
 ) => () => void;
 
 interface GameClient {
   subscribeToGame: SubscribeToGame;
+  subscribeToChat: SubscribeToChat;
   getGame: (gameId: string) => Promise<GameDetails>;
 }
 
@@ -26,21 +37,21 @@ interface CachedChannel {
   subscribers: number;
 }
 
-let pusher: Pusher | null = null;
-const channelCache = new Map<string, CachedChannel>();
-
-
 export function createGameClient(options: CreateGameClientOptions): GameClient {
   const { api, token } = options;
 
   return {
     subscribeToGame: createRemoteGameSubscriber(),
+    subscribeToChat: createRemoteChatSubscriber(),
     async getGame(gameId: string): Promise<GameDetails> {
       const payload = await api.get<GameDetails>(`/games/${gameId}`, token);
       return normalizeGameDetails(payload);
     },
   };
 }
+
+let pusher: Pusher | null = null;
+const channelCache = new Map<string, CachedChannel>();
 
 function getPusher() {
   if (!pusher) {
@@ -51,25 +62,22 @@ function getPusher() {
 
     if (!key || !cluster) {
       throw createApplicationError(
-        "Pusher configuration missing. Check NEXT_PUBLIC_PUSHER_KEY and CLUSTER in .env.local",
+        "Pusher configuration missing. Check NEXT_PUBLIC_PUSHER_KEY and NEXT_PUBLIC_PUSHER_CLUSTER in .env.local",
         500
       );
     }
 
     pusher = new Pusher(key, {
       cluster: cluster,
-      forceTLS: true
+      forceTLS: true,
     });
   }
   return pusher;
 }
 
-
-
 function createRemoteGameSubscriber(): SubscribeToGame {
-  return (gameId, onGameUpdate, onChatUpdate, onError) => {
+  return (gameId, onUpdate, onError) => {
     let pusherInstance: Pusher;
-
     try {
       pusherInstance = getPusher();
     } catch (err) {
@@ -78,24 +86,14 @@ function createRemoteGameSubscriber(): SubscribeToGame {
     }
 
     const channelName = `game-${gameId}`;
-    const gameEventName = "GameUpdate";
-    const chatEventName = "ChatUpdate";
+    const eventName = "GameUpdate";
 
-    const gameHandler = (data: unknown) => {
+    const handler = (data: unknown) => {
       try {
         const game = normalizeGameDetails(data);
-        onGameUpdate(game);
+        onUpdate(game);
       } catch {
         onError(createApplicationError("Invalid game update", 500));
-      }
-    };
-
-    const chatHandler = (data: unknown) => {
-      try {
-        const chat = data as ChatMessageGetDTO;
-        onChatUpdate(chat);
-      } catch {
-        onError(createApplicationError("Invalid chat update", 500));
       }
     };
 
@@ -104,7 +102,6 @@ function createRemoteGameSubscriber(): SubscribeToGame {
     };
 
     let channelEntry = channelCache.get(channelName);
-
     if (channelEntry) {
       channelEntry.subscribers += 1;
     } else {
@@ -114,16 +111,13 @@ function createRemoteGameSubscriber(): SubscribeToGame {
       };
       channelCache.set(channelName, channelEntry);
     }
-
     const channel = channelEntry.channel;
 
-    channel.bind(gameEventName, gameHandler);
-    channel.bind(chatEventName, chatHandler);
+    channel.bind(eventName, handler);
     pusherInstance.connection.bind("error", errorHandler);
-    
+
     return () => {
-      channel.unbind(gameEventName, gameHandler);
-      channel.unbind(chatEventName, chatHandler); 
+      channel.unbind(eventName, handler);
       pusherInstance.connection.unbind("error", errorHandler);
 
       const activeChannelEntry = channelCache.get(channelName);
@@ -132,7 +126,65 @@ function createRemoteGameSubscriber(): SubscribeToGame {
       }
 
       activeChannelEntry.subscribers -= 1;
+      if (activeChannelEntry.subscribers <= 0) {
+        pusherInstance.unsubscribe(channelName);
+        channelCache.delete(channelName);
+      }
+    };
+  };
+}
 
+function createRemoteChatSubscriber(): SubscribeToChat {
+  return (gameId, onMessage, onError) => {
+    let pusherInstance: Pusher;
+    try {
+      pusherInstance = getPusher();
+    } catch (err) {
+      onError(err as ApplicationError);
+      return () => {};
+    }
+
+    const channelName = `game-${gameId}`;
+    const eventName = "ChatMessage";
+
+    const handler = (data: unknown) => {
+      try {
+        const message = normalizeChatMessage(data);
+        onMessage(message);
+      } catch {
+        onError(createApplicationError("Invalid chat message", 500));
+      }
+    };
+
+    const errorHandler = () => {
+      onError(createApplicationError("Pusher connection error", 500));
+    };
+
+    let channelEntry = channelCache.get(channelName);
+    if (channelEntry) {
+      channelEntry.subscribers += 1;
+    } else {
+      channelEntry = {
+        channel: pusherInstance.subscribe(channelName),
+        subscribers: 1,
+      };
+      channelCache.set(channelName, channelEntry);
+    }
+    const channel = channelEntry.channel;
+
+    channel.bind(eventName, handler);
+    pusherInstance.connection.bind("error", errorHandler);
+
+    return () => {
+      channel.unbind(eventName, handler);
+      pusherInstance.connection.unbind("error", errorHandler);
+
+      const activeChannelEntry = channelCache.get(channelName);
+      if (!activeChannelEntry) {
+        return;
+      }
+
+      activeChannelEntry.subscribers -= 1;
       if (activeChannelEntry.subscribers <= 0) {
         pusherInstance.unsubscribe(channelName);
         channelCache.delete(channelName);
@@ -160,6 +212,20 @@ function normalizeGameDetails(value: unknown): GameDetails {
     tileGrid,
     wordList: normalizeStringList(value.wordList, "word list", tileGrid.flat().map((tile) => tile.word)),
     wordListScore: normalizeStringList(value.wordListScore, "word list score", []),
+  };
+}
+
+function normalizeChatMessage(value: unknown): ChatMessageGetDTO {
+  if (!isRecord(value)) {
+    throw createApplicationError("The chat message payload is malformed.", 500);
+  }
+
+  return {
+    id: getOptionalString(value.id),
+    message: getRequiredString(value.message, "chat message"),
+    sender: getRequiredString(value.sender, "chat sender"),
+    sentAt: getRequiredString(value.sentAt, "chat timestamp"),
+    teamType: getRequiredString(value.teamType, "chat team"),
   };
 }
 
@@ -234,6 +300,11 @@ function getRequiredString(value: unknown, label: string): string {
     throw createApplicationError(`The ${label} is missing from the response.`, 500);
   }
   return value;
+}
+
+function getOptionalString(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim() !== "") return value;
+  return undefined;
 }
 
 function getRequiredNumber(value: unknown, label: string): number {
