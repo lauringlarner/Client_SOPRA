@@ -21,7 +21,7 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { playCountdown, getSoundEnabled, setSoundEnabled } from "@/utils/sounds";
+import { playCountdown, getSoundEnabled, setSoundEnabled, successClick, errorClick } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
@@ -114,6 +114,7 @@ export default function GameBoardPage() {
   const seenPreviewMessageKeys = useRef<Set<string>>(new Set());
   const previewRemovalTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const previousStatuses = useRef<Map<string, GameTileStatus>>(new Map());
+  const previousScores = useRef<{ score_1: number; score_2: number } | null>(null);
   const celebratedBingos = useRef<string[]>([]);
   const isFirstLoad = useRef(true);
   const latestGameRef = useRef<GameDetails | null>(null);
@@ -481,11 +482,20 @@ export default function GameBoardPage() {
               confetti({ particleCount: 150, spread: 70, origin: { y: 0.7 }, colors: ["#95D6A2", "#FFFFFF"] });
             }, 600);
           }
+        } else if (prev && isFriendlyProcessing(prev, myTeamName) && tile.status === "UNCLAIMED") {
+          errorClick();
         }
         nextStatuses.set(key, tile.status);
       });
     });
     previousStatuses.current = nextStatuses;
+
+    if (previousScores.current !== null) {
+      const myScore = myTeamName === "Team 1" ? game.score_1 : game.score_2;
+      const prevMyScore = myTeamName === "Team 1" ? previousScores.current.score_1 : previousScores.current.score_2;
+      if (myScore > prevMyScore) successClick();
+    }
+    previousScores.current = { score_1: game.score_1, score_2: game.score_2 };
   }, [game, myTeamName]);
 
   // --- Pre-fetch rules execution ---
