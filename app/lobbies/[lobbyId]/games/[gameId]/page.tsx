@@ -453,27 +453,48 @@ export default function GameBoardPage() {
     setStoredActiveLobbyId(userId, lobbyId);
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
-  useEffect(() => {
-    if (!loaded || !isAuthenticated || userId.trim() === "") return;
-    let cancelled = false;
-    setMyTeamName(normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId)));
-    setStoredSinglePlayerMode(getStoredSinglePlayerMode(userId, lobbyId) === 1);
+useEffect(() => {
+  if (!loaded || !isAuthenticated || userId.trim() === "") return;
+  let cancelled = false;
 
-    void (async () => {
-      try {
-        const currentLobby = await lobbyClient.getLobby(lobbyId);
-        if (cancelled) return;
-        const currentPlayer = currentLobby.lobbyPlayers.find(p => p.user.id === userId);
-        const team = normalizeBackendTeamName(currentPlayer?.team ?? null);
-        setMyTeamName(team);
-        setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
-      } catch {
-        if (cancelled) return;
-        setPageMessage("Unable to confirm your team.");
+  // 1. Immediately look up your stored singleplayer configuration status
+  const isSinglePlayer = getStoredSinglePlayerMode(userId, lobbyId) === 1;
+  setStoredSinglePlayerMode(isSinglePlayer);
+
+  // 2. Hydrate local team state instantly to prevent UI flashing
+  const cachedTeam = normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId));
+  setMyTeamName(cachedTeam);
+
+  void (async () => {
+    try {
+      const currentLobby = await lobbyClient.getLobby(lobbyId);
+      if (cancelled) return;
+
+      const currentPlayer = currentLobby.lobbyPlayers?.find(p => p.user.id === userId);
+      
+      if (!currentPlayer && isSinglePlayer) {
+        return; 
       }
-    })();
-    return () => { cancelled = true; };
-  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
+
+      const team = normalizeBackendTeamName(currentPlayer?.team ?? null);
+      setMyTeamName(team);
+      setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
+    } catch (err) {
+      if (cancelled) return;
+
+      if (isSinglePlayer) {
+        console.warn("Lobby sync failed, but singleplayer mode is active. Using cached states safely.");
+        return;
+      }
+
+      setPageMessage("Unable to confirm your team.");
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
   // --- Game Subscription ---
   useEffect(() => {
@@ -922,6 +943,7 @@ function measurePreviewText(text: string, fontSize: number, fontWeight: number):
 }
 
 function isChatFromSameTeam(teamType: string, myTeamName: BackendTeamName): boolean {
+  if (!teamType || !myTeamName) return false;
   const chatTeamClean = teamType.replace(/\D/g, "");
   const myTeamClean = myTeamName.replace(/\D/g, "");
   return chatTeamClean === myTeamClean && chatTeamClean !== "";
