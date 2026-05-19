@@ -453,27 +453,48 @@ export default function GameBoardPage() {
     setStoredActiveLobbyId(userId, lobbyId);
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
-  useEffect(() => {
-    if (!loaded || !isAuthenticated || userId.trim() === "") return;
-    let cancelled = false;
-    setMyTeamName(normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId)));
-    setStoredSinglePlayerMode(getStoredSinglePlayerMode(userId, lobbyId) === 1);
+useEffect(() => {
+  if (!loaded || !isAuthenticated || userId.trim() === "") return;
+  let cancelled = false;
 
-    void (async () => {
-      try {
-        const currentLobby = await lobbyClient.getLobby(lobbyId);
-        if (cancelled) return;
-        const currentPlayer = currentLobby.lobbyPlayers.find(p => p.user.id === userId);
-        const team = normalizeBackendTeamName(currentPlayer?.team ?? null);
-        setMyTeamName(team);
-        setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
-      } catch {
-        if (cancelled) return;
-        setPageMessage("Unable to confirm your team.");
+  // 1. Immediately look up your stored singleplayer configuration status
+  const isSinglePlayer = getStoredSinglePlayerMode(userId, lobbyId) === 1;
+  setStoredSinglePlayerMode(isSinglePlayer);
+
+  // 2. Hydrate local team state instantly to prevent UI flashing
+  const cachedTeam = normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId));
+  setMyTeamName(cachedTeam);
+
+  void (async () => {
+    try {
+      const currentLobby = await lobbyClient.getLobby(lobbyId);
+      if (cancelled) return;
+
+      const currentPlayer = currentLobby.lobbyPlayers?.find(p => p.user.id === userId);
+      
+      if (!currentPlayer && isSinglePlayer) {
+        return; 
       }
-    })();
-    return () => { cancelled = true; };
-  }, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
+
+      const team = normalizeBackendTeamName(currentPlayer?.team ?? null);
+      setMyTeamName(team);
+      setStoredLobbyTeam(userId, lobbyId, currentPlayer?.team ?? null);
+    } catch (err) {
+      if (cancelled) return;
+
+      if (isSinglePlayer) {
+        console.warn("Lobby sync failed, but singleplayer mode is active. Using cached states safely.");
+        return;
+      }
+
+      setPageMessage("Unable to confirm your team.");
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
 
   // --- Game Subscription ---
   useEffect(() => {
@@ -687,17 +708,28 @@ export default function GameBoardPage() {
 
         {game && myTeamName && (
           <>
-            <section
-              className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}
-              ref={scoreContainerRef}
-            >
-              {teamScores.map((score) => (
-                <div key={score.label} className={`bingo-team-points-card ${score.label === "Team 1" ? "is-team1" : "is-team2"}`}>
-                  <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
-                  <span className="bingo-team-points-card-points">{score.totalPoints}</span>
-                </div>
-              ))}
-            </section>
+<section
+  className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}
+  ref={scoreContainerRef}
+>
+  {teamScores.map((score) => {
+    // 1. If it's singleplayer, your solo card is always friendly (Green)
+    // 2. In multiplayer, look at the perspective built by buildTeamScores:
+    //    "My Team" always gets friendly (Green). "Opponent" or "Team X" (if you are the other team) gets enemy (Orange)
+    const isFriendlyCard = isSinglePlayerGame 
+      ? true 
+      : (score.label === "My Team" || 
+         (score.label === "Team 1" && myTeamName === "Team 1") ||
+         (score.label === "Team 2" && myTeamName === "Team 2"));
+
+    return (
+      <div key={score.label} className={`bingo-team-points-card ${isFriendlyCard ? "is-team1" : "is-team2"}`}>
+        <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
+        <span className="bingo-team-points-card-points">{score.totalPoints}</span>
+      </div>
+    );
+  })}
+</section>
 
             <div className="bingo-time-bar-container">
               <div className="bingo-time-bar-label">
@@ -726,8 +758,7 @@ export default function GameBoardPage() {
                         <button
                           key={key}
                           type="button"
-                          className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
-                          disabled={isClaimed || isProcessing}
+                          className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName, isSinglePlayerGame)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}                          disabled={isClaimed || isProcessing}
                           onClick={() => { if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
@@ -821,11 +852,34 @@ export default function GameBoardPage() {
 }
 
 // --- Helpers ---
-function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
+function getTileStateClass(
+  status: GameTileStatus, 
+  myTeamName: BackendTeamName, 
+  isSinglePlayer: boolean
+): string {
   if (status === "UNCLAIMED") return "";
+  
+  // Handle Single Player claims
+  if (isSinglePlayer) {
+    if (status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2") {
+      return "is-claimed is-claimed-friendly";
+    }
+  } else {
+    // Handle Multiplayer claims based on perspective:
+    // If the tile belongs to your team, it's green. If it belongs to the opponent, it's orange.
+    if (status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2") {
+      const perspective = getTilePerspective(status, myTeamName);
+      return perspective === "own" 
+        ? "is-claimed is-claimed-friendly" 
+        : "is-claimed is-claimed-enemy";
+    }
+  }
+  
+  // Processing Loading States
   const p = getTilePerspective(status, myTeamName);
-  if (isClaimedStatus(status)) return p === "own" ? "is-claimed is-claimed-friendly" : "is-claimed is-claimed-enemy";
-  if (isProcessingStatus(status)) return p === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
+  if (isProcessingStatus(status)) {
+    return p === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
+  }
   return "";
 }
 
@@ -922,6 +976,7 @@ function measurePreviewText(text: string, fontSize: number, fontWeight: number):
 }
 
 function isChatFromSameTeam(teamType: string, myTeamName: BackendTeamName): boolean {
+  if (!teamType || !myTeamName) return false;
   const chatTeamClean = teamType.replace(/\D/g, "");
   const myTeamClean = myTeamName.replace(/\D/g, "");
   return chatTeamClean === myTeamClean && chatTeamClean !== "";
