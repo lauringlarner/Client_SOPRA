@@ -14,9 +14,20 @@ import { playUiBeep } from "@/utils/sounds";
 
 const api = new ApiService();
 
+const randomEmoji = () => RAIN_EMOJIS[Math.floor(Math.random() * RAIN_EMOJIS.length)];
+
+const initRainItems = () =>
+  Array.from({ length: RAIN_COUNT }, (_, i) => ({
+    emoji: randomEmoji(),
+    left: Math.floor(Math.random() * 90),
+    duration: 14 + Math.random() * 8,
+    delay: (i / RAIN_COUNT) * 20,
+  }));
+
 export default function RegisterPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, setSession } = useAuthSession();
+  const [rainItems, setRainItems] = useState(initRainItems);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -147,16 +158,17 @@ export default function RegisterPage() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient auth-layout">
         <div className="bingo-rain-container">
-          {RAIN_EMOJIS.slice(0, RAIN_COUNT).map((emoji, i) => (
+          {rainItems.map((item, i) => (
             <span
               key={i}
               className="rain-item"
               style={{
-                left: `${Math.floor(Math.random() * 90)}%`,
-                animationDuration: `${12 + Math.random() * 10}s`,
-                animationDelay: `${(i / RAIN_COUNT) * 20 + Math.random() * 2}s`,
+                left: `${item.left}%`,
+                animationDuration: `${item.duration}s`,
+                animationDelay: `${item.delay}s`,
               }}
-            >{emoji}</span>
+              onAnimationIteration={() => setRainItems(prev => prev.map((r, j) => j === i ? { ...r, emoji: randomEmoji() } : r))}
+            >{item.emoji}</span>
           ))}
         </div>
         <h1 className="auth-title">Create Your Account</h1>
