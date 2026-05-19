@@ -708,17 +708,27 @@ useEffect(() => {
 
         {game && myTeamName && (
           <>
-            <section
-              className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}
-              ref={scoreContainerRef}
-            >
-              {teamScores.map((score) => (
-                <div key={score.label} className={`bingo-team-points-card ${score.label === "Team 1" ? "is-team1" : "is-team2"}`}>
-                  <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
-                  <span className="bingo-team-points-card-points">{score.totalPoints}</span>
-                </div>
-              ))}
-            </section>
+<section
+  className={`bingo-team-points-container bingo-top-spacing ${isSinglePlayerGame ? "is-solo" : ""}`}
+  ref={scoreContainerRef}
+>
+  {teamScores.map((score) => {
+    // 1. If it's singleplayer, your solo card always gets your friendly color layout
+    // 2. If it's multiplayer, determine color based on absolute team ownership
+    const isTeam1 = isSinglePlayerGame 
+      ? true 
+      : (score.label === "Team 1" || 
+         (score.label === "My Team" && myTeamName === "Team 1") || 
+         (score.label === "Opponent" && myTeamName === "Team 2"));
+
+    return (
+      <div key={score.label} className={`bingo-team-points-card ${isTeam1 ? "is-team1" : "is-team2"}`}>
+        <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
+        <span className="bingo-team-points-card-points">{score.totalPoints}</span>
+      </div>
+    );
+  })}
+</section>
 
             <div className="bingo-time-bar-container">
               <div className="bingo-time-bar-label">
@@ -844,9 +854,17 @@ useEffect(() => {
 // --- Helpers ---
 function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
   if (status === "UNCLAIMED") return "";
+  
+  // Team 1 is bound to is-claimed-friendly (#97C459)
+  if (status === "CLAIMED_TEAM1") return "is-claimed is-claimed-friendly";
+  
+  // Team 2 is bound to is-claimed-enemy (#fb8600f2)
+  if (status === "CLAIMED_TEAM2") return "is-claimed is-claimed-enemy";
+  
   const p = getTilePerspective(status, myTeamName);
-  if (isClaimedStatus(status)) return p === "own" ? "is-claimed is-claimed-friendly" : "is-claimed is-claimed-enemy";
-  if (isProcessingStatus(status)) return p === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
+  if (isProcessingStatus(status)) {
+    return p === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
+  }
   return "";
 }
 
