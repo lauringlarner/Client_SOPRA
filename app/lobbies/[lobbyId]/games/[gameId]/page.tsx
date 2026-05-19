@@ -45,10 +45,10 @@ const CHAT_PREVIEW_TTL_MS = 5000;
 const CHAT_FALLBACK_FETCH_INTERVAL_MS = 3000;
 const CHAT_PREVIEW_MIN_HEIGHT = 50;
 const CHAT_PREVIEW_SCORE_MARGIN = 15;
-const CHAT_PREVIEW_MIN_META_SIZE = 9;
-const CHAT_PREVIEW_MIN_TEXT_SIZE = 10;
-const CHAT_PREVIEW_MAX_META_SIZE = 12;
-const CHAT_PREVIEW_MAX_TEXT_SIZE = 16;
+const CHAT_PREVIEW_MIN_META_SIZE = 11;
+const CHAT_PREVIEW_MIN_TEXT_SIZE = 14;
+const CHAT_PREVIEW_MAX_META_SIZE = 18;
+const CHAT_PREVIEW_MAX_TEXT_SIZE = 24;
 
 const QUICK_MESSAGES = [
   "Too slow on the shutter! 🐢📸",
@@ -130,7 +130,7 @@ export default function GameBoardPage() {
       CHAT_PREVIEW_MAX_META_SIZE,
     );
     const desiredTextSize = clampNumber(
-      Math.round(chatPreviewHeight * 0.16),
+      Math.round(chatPreviewHeight * 0.22),
       CHAT_PREVIEW_MIN_TEXT_SIZE,
       CHAT_PREVIEW_MAX_TEXT_SIZE,
     );

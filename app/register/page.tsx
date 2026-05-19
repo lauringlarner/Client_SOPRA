@@ -1,5 +1,11 @@
 "use client";
 
+
+// Add or remove emojis here to customize the rain animation
+const RAIN_EMOJIS = ["📸", "🌲", "🚗", "🕶️", "🎧", "🚃", " 🚲", "💻", "🕐", "🚪", "🪑", "🚀", "🪖", "⚽️" , "⛱️", "🏤" ,"☁️"];
+// How many emojis to show at once
+const RAIN_COUNT = 5;
+
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -141,8 +147,16 @@ export default function RegisterPage() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient auth-layout">
         <div className="bingo-rain-container">
-          {[...Array(12)].map((_, i) => (
-            <span key={i} className="rain-item">VisionQuest</span>
+          {RAIN_EMOJIS.slice(0, RAIN_COUNT).map((emoji, i) => (
+            <span
+              key={i}
+              className="rain-item"
+              style={{
+                left: `${Math.floor(Math.random() * 90)}%`,
+                animationDuration: `${12 + Math.random() * 10}s`,
+                animationDelay: `${(i / RAIN_COUNT) * 20 + Math.random() * 2}s`,
+              }}
+            >{emoji}</span>
           ))}
         </div>
         <h1 className="auth-title">Create Your Account</h1>

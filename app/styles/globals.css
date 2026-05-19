@@ -209,17 +209,12 @@ textarea {
 
 @keyframes bingoRain {
   0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
-  10% { opacity: 0.15; }
-  90% { opacity: 0.15; }
+  10% { opacity: 0.25; }
+  90% { opacity: 0.25; }
   100% { transform: translate3d(0, calc(100dvh + 100px), 0) rotate(180deg); opacity: 0; }
 }
 
-/* Rain Positions */
-.rain-item:nth-child(1) { left: -20%; animation-duration: 14s; }
-.rain-item:nth-child(2) { left: 0%; animation-duration: 16s; animation-delay: 5s; }
-.rain-item:nth-child(3) { left: 20%; animation-duration: 14s; animation-delay: 15s; }
-.rain-item:nth-child(4) { left: 40%; animation-duration: 18s; animation-delay: 0s; }
-.rain-item:nth-child(5) { left: 60%; animation-duration: 13s; animation-delay: 10s; }
+
 
 .home-layout {
   padding: clamp(56px, 11vh, 107px) 9px clamp(40px, 14vh, 142px);
@@ -417,11 +412,15 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1.5px solid transparent;
   cursor: pointer;
   margin-top: 10px;
-  
-  transition: transform 0.1s ease, background-color 0.2s ease;
+
+  transition: transform 0.1s ease, border-color 0.2s ease;
+}
+
+.auth-submit:hover {
+  border-color: white;
 }
 
 .auth-submit:active {
@@ -1316,7 +1315,7 @@ textarea {
   max-width: 300px;
   border-radius: 20px;
   padding: 24px;
-  border: 1px solid #1a4d4d;
+  border: 1px solid #85B7EB;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   animation: guardPop 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.28);
   text-align: center;
@@ -1347,11 +1346,16 @@ textarea {
 .guard-action {
   padding: 14px;
   border-radius: 12px;
-  border: none;
+  border: 1.5px solid transparent;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.guard-action:hover {
+  border-color: white;
+  color: white;
 }
 
 /* Spezialisierungen */
@@ -1368,8 +1372,8 @@ textarea {
 }
 
 .guard-action.secondary-teal {
-  background-color: #2a5c5c;
-  color: #e0f2f2;
+  background-color: #85B7EB;
+  color: var(--vq-text-dark);
 }
 
 .guard-action:active {
@@ -2363,9 +2367,9 @@ textarea {
 
 /* --- Winner (Green) & Standard --- */
 .leaderboard-row-win-primary {
-  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
+  background: #97C459 !important;
   border: 2px solid #fff;
-  box-shadow: 0 10px 20px rgba(39, 174, 96, 0.3);
+  box-shadow: 0 10px 20px rgba(151, 196, 89, 0.3);
 }
 
 .leaderboard-row-standard {
@@ -2374,9 +2378,9 @@ textarea {
 }
 
 .leaderboard-row-solo {
-  background: #95D6A2;
+  background: #97C459;
   border: 2px solid rgba(255, 255, 255, 0.78);
-  box-shadow: 0 10px 20px rgba(149, 214, 162, 0.22);
+  box-shadow: 0 10px 20px rgba(151, 196, 89, 0.22);
 }
 
 .leaderboard-row-solo .team-label,
@@ -2404,21 +2408,21 @@ textarea {
   border-radius: 14px;
   font-weight: 800;
   text-transform: uppercase;
-  background: #F0997B;
-  color: #9c4326c4;
+  background: #fb8600;
+  color: #5a3000c4;
   border: 2px solid transparent;
   backdrop-filter: blur(10px); cursor: pointer; transition: border-color 0.2s ease;
 }
 
 @media (prefers-color-scheme: dark) {
   .leaderboard-action-btn {
-    background-color: #c96a52;
-    color: #ffe6df;
+    background-color: #fb8600;
+    color: #5a3000c4;
   }
 }
 
 .leaderboard-action-btn:hover {
-  background: #F0997B;
+  background: #fb8600;
   border-color: white;
   filter: none;
 }
@@ -2447,12 +2451,12 @@ textarea {
 }
 
 .confirm-card.theme-dark-teal {
-  background-color: var(--vq-charcoal); 
+  background-color: var(--vq-charcoal);
   width: 100%;
   max-width: 300px;
   border-radius: 20px;
   padding: 24px;
-  border: 1px solid #1a4d4d;
+  border: 1px solid #85B7EB;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   animation: confirmPop 0.25s cubic-bezier(0.17, 0.89, 0.32, 1.28);
   text-align: center;
@@ -2493,6 +2497,7 @@ textarea {
 
 .confirm-btn:hover {
   border-color: white;
+  color: white;
 }
 
 .confirm-btn:active {
@@ -2514,8 +2519,8 @@ textarea {
 
 /* Maps to guard-action.secondary-teal */
 .confirm-btn.cancel {
-  background-color: #2a5c5c;
-  color: #e0f2f2;
+  background-color: #85B7EB;
+  color: var(--vq-text-dark);
 }
 
 @keyframes confirmPop {
@@ -3056,7 +3061,7 @@ a[href^="sms"] {
   background: var(--vq-charcoal);
   color: white;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.65rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
