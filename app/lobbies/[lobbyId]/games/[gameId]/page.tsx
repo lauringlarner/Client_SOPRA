@@ -713,16 +713,17 @@ useEffect(() => {
   ref={scoreContainerRef}
 >
   {teamScores.map((score) => {
-    // 1. If it's singleplayer, your solo card always gets your friendly color layout
-    // 2. If it's multiplayer, determine color based on absolute team ownership
-    const isTeam1 = isSinglePlayerGame 
+    // 1. If it's singleplayer, your solo card is always friendly (Green)
+    // 2. In multiplayer, look at the perspective built by buildTeamScores:
+    //    "My Team" always gets friendly (Green). "Opponent" or "Team X" (if you are the other team) gets enemy (Orange)
+    const isFriendlyCard = isSinglePlayerGame 
       ? true 
-      : (score.label === "Team 1" || 
-         (score.label === "My Team" && myTeamName === "Team 1") || 
-         (score.label === "Opponent" && myTeamName === "Team 2"));
+      : (score.label === "My Team" || 
+         (score.label === "Team 1" && myTeamName === "Team 1") ||
+         (score.label === "Team 2" && myTeamName === "Team 2"));
 
     return (
-      <div key={score.label} className={`bingo-team-points-card ${isTeam1 ? "is-team1" : "is-team2"}`}>
+      <div key={score.label} className={`bingo-team-points-card ${isFriendlyCard ? "is-team1" : "is-team2"}`}>
         <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
         <span className="bingo-team-points-card-points">{score.totalPoints}</span>
       </div>
@@ -757,8 +758,7 @@ useEffect(() => {
                         <button
                           key={key}
                           type="button"
-                          className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}
-                          disabled={isClaimed || isProcessing}
+                          className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName, isSinglePlayerGame)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}                          disabled={isClaimed || isProcessing}
                           onClick={() => { if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
@@ -852,15 +852,30 @@ useEffect(() => {
 }
 
 // --- Helpers ---
-function getTileStateClass(status: GameTileStatus, myTeamName: BackendTeamName): string {
+function getTileStateClass(
+  status: GameTileStatus, 
+  myTeamName: BackendTeamName, 
+  isSinglePlayer: boolean
+): string {
   if (status === "UNCLAIMED") return "";
   
-  // Team 1 is bound to is-claimed-friendly (#97C459)
-  if (status === "CLAIMED_TEAM1") return "is-claimed is-claimed-friendly";
+  // Handle Single Player claims
+  if (isSinglePlayer) {
+    if (status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2") {
+      return "is-claimed is-claimed-friendly";
+    }
+  } else {
+    // Handle Multiplayer claims based on perspective:
+    // If the tile belongs to your team, it's green. If it belongs to the opponent, it's orange.
+    if (status === "CLAIMED_TEAM1" || status === "CLAIMED_TEAM2") {
+      const perspective = getTilePerspective(status, myTeamName);
+      return perspective === "own" 
+        ? "is-claimed is-claimed-friendly" 
+        : "is-claimed is-claimed-enemy";
+    }
+  }
   
-  // Team 2 is bound to is-claimed-enemy (#fb8600f2)
-  if (status === "CLAIMED_TEAM2") return "is-claimed is-claimed-enemy";
-  
+  // Processing Loading States
   const p = getTilePerspective(status, myTeamName);
   if (isProcessingStatus(status)) {
     return p === "own" ? "is-processing-friendly is-analyzing" : "is-processing-enemy is-analyzing";
