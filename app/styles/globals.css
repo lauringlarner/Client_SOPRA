@@ -2408,29 +2408,16 @@ textarea {
   border-radius: 14px;
   font-weight: 800;
   text-transform: uppercase;
-  background: #fb8600;
-  color: #5a3000c4;
+  background: #F0997B;
+  color: #ffffff;
   border: 2px solid transparent;
   backdrop-filter: blur(10px); cursor: pointer; transition: border-color 0.2s ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  .leaderboard-action-btn {
-    background-color: #fb8600;
-    color: #5a3000c4;
-  }
-}
-
 .leaderboard-action-btn:hover {
-  background: #fb8600;
+  background: #F0997B;
   border-color: white;
   filter: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .leaderboard-action-btn:hover {
-    background: #c96a52;
-  }
 }
 
 /* --- THE RECTANGLE OVERLAY --- */
