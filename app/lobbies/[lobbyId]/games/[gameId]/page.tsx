@@ -26,7 +26,7 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { playCountdown, getSoundEnabled, setSoundEnabled, successClick, errorClick } from "@/utils/sounds";
+import { playCountdown, getSoundEnabled, setSoundEnabled, successClick, errorClick, playBackground } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
@@ -159,6 +159,11 @@ export default function GameBoardPage() {
     setSoundEnabled(next);
     setSoundEnabledState(next);
   };
+
+  useEffect(() => {
+    if (!loaded || !isAuthenticated) return;
+    playBackground();
+  }, [loaded, isAuthenticated]);
 
   // --- 1. Background Scroll Lock ---
   useEffect(() => {
