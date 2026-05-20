@@ -92,7 +92,7 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
   }, [gameId, getCleanToken, isAuthenticated, loaded, lobbyId, token, userId]);
 
-  const confirmLeave = async () => {
+const confirmLeave = async () => {
     setIsLeaving(true);
     const cleanToken = getCleanToken(token);
 
@@ -109,9 +109,12 @@ export default function LeaderboardPage() {
     } finally {
       clearStoredActiveLobbyId(userId, lobbyId);
       clearStoredLobbyTeam(userId, lobbyId);
-      clearStoredSinglePlayerMode(userId, lobbyId)
+      clearStoredSinglePlayerMode(userId, lobbyId);
       clearStoredPusherTransportTLS();
       setIsLeaving(false);
+      
+      /* Fix: Set synchronous flag to block backend race condition */
+      sessionStorage.setItem("just_exited_lobby", "true");
       router.push("/menu");
     }
   };
