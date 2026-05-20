@@ -454,15 +454,13 @@ export default function GameBoardPage() {
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
 useEffect(() => {
-  // Add !token here to perfectly align with the subscription block
-  if (!loaded || !isAuthenticated || !token || userId.trim() === "") return;
+  // CRITICAL FIX: Ensure token is present before executing lobby client requests
+  if (!loaded || !isAuthenticated || !token || !userId || userId.trim() === "") return;
   let cancelled = false;
 
-  // 1. Immediately look up your stored singleplayer configuration status
   const isSinglePlayer = getStoredSinglePlayerMode(userId, lobbyId) === 1;
   setStoredSinglePlayerMode(isSinglePlayer);
 
-  // 2. Hydrate local team state instantly to prevent UI flashing
   const cachedTeam = normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId));
   setMyTeamName(cachedTeam);
 
@@ -488,7 +486,11 @@ useEffect(() => {
         return;
       }
 
-      setPageMessage("Unable to confirm your team.");
+      // If a transient 401 slips through here, check status before showing error
+      const appErr = err as ApplicationError | undefined;
+      if (appErr?.status !== 401) {
+        setPageMessage("Unable to confirm your team.");
+      }
     }
   })();
 
@@ -497,10 +499,11 @@ useEffect(() => {
   };
 }, [isAuthenticated, loaded, token, lobbyClient, lobbyId, userId]);
 
-// --- Game Subscription ---
+
+  // --- Game Subscription ---
 useEffect(() => {
-  // Add an explicit check for token here!
-  if (!loaded || !isAuthenticated || !token) return; 
+  // CRITICAL FIX: Ensure token exists before firing requests
+  if (!loaded || !isAuthenticated || !token || !gameId) return;
   let cancelled = false;
   
   const applyGameDetails = (details: GameDetails) => {
@@ -531,7 +534,7 @@ useEffect(() => {
   });
 
   return () => { cancelled = true; unsubscribe(); };
-}, [loaded, isAuthenticated, token, gameClient, gameId]);
+}, [loaded, isAuthenticated, token, gameId, gameClient]);
 
   // --- Bingo & Animation Logic ---
   useEffect(() => {
@@ -715,9 +718,7 @@ useEffect(() => {
   ref={scoreContainerRef}
 >
   {teamScores.map((score) => {
-    // 1. If it's singleplayer, your solo card is always friendly (Green)
-    // 2. In multiplayer, look at the perspective built by buildTeamScores:
-    //    "My Team" always gets friendly (Green). "Opponent" or "Team X" (if you are the other team) gets enemy (Orange)
+    // 1. Check if this is your team card based on single-player status or matching labels
     const isFriendlyCard = isSinglePlayerGame 
       ? true 
       : (score.label === "My Team" || 
@@ -726,7 +727,11 @@ useEffect(() => {
 
     return (
       <div key={score.label} className={`bingo-team-points-card ${isFriendlyCard ? "is-team1" : "is-team2"}`}>
-        <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
+        <span className="bingo-team-points-card-text">
+          {/* Dynamically swap the name structure without leaving old markers behind */}
+          {isFriendlyCard ? "Your Team" : "Enemy Team"}
+          <br />Points:
+        </span>
         <span className="bingo-team-points-card-points">{score.totalPoints}</span>
       </div>
     );

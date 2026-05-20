@@ -67,11 +67,26 @@ export default function MenuPage() {
     if (!loaded || !isAuthenticated || !userId || userId.trim() === "") return;
 
     let cancelled = false;
+
+    // 1. Check session storage flag FIRST. If we just exited a lobby, clear everything and SKIP ALL FETCHING
+    const justExited = sessionStorage.getItem("just_exited_lobby") === "true";
+    if (justExited) {
+      sessionStorage.removeItem("just_exited_lobby");
+      sessionStorage.removeItem("just_exited_lobby_id");
+      
+      clearStoredActiveLobbyId(userId, activeLobbyId);
+      setActiveLobbyId("");
+      return; 
+    }
+
+    // 2. Otherwise check local cache storage next
     const storedLobbyId = getStoredActiveLobbyId(userId);
-    setActiveLobbyId(storedLobbyId);
+    if (storedLobbyId) {
+      setActiveLobbyId(storedLobbyId);
+      return;
+    }
 
-    if (storedLobbyId) return;
-
+    // 3. Fallback network check only if necessary
     void lobbyClient.getCurrentLobby()
       .then((currentLobby) => {
         if (cancelled) return;
@@ -89,7 +104,7 @@ export default function MenuPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, loaded, lobbyClient, userId]);
+  }, [isAuthenticated, loaded, lobbyClient, userId, router]);
 
   // Pre-fetch rules handler
   const handleOpenRules = async () => {
