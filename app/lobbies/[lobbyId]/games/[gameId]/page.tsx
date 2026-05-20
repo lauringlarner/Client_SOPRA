@@ -22,7 +22,7 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { playCountdown, getSoundEnabled, setSoundEnabled, playBackground } from "@/utils/sounds";
+import { playCountdown, getSoundEnabled, setSoundEnabled, playBackground, stopAllSounds } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
@@ -100,6 +100,7 @@ export default function GameBoardPage() {
     const next = !soundEnabled;
     setSoundEnabled(next);
     setSoundEnabledState(next);
+    if (!next) stopAllSounds();
   };
 
   useEffect(() => {
