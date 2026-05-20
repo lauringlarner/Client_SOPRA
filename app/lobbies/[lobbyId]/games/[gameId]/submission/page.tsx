@@ -224,7 +224,9 @@ function CameraContent() {
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(videoElement, 0, 0);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+      const dataUrl = canvas.toDataURL("image/jpeg", 1);
+
+      playCameraClick();
       setIsImageLoaded(false);
       setCapturedImage(dataUrl);
     }
@@ -237,7 +239,6 @@ function CameraContent() {
       return;
     }
 
-    playCameraClick();
     setIsSubmitting(true);
     setSubmissionError(null);
 
