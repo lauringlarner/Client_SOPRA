@@ -454,14 +454,13 @@ export default function GameBoardPage() {
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
 useEffect(() => {
-  if (!loaded || !isAuthenticated || userId.trim() === "") return;
+  // CRITICAL FIX: Ensure token is present before executing lobby client requests
+  if (!loaded || !isAuthenticated || !token || !userId || userId.trim() === "") return;
   let cancelled = false;
 
-  // 1. Immediately look up your stored singleplayer configuration status
   const isSinglePlayer = getStoredSinglePlayerMode(userId, lobbyId) === 1;
   setStoredSinglePlayerMode(isSinglePlayer);
 
-  // 2. Hydrate local team state instantly to prevent UI flashing
   const cachedTeam = normalizeBackendTeamName(getStoredLobbyTeam(userId, lobbyId));
   setMyTeamName(cachedTeam);
 
@@ -487,49 +486,55 @@ useEffect(() => {
         return;
       }
 
-      setPageMessage("Unable to confirm your team.");
+      // If a transient 401 slips through here, check status before showing error
+      const appErr = err as ApplicationError | undefined;
+      if (appErr?.status !== 401) {
+        setPageMessage("Unable to confirm your team.");
+      }
     }
   })();
 
   return () => {
     cancelled = true;
   };
-}, [isAuthenticated, loaded, lobbyClient, lobbyId, userId]);
+}, [isAuthenticated, loaded, token, lobbyClient, lobbyId, userId]);
+
 
   // --- Game Subscription ---
-  useEffect(() => {
-    if (!loaded || !isAuthenticated) return;
-    let cancelled = false;
-    
-    const applyGameDetails = (details: GameDetails) => {
-      if (cancelled) return;
-      latestGameRef.current = details;
-      setGame(details);
-      setConnectionState("live");
-      setPageMessage(null);
-    };
+useEffect(() => {
+  // CRITICAL FIX: Ensure token exists before firing requests
+  if (!loaded || !isAuthenticated || !token || !gameId) return;
+  let cancelled = false;
+  
+  const applyGameDetails = (details: GameDetails) => {
+    if (cancelled) return;
+    latestGameRef.current = details;
+    setGame(details);
+    setConnectionState("live");
+    setPageMessage(null);
+  };
 
-    const handleGameError = (error: unknown, fallback: string) => {
-      if (cancelled) return;
-      const message = getGameErrorMessage(error, fallback);
-      if (latestGameRef.current) {
-        setPageMessage(message);
-        return;
-      }
-      setConnectionState(isFatalApplicationError(error) ? "error" : "connecting");
+  const handleGameError = (error: unknown, fallback: string) => {
+    if (cancelled) return;
+    const message = getGameErrorMessage(error, fallback);
+    if (latestGameRef.current) {
       setPageMessage(message);
-    };
+      return;
+    }
+    setConnectionState(isFatalApplicationError(error) ? "error" : "connecting");
+    setPageMessage(message);
+  };
 
-    const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (error) => {
-      handleGameError(error, "Connection lost. Reconnecting...");
-    });
+  const unsubscribe = gameClient.subscribeToGame(gameId, applyGameDetails, (error) => {
+    handleGameError(error, "Connection lost. Reconnecting...");
+  });
 
-    gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {
-      handleGameError(error, "Unable to load game state.");
-    });
+  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {
+    handleGameError(error, "Unable to load game state.");
+  });
 
-    return () => { cancelled = true; unsubscribe(); };
-  }, [loaded, isAuthenticated, gameClient, gameId]);
+  return () => { cancelled = true; unsubscribe(); };
+}, [loaded, isAuthenticated, token, gameId, gameClient]);
 
   // --- Bingo & Animation Logic ---
   useEffect(() => {
