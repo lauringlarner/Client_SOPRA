@@ -718,9 +718,7 @@ useEffect(() => {
   ref={scoreContainerRef}
 >
   {teamScores.map((score) => {
-    // 1. If it's singleplayer, your solo card is always friendly (Green)
-    // 2. In multiplayer, look at the perspective built by buildTeamScores:
-    //    "My Team" always gets friendly (Green). "Opponent" or "Team X" (if you are the other team) gets enemy (Orange)
+    // 1. Check if this is your team card based on single-player status or matching labels
     const isFriendlyCard = isSinglePlayerGame 
       ? true 
       : (score.label === "My Team" || 
@@ -729,7 +727,11 @@ useEffect(() => {
 
     return (
       <div key={score.label} className={`bingo-team-points-card ${isFriendlyCard ? "is-team1" : "is-team2"}`}>
-        <span className="bingo-team-points-card-text">{score.label}<br />Points:</span>
+        <span className="bingo-team-points-card-text">
+          {/* Dynamically swap the name structure without leaving old markers behind */}
+          {isFriendlyCard ? "Your Team" : "Enemy Team"}
+          <br />Points:
+        </span>
         <span className="bingo-team-points-card-points">{score.totalPoints}</span>
       </div>
     );
