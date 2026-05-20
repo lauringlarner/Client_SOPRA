@@ -50,3 +50,14 @@ export function errorClick() {
   errorAudio.currentTime = 0;
   errorAudio.play().catch(() => {});
 }
+
+let backgroundAudio: HTMLAudioElement | null = null;
+
+export function playBackground() {
+  if (typeof window === "undefined" || !getSoundEnabled()) return;
+  if (!backgroundAudio) {
+    backgroundAudio = new Audio("/sounds/backgroundsound.mp3");
+    backgroundAudio.loop = true;
+  }
+  backgroundAudio.play().catch(() => {});
+}
