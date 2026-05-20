@@ -29,8 +29,6 @@ interface LeaderboardTeamView {
   score: number;
 }
 
-// We assume a basic player/lobby details object could be fetched to determine host status,
-// or we can attempt to delete the lobby and fall back to the player-leave endpoint if forbidden (403/409).
 export default function LeaderboardPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, token, userId } = useAuthSession();
@@ -97,10 +95,8 @@ export default function LeaderboardPage() {
     const cleanToken = getCleanToken(token);
 
     try {
-      // Attempt 1: Try to delete the lobby (acts as host-delete)
       await api.delete(`/lobbies/${lobbyId}`, cleanToken);
     } catch {
-      // If the user isn't the host and receives a Forbidden/Conflict response, fall back to player deletion
       try {
         await api.delete(`/lobbies/${lobbyId}/players/me`, cleanToken);
       } catch (innerError) {
@@ -109,9 +105,11 @@ export default function LeaderboardPage() {
     } finally {
       clearStoredActiveLobbyId(userId, lobbyId);
       clearStoredLobbyTeam(userId, lobbyId);
-      clearStoredSinglePlayerMode(userId, lobbyId)
+      clearStoredSinglePlayerMode(userId, lobbyId);
       clearStoredPusherTransportTLS();
       setIsLeaving(false);
+      
+      sessionStorage.setItem("just_exited_lobby", "true");
       router.push("/menu");
     }
   };
@@ -121,16 +119,25 @@ export default function LeaderboardPage() {
     router.push(`/lobbies/${lobbyId}`);
   };
 
-
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
   const isSinglePlayerLeaderboard = data?.isSinglePlayer ?? data?.singlePlayer ?? storedSinglePlayerMode;
+  
+  // --- Updated Dynamic Naming Architecture ---
   const teams: LeaderboardTeamView[] = data
     ? isSinglePlayerLeaderboard
       ? [{ name: "Your Points", score: getSoloScore(data, storedTeam), id: "solo" }]
       : [
-          { name: "Team 1", score: data.team1Score, id: "team-1" },
-          { name: "Team 2", score: data.team2Score, id: "team-2" }
+          { 
+            name: storedTeam === "Team1" ? "Your Team" : "Enemy Team", 
+            score: data.team1Score, 
+            id: "team-1" 
+          },
+          { 
+            name: storedTeam === "Team2" ? "Your Team" : "Enemy Team", 
+            score: data.team2Score, 
+            id: "team-2" 
+          }
         ].sort((a, b) => b.score - a.score)
     : [];
 
@@ -141,7 +148,6 @@ export default function LeaderboardPage() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient leaderboard-layout">
         
-        {/* RECTANGULAR POP-UP OVERLAY */}
         {showConfirm && (
           <div className="confirm-overlay">
             <div className="confirm-card theme-dark-teal">

@@ -371,7 +371,7 @@ export default function LobbyPage() {
     }
   };
 
-  const confirmDeleteLobby = async () => {
+const confirmDeleteLobby = async () => {
     setShowDeleteModal(false);
     setPendingAction("delete");
     try {
@@ -379,6 +379,9 @@ export default function LobbyPage() {
       clearStoredActiveLobbyId(userId, lobbyId);
       clearStoredLobbyTeam(userId, lobbyId);
       clearStoredSinglePlayerMode(userId, lobbyId);
+      
+      /* Fix: Set synchronous flag to block backend race condition */
+      sessionStorage.setItem("just_exited_lobby", "true");
       router.replace("/menu");
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Delete failed."), tone: "error" });
@@ -394,6 +397,9 @@ export default function LobbyPage() {
       clearStoredActiveLobbyId(userId, lobbyId);
       clearStoredLobbyTeam(userId, lobbyId);
       clearStoredSinglePlayerMode(userId, lobbyId);
+      
+      /* Fix: Set synchronous flag to block backend race condition */
+      sessionStorage.setItem("just_exited_lobby", "true");
       router.replace("/menu");
     } catch (err) {
       setPageMessage({ text: getLobbyErrorMessage(err, "Leave failed."), tone: "error" });
