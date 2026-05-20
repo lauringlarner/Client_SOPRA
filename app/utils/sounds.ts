@@ -53,6 +53,12 @@ export function errorClick() {
 
 let backgroundAudio: HTMLAudioElement | null = null;
 
+export function stopAllSounds() {
+  [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio, backgroundAudio].forEach((audio) => {
+    if (audio) { audio.pause(); audio.currentTime = 0; }
+  });
+}
+
 export function playBackground() {
   if (typeof window === "undefined" || !getSoundEnabled()) return;
   if (!backgroundAudio) {
