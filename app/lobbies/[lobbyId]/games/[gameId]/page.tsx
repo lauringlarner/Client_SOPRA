@@ -535,9 +535,10 @@ if (!loaded || !isAuthenticated || !token || token.trim() === "" || !gameId) ret
     handleGameError(error, "Connection lost. Reconnecting...");
   });
 
-  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {
-    handleGameError(error, "Unable to load game state.");
-  });
+if (!game) {
+  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {handleGameError(error, "Spielstand konnte nicht geladen werden.");
+    });
+}
 
   return () => { cancelled = true; unsubscribe(); };
 }, [loaded, isAuthenticated, token, gameId, gameClient]);
