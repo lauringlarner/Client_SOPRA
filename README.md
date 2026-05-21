@@ -186,7 +186,7 @@ The typical journey through the app:
 
 After logging in, users land on the menu where they can create a new lobby, join one with a 6-character code, or start a solo practice session.
 
-![Main Menu](docs/screenshots/MainPage.png)
+![Main Menu](docs/screenshots/MainPage.PNG)
 
 ---
 
@@ -194,7 +194,7 @@ After logging in, users land on the menu where they can create a new lobby, join
 
 The host shares the lobby code with friends. Players pick their team and signal readiness. The host can adjust game duration and word list before starting.
 
-![Lobby Screen](docs/screenshots/MultiPlayerLobby.png)
+![Lobby Screen](docs/screenshots/MultiPlayerLobby.PNG)
 
 ---
 
@@ -202,7 +202,7 @@ The host shares the lobby code with friends. Players pick their team and signal 
 
 Both teams see the same 4×4 grid. Claimed tiles are marked with a checkmark: green for your team, orange for the enemy. A progress bar tracks remaining time. The chat icon opens a quick-message panel.
 
-![Game Board — Multiplayer](docs/screenshots/2playerGame.png)
+![Game Board — Multiplayer](docs/screenshots/2playerGame.PNG)
 
 ---
 
@@ -210,7 +210,7 @@ Both teams see the same 4×4 grid. Claimed tiles are marked with a checkmark: gr
 
 The same grid in solo mode — a single score card and no opponent tiles.
 
-![Game Board — Singleplayer](docs/screenshots/singlePlayerGameView.png)
+![Game Board — Singleplayer](docs/screenshots/singlePlayerGameView.PNG)
 
 ---
 
@@ -218,7 +218,7 @@ The same grid in solo mode — a single score card and no opponent tiles.
 
 Final scores are shown after the timer runs out or all tiles are claimed. The winning team card is highlighted in green.
 
-![Leaderboard](docs/screenshots/Leaderboard.png)
+![Leaderboard](docs/screenshots/Leaderboard.PNG)
 
 ---
 
