@@ -196,7 +196,7 @@ export default function GameBoardPage() {
   }, []);
 
   const fetchChat = useCallback(async () => {
-    if (!token || !gameId) return;
+    if (!token || token.trim() === "" || !gameId) return;
     const requestId = chatFetchRequestRef.current + 1;
     chatFetchRequestRef.current = requestId;
 
@@ -462,8 +462,8 @@ export default function GameBoardPage() {
   }, [isAuthenticated, loaded, lobbyId, router, userId]);
 
 useEffect(() => {
-  // CRITICAL FIX: Ensure token is present before executing lobby client requests
-  if (!loaded || !isAuthenticated || !token || !userId || userId.trim() === "") return;
+
+if (!loaded || !isAuthenticated || !token || token.trim() === "" || !userId || userId.trim() === "") return;
   let cancelled = false;
 
   const isSinglePlayer = getStoredSinglePlayerMode(userId, lobbyId) === 1;
@@ -510,8 +510,8 @@ useEffect(() => {
 
   // --- Game Subscription ---
 useEffect(() => {
-  // CRITICAL FIX: Ensure token exists before firing requests
-  if (!loaded || !isAuthenticated || !token || !gameId) return;
+
+if (!loaded || !isAuthenticated || !token || token.trim() === "" || !gameId) return;
   let cancelled = false;
   
   const applyGameDetails = (details: GameDetails) => {
@@ -537,9 +537,10 @@ useEffect(() => {
     handleGameError(error, "Connection lost. Reconnecting...");
   });
 
-  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {
-    handleGameError(error, "Unable to load game state.");
-  });
+if (!game) {
+  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {handleGameError(error, "Unable to load game state.");
+    });
+}
 
   return () => { cancelled = true; unsubscribe(); };
 }, [loaded, isAuthenticated, token, gameId, gameClient]);
