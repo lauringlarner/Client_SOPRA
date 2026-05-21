@@ -41,6 +41,7 @@ export function playCountdown() {
   if (typeof window === "undefined" || !getSoundEnabled()) return;
   if (!countdownAudio) countdownAudio = new Audio("/sounds/countdown-10s.mp3");
   countdownAudio.currentTime = 0;
+  countdownAudio.volume = 0.6;
   countdownAudio.play().catch(() => {});
 }
 //error
@@ -64,6 +65,7 @@ export function playBackground() {
   if (!backgroundAudio) {
     backgroundAudio = new Audio("/sounds/backgroundsound.mp3");
     backgroundAudio.loop = true;
+    backgroundAudio.volume = 0.4;
   }
   backgroundAudio.play().catch(() => {});
 }
