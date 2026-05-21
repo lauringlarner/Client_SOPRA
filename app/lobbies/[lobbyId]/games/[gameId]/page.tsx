@@ -445,7 +445,7 @@ export default function GameBoardPage() {
   }, [game, remainingSeconds]);
 
   useEffect(() => {
-    if (remainingSeconds <= 20 && remainingSeconds > 0 && game?.status !== "ENDED" && !countdownPlayedRef.current) {
+    if (remainingSeconds <= 10 && remainingSeconds > 0 && game?.status !== "ENDED" && !countdownPlayedRef.current) {
       countdownPlayedRef.current = true;
       playCountdown();
     }

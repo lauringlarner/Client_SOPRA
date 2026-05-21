@@ -69,7 +69,10 @@ export function unmuteAll() {
   [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio].forEach((audio) => {
     if (audio) audio.volume = 1;
   });
-  if (backgroundAudio) backgroundAudio.volume = 0.4;
+  if (backgroundAudio) {
+    backgroundAudio.volume = 0.4;
+    backgroundAudio.play().catch(() => {});
+  }
 }
 
 export function pauseBackground() {
