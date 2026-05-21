@@ -536,7 +536,7 @@ if (!loaded || !isAuthenticated || !token || token.trim() === "" || !gameId) ret
   });
 
 if (!game) {
-  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {handleGameError(error, "Spielstand konnte nicht geladen werden.");
+  gameClient.getGame(gameId).then(applyGameDetails).catch((error) => {handleGameError(error, "Unable to load game state.");
     });
 }
 
