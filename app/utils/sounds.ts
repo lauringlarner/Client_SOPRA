@@ -34,7 +34,7 @@ export function successClick() {
   if (typeof window === "undefined" || !getSoundEnabled()) return;
   if (!successAudio) successAudio = new Audio("/sounds/correct.mp3");
   successAudio.currentTime = 0;
-  successAudio.volume = 1.6;
+  successAudio.volume = 1.0;
   successAudio.play().catch(() => {});
 }
 //countdown warning
