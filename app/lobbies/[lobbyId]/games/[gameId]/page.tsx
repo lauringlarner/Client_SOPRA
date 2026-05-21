@@ -775,7 +775,7 @@ if (!game) {
                           key={key}
                           type="button"
                           className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName, isSinglePlayerGame)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}                          disabled={isClaimed || isProcessing}
-                          onClick={() => { if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
+                          onClick={() => { playBackground(); if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
                             <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>
