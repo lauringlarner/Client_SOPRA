@@ -232,8 +232,14 @@ function CameraContent() {
     }
   };
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
     if (claimedOverlayMessage || isRedirecting.current) return;
+
+    if (!token || token.trim() === "") {
+      setSubmissionError("Authenticating... Please wait a brief moment and try again.");
+      return;
+    }
+
     if (!capturedImage || !tileWord || !gameId) {
       setSubmissionError("Missing required submission data.");
       return;
@@ -321,14 +327,14 @@ function CameraContent() {
               />
 
               <div className="camera-actions-frame">
-                <button
-                  type="button"
-                  className="camera-button-capture"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || !capturedImage || !isImageLoaded}
-                >
-                  {isSubmitting ? "Uploading..." : "Submit"}
-                </button>
+              <button
+                type="button"
+                className="camera-button-capture"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !capturedImage || !isImageLoaded || !token}
+              >
+                {isSubmitting ? "Uploading..." : "Submit"}
+              </button>
                 <button
                   type="button"
                   className="camera-button-cancel"
