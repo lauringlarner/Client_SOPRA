@@ -42,6 +42,10 @@ export function playCountdown() {
   if (!countdownAudio) countdownAudio = new Audio("/sounds/countdown-10s.mp3");
   countdownAudio.currentTime = 0;
   countdownAudio.volume = 0.6;
+  if (backgroundAudio) backgroundAudio.volume = 0.1;
+  countdownAudio.onended = () => {
+    if (backgroundAudio) backgroundAudio.volume = 0.4;
+  };
   countdownAudio.play().catch(() => {});
 }
 //error
@@ -58,6 +62,13 @@ export function stopAllSounds() {
   [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio, backgroundAudio].forEach((audio) => {
     if (audio) { audio.pause(); audio.currentTime = 0; }
   });
+}
+
+export function stopBackground() {
+  if (backgroundAudio) {
+    backgroundAudio.pause();
+    backgroundAudio.currentTime = 0;
+  }
 }
 
 export function playBackground() {
