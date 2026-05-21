@@ -45,7 +45,7 @@ export function playCountdown() {
   countdownAudio.volume = 0.6;
   if (backgroundAudio) backgroundAudio.volume = 0.1;
   countdownAudio.onended = () => {
-    if (backgroundAudio) backgroundAudio.volume = 0.4;
+    if (backgroundAudio && getSoundEnabled()) backgroundAudio.volume = 0.4;
   };
   countdownAudio.play().catch(() => {});
 }
@@ -61,8 +61,19 @@ let backgroundAudio: HTMLAudioElement | null = null;
 
 export function stopAllSounds() {
   [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio, backgroundAudio].forEach((audio) => {
-    if (audio) { audio.pause(); audio.currentTime = 0; }
+    if (audio) audio.volume = 0;
   });
+}
+
+export function unmuteAll() {
+  [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio].forEach((audio) => {
+    if (audio) audio.volume = 1;
+  });
+  if (backgroundAudio) backgroundAudio.volume = 0.4;
+}
+
+export function pauseBackground() {
+  if (backgroundAudio) backgroundAudio.pause();
 }
 
 export function stopBackground() {
@@ -73,11 +84,14 @@ export function stopBackground() {
 }
 
 export function playBackground() {
-  if (typeof window === "undefined" || !getSoundEnabled()) return;
+  if (typeof window === "undefined") return;
   if (!backgroundAudio) {
     backgroundAudio = new Audio("/sounds/backgroundsound.mp3");
     backgroundAudio.loop = true;
     backgroundAudio.volume = 0.4;
   }
-  backgroundAudio.play().catch(() => {});
+  if (getSoundEnabled()) {
+    backgroundAudio.volume = 0.4;
+    backgroundAudio.play().catch(() => {});
+  }
 }

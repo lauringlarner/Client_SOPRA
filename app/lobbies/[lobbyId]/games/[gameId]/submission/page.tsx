@@ -7,7 +7,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
 import { setStoredActiveLobbyId } from "@/utils/lobbySession";
 import { setLastSubmissionWord } from "@/utils/submissionFeedback";
-import { playCameraClick } from "@/utils/sounds";
+import { playCameraClick, playBackground } from "@/utils/sounds";
 import { GameDetails, GameTileStatus } from "@/types/game";
 
 const api = new ApiService();
@@ -41,6 +41,10 @@ function CameraContent() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const touchStartDist = useRef<number | null>(null);
   const initialZoomRef = useRef<number>(1);
+
+  useEffect(() => {
+    return () => playBackground();
+  }, []);
 
   const stopCameraStream = () => {
     if (streamRef.current) {
