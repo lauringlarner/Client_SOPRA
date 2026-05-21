@@ -159,6 +159,7 @@ export default function GameBoardPage() {
     setSoundEnabled(next);
     setSoundEnabledState(next);
     if (!next) stopAllSounds();
+    else playBackground();
   };
 
   useEffect(() => {
