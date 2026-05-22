@@ -4,9 +4,21 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import type { ApplicationError } from "@/types/error";
 import { playUiBeep } from "@/utils/sounds";
 
 const api = new ApiService();
+
+function validateRequiredPassword(password: string): string | null {
+  return password.trim().length === 0 ? "Password cannot be empty." : null;
+}
+
+function getFriendlyLoginError(error: unknown): string {
+  const applicationError = error as Partial<ApplicationError> | undefined;
+  return applicationError?.status === 401
+    ? "Invalid username or password."
+    : "Something went wrong. Please try again.";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,45 +28,11 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Validation States for Dynamic Helper Text
-  const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // Block special characters and spaces only for username
-  const handleUsernameBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
-    const char = (event.nativeEvent as InputEvent).data;
-    if (char) {
-      if (/[^a-zA-Z0-9]|\s/.test(char)) {
-        event.preventDefault();
-        setUsernameError("Special characters are not allowed in the username.");
-      }
-    }
-  };
-
-  const handleUsernameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === " ") {
-      event.preventDefault();
-      setUsernameError("Special characters are not allowed in the username.");
-    }
-  };
-
-  const validateField = (name: string, value: string) => {
-    if (name === "username") {
-      if (value.length > 0 && /^\d/.test(value)) {
-        setUsernameError("Username must start with a letter, not a number.");
-      } else if (value.length > 0 && /[^a-zA-Z0-9]/.test(value)) {
-        setUsernameError("Special characters are not allowed in the username.");
-      } else {
-        setUsernameError("");
-      }
-    } else if (name === "password") {
-      if (value.length > 0 && !/\d/.test(value)) {
-        setPasswordError("Password must contain at least one digit.");
-      } else if (value.length > 0 && value.length < 8) {
-        setPasswordError("Password must be at least 8 characters.");
-      } else {
-        setPasswordError("");
-      }
+  const validateField = (name: string) => {
+    if (name === "password") {
+      setPasswordError("");
     }
   };
 
@@ -71,34 +49,15 @@ export default function LoginPage() {
     const password = credentials.password as string;
 
     // Validation checks
-    if (/^\d/.test(username)) {
-      setError("Username cannot start with a number.");
+    if (username.trim().length === 0) {
+      setError("Username cannot be empty.");
       setIsSubmitting(false);
       return;
     }
 
-    if (/\s/.test(username)) {
-      setError("Username must not contain spaces.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Username injection regex (Consistent with Register)
-    const usernameInjectionRegex = /[;$"'\\/<>,. ]/;
-    if (usernameInjectionRegex.test(username)) {
-      setError("Special characters are not allowed in the username.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!/\d/.test(password)) {
-      setError("Password must contain at least one digit.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const passwordValidationError = validateRequiredPassword(password);
+    if (passwordValidationError) {
+      setPasswordError(passwordValidationError);
       setIsSubmitting(false);
       return;
     }
@@ -112,11 +71,7 @@ export default function LoginPage() {
       setSession(loginData.token, loginData.id, loginData.username);
       router.push("/menu");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred.");
-      }
+      setError(getFriendlyLoginError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -143,7 +98,7 @@ export default function LoginPage() {
         </div>
         <h1 className="auth-title">Login &amp; Play</h1>
 
-        <form className="auth-form-card" onSubmit={handleLogin}>
+        <form className="auth-form-card" onSubmit={handleLogin} noValidate>
           {error && (
             <div className="error-template">
               {error}
@@ -159,17 +114,7 @@ export default function LoginPage() {
               required
               disabled={isSubmitting}
               maxLength={15}
-              onBeforeInput={handleUsernameBeforeInput}
-              onKeyDown={handleUsernameKeyDown}
-              onChange={(e) => validateField("username", e.target.value)}
-              pattern="[a-zA-Z][a-zA-Z0-9]*"
-              title="Username must start with a letter and contain only alphanumeric characters without spaces"
             />
-            {usernameError && (
-              <span style={{ fontSize: "0.85rem", color: "#f40303cd", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
-                {usernameError}
-              </span>
-            )}
           </label>
 
           <label className="field-group">
@@ -184,7 +129,7 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 minLength={8}
                 maxLength={30}
-                onChange={(e) => validateField("password", e.target.value)}
+                onChange={() => validateField("password")}
                 style={{ paddingRight: "3.5rem" }}
               />
               <button

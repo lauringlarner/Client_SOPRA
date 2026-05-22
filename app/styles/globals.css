@@ -812,8 +812,8 @@ textarea {
 
 @media (prefers-color-scheme: dark) {
   .overlay-error-bubble {
-    background-color: #c96a52; 
-    color: #ffe6df;           
+    background-color: #c96a52;
+    color: #ffe6df;
   }
 }
 
@@ -3280,4 +3280,3 @@ details[open] .chevron {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-

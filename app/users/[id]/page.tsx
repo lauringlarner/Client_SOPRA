@@ -4,9 +4,55 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import type { ApplicationError } from "@/types/error";
 import StatsOverlay from "@/components/StatsOverlay"; // Adjust import path as needed
 
 const api = new ApiService();
+const MIN_PASSWORD_LENGTH = 8;
+
+function validateRequiredPassword(
+  password: string,
+  label: string,
+): string | null {
+  return password.trim().length === 0 ? `${label} cannot be empty.` : null;
+}
+
+function validateNewPassword(password: string, label: string): string | null {
+  if (password.trim().length === 0) {
+    return `${label} cannot be empty.`;
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `${label} must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
+  }
+  if (!/\d/.test(password)) {
+    return `${label} must contain at least one digit.`;
+  }
+
+  return null;
+}
+
+function getFriendlyPasswordChangeError(error: unknown): string {
+  const applicationError = error as Partial<ApplicationError> | undefined;
+  const reason = applicationError?.reason?.toLowerCase() ?? "";
+
+  if (applicationError?.status === 401) {
+    return "Your session expired. Please log in again.";
+  }
+  if (reason.includes("old password")) {
+    return "Current password is incorrect.";
+  }
+  if (reason.includes("new password") && reason.includes("empty")) {
+    return "New password cannot be empty.";
+  }
+  if (reason.includes("at least 8 characters")) {
+    return "New password must be at least 8 characters long.";
+  }
+  if (reason.includes("at least one digit")) {
+    return "New password must contain at least one digit.";
+  }
+
+  return "Error updating password.";
+}
 
 interface User {
   id: string;
@@ -65,6 +111,26 @@ export default function UserProfilePage() {
     const oldPassword = formData.get("oldPassword") as string;
     const newPassword = formData.get("newPassword") as string;
 
+    const oldPasswordValidationError = validateRequiredPassword(
+      oldPassword,
+      "Current password",
+    );
+    if (oldPasswordValidationError) {
+      setError(oldPasswordValidationError);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const newPasswordValidationError = validateNewPassword(
+      newPassword,
+      "New password",
+    );
+    if (newPasswordValidationError) {
+      setError(newPasswordValidationError);
+      setIsSubmitting(false);
+      return;
+    }
+
     if (oldPassword === newPassword) {
       setError("New password cannot be the same as the current one.");
       setIsSubmitting(false);
@@ -82,7 +148,7 @@ export default function UserProfilePage() {
         router.replace("/");
       }, 2000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error updating password.");
+      setError(getFriendlyPasswordChangeError(err));
       setIsSubmitting(false);
     }
   };
@@ -151,6 +217,7 @@ export default function UserProfilePage() {
                     placeholder="Enter current password" 
                     required 
                     disabled={isSubmitting} 
+                    maxLength={30}
                     style={{ paddingRight: "3.5rem", width: "100%" }}
                   />
                   <button
@@ -192,6 +259,7 @@ export default function UserProfilePage() {
                     placeholder="Enter new password" 
                     required 
                     disabled={isSubmitting} 
+                    maxLength={30}
                     style={{ paddingRight: "3.5rem", width: "100%" }}
                   />
                   <button

@@ -10,9 +10,48 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { ApiService } from "@/api/apiService";
+import type { ApplicationError } from "@/types/error";
 import { playUiBeep } from "@/utils/sounds";
 
 const api = new ApiService();
+const MIN_PASSWORD_LENGTH = 8;
+
+function validateNewPassword(password: string): string | null {
+  if (password.trim().length === 0) {
+    return "Password cannot be empty.";
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
+  }
+  if (!/\d/.test(password)) {
+    return "Password must contain at least one digit.";
+  }
+
+  return null;
+}
+
+function getFriendlyRegisterError(error: unknown): string {
+  const applicationError = error as Partial<ApplicationError> | undefined;
+  const reason = applicationError?.reason?.toLowerCase() ?? "";
+
+  if (applicationError?.status === 409) {
+    return "This username is already taken.";
+  }
+  if (reason.includes("username") && reason.includes("empty")) {
+    return "Username cannot be empty.";
+  }
+  if (reason.includes("password") && reason.includes("empty")) {
+    return "Password cannot be empty.";
+  }
+  if (reason.includes("at least 8 characters")) {
+    return "Password must be at least 8 characters long.";
+  }
+  if (reason.includes("at least one digit")) {
+    return "Password must contain at least one digit.";
+  }
+
+  return "Something went wrong. Please try again.";
+}
 
 const randomEmoji = () => RAIN_EMOJIS[Math.floor(Math.random() * RAIN_EMOJIS.length)];
 
@@ -64,13 +103,9 @@ export default function RegisterPage() {
         setUsernameError("");
       }
     } else if (name === "password") {
-      if (value.length > 0 && !/\d/.test(value)) {
-        setPasswordError("Password must contain at least one digit.");
-      } else if (value.length > 0 && value.length < 8) {
-        setPasswordError("Password must be at least 8 characters.");
-      } else {
-        setPasswordError("");
-      }
+      setPasswordError(
+        value.length > 0 ? validateNewPassword(value) ?? "" : "",
+      );
     }
   };
 
@@ -86,6 +121,12 @@ export default function RegisterPage() {
     const password = userData.password as string;
 
     // Additional validations
+    if (inputUsername.trim().length === 0) {
+      setError("Username cannot be empty.");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (/^\d/.test(inputUsername)) {
       setError("Username cannot start with a number.");
       setIsSubmitting(false);
@@ -106,14 +147,9 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!/\d/.test(password)) {
-      setError("Password must contain at least one digit.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const passwordValidationError = validateNewPassword(password);
+    if (passwordValidationError) {
+      setPasswordError(passwordValidationError);
       setIsSubmitting(false);
       return;
     }
@@ -133,11 +169,7 @@ export default function RegisterPage() {
       router.push("/menu");
       
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred.");
-      }
+      setError(getFriendlyRegisterError(err));
     } finally {
       setIsSubmitting(false);
     }

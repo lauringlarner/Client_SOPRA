@@ -12,7 +12,10 @@ export class ApiService {
     };
   }
 
-  private createHeaders(token?: string, includeJsonContentType: boolean = true): HeadersInit {
+  private createHeaders(
+    token?: string,
+    includeJsonContentType: boolean = true,
+  ): HeadersInit {
     const headers: Record<string, string> = includeJsonContentType
       ? { ...this.defaultHeaders }
       : {};
@@ -37,12 +40,21 @@ export class ApiService {
   ): Promise<T> {
     if (!res.ok) {
       let errorDetail = res.statusText;
+      let reason: string | undefined;
       try {
-        const errorInfo = await res.json();
-        if (errorInfo?.reason) {
-          errorDetail = errorInfo.reason;
-        } else if (errorInfo?.message) {
-          errorDetail = errorInfo.message;
+        const errorInfo = await res.json() as {
+          reason?: unknown;
+          message?: unknown;
+        };
+        const parsedReason = typeof errorInfo.reason === "string"
+          ? errorInfo.reason
+          : typeof errorInfo.message === "string"
+          ? errorInfo.message
+          : undefined;
+
+        if (parsedReason) {
+          reason = parsedReason;
+          errorDetail = parsedReason;
         } else {
           errorDetail = JSON.stringify(errorInfo);
         }
@@ -58,7 +70,9 @@ export class ApiService {
         null,
         2,
       );
+      error.reason = reason;
       error.status = res.status;
+      error.statusText = res.statusText;
       throw error;
     }
 
