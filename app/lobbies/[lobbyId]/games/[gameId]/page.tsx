@@ -104,7 +104,6 @@ export default function GameBoardPage() {
 
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [minimumTimeElapsed, setMinimumTimeElapsed] = useState(false);
-  const loadingTimerStarted = useRef(false);
 
 
   
@@ -182,28 +181,34 @@ const isReturningFromSubmission = useMemo(() => {
 
 
 
-useEffect(() => {
-      if (loadingTimerStarted.current) return;
-      loadingTimerStarted.current = true;
+const hasCheckedStorage = useRef(false);
+  const wasReturning = useRef(false);
 
-      
-      const returningFromCam = sessionStorage.getItem("returning_from_camera") === "true";
-
-      if (returningFromCam) {
-        sessionStorage.removeItem("returning_from_camera"); // Clear it
-        setIsInitialLoading(false);
-        setMinimumTimeElapsed(true);
-      } else {
-        setIsInitialLoading(true);
-        setMinimumTimeElapsed(false);
-
-        const timer = setTimeout(() => {
-          setMinimumTimeElapsed(true);
-        }, 5000);
-
-        return () => clearTimeout(timer);
+  useEffect(() => {
+    // 1. Only read and delete from sessionStorage ONCE during the strict mode cycle
+    if (!hasCheckedStorage.current) {
+      wasReturning.current = sessionStorage.getItem("returning_from_camera") === "true";
+      if (wasReturning.current) {
+        sessionStorage.removeItem("returning_from_camera");
       }
-    }, []);
+      hasCheckedStorage.current = true;
+    }
+
+    // 2. Base our logic on the safely cached ref
+    if (wasReturning.current) {
+      setIsInitialLoading(false);
+      setMinimumTimeElapsed(true);
+    } else {
+      setIsInitialLoading(true);
+      setMinimumTimeElapsed(false);
+
+      const timer = setTimeout(() => {
+        setMinimumTimeElapsed(true);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
     const shouldShowLoadingScreen = isInitialLoading && (!minimumTimeElapsed || !game);
 
@@ -847,7 +852,8 @@ if (shouldShowLoadingScreen) {
                           key={key}
                           type="button"
                           className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName, isSinglePlayerGame)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}                          disabled={isClaimed || isProcessing}
-                          onClick={() => { playBackground(); if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
+                          onClick={() => { playBackground(); if (soundEnabled) tileSound.current?.play().catch(() => {}); sessionStorage.setItem("returning_from_camera", "true");
+                          router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
                             <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>
