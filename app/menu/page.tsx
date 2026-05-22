@@ -252,29 +252,27 @@ export default function MenuPage() {
               </button>
             </div>
             <div className="menu-main-actions">
-              <button type="button" className="vq-button menu-main-btn" onClick={() => void handleCreateLobby()} disabled={pendingAction !== null}>
-                {pendingAction === "create" ? "Creating..." : "Create Lobby"}
-              </button>
-              <button type="button" className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>Join Lobby</button>
-              <button type="button" className="vq-button menu-main-btn" onClick={() => void handlePractice()} disabled={pendingAction !== null}>
-              {pendingAction === "create" ? "Starting..." : "Singleplayer"}
-            </button>
+              {activeLobbyId ? (
+                <button type="button" className="vq-button menu-main-btn" onClick={() => void handleResumeSession()} disabled={pendingAction !== null}>
+                  {pendingAction === "resume" ? "Loading..." : "Rejoin"}
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="vq-button menu-main-btn" onClick={() => void handleCreateLobby()} disabled={pendingAction !== null}>
+                    {pendingAction === "create" ? "Creating..." : "Create Lobby"}
+                  </button>
+                  <button type="button" className="vq-button menu-main-btn" onClick={() => setActiveOverlay("join")}>Join Lobby</button>
+                  <button type="button" className="vq-button menu-main-btn" onClick={() => void handlePractice()} disabled={pendingAction !== null}>
+                    {pendingAction === "create" ? "Starting..." : "Singleplayer"}
+                  </button>
+                </>
+              )}
             </div>
           </section>
 
           {menuMessage && <div className="menu-status-card is-error">{menuMessage}</div>}
 
           <section className={`secondary-actions ${activeLobbyId ? "" : "is-single-item"}`}>
-            {activeLobbyId && (
-              <button
-                type="button"
-                className="vq-button menu-secondary-btn"
-                onClick={() => void handleResumeSession()}
-                disabled={pendingAction !== null}
-              >
-                {pendingAction === "resume" ? "Loading..." : "Take Me Back"}
-              </button>
-            )}
             <button type="button" className="vq-button menu-secondary-btn logout" onClick={() => { logout(); router.replace("/"); }}>Logout</button>
           </section>
         </div>
