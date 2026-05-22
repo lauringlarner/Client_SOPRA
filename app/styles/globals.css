@@ -3322,11 +3322,14 @@ details[open] .chevron {
 /* Hover and Focus States */
 .eye-toggle-btn:hover:not(:disabled),
 .eye-toggle-btn:focus-visible {
-  background: #111111 !important; /* Slightly lighter black on hover */
-  color: var(--vq-aquamarine); /* Optional: switches icon color on hover (e.g., lime green accent) */
+ 
+  color: var(--vq-aquamarine); /* Optional: switches icon color on hover */
   transform: scale(1.05); /* Subtle bounce pop */
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.15); /* Soft outer glow */
-  outline: none;
+  
+  /* Add the white border outline here */
+  outline: 1px solid #ffffff;
+  outline-offset: -1px; /* Keeps the outline neatly inside or right on the edge */
 }
 
 /* Active Click State */
