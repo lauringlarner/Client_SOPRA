@@ -5,7 +5,11 @@ export function getSoundEnabled(): boolean {
 
 export function setSoundEnabled(val: boolean): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem("soundEnabled", val ? "true" : "false");
+  try {
+    localStorage.setItem("soundEnabled", val ? "true" : "false");
+  } catch {
+    // localStorage unavailable (e.g. iOS private mode) — state still toggles in memory
+  }
 }
 
 let uiClickAudio: HTMLAudioElement | null = null;
