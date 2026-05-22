@@ -871,7 +871,8 @@ if (shouldShowLoadingScreen) {
       <GameRulesOverlay 
         isOpen={showRules}
         onClose={() => setShowRules(false)} 
-        gameModes={gameModes}          
+        gameModes={gameModes}   
+        isSinglePlayer={isSinglePlayerGame}       
       />
 
       {/* --- CHAT OVERLAY --- */}

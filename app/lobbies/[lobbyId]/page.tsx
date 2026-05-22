@@ -756,6 +756,7 @@ const confirmDeleteLobby = async () => {
         isOpen={showRules}
         onClose={() => setShowRules(false)}
         gameModes={gameModes}
+        isSinglePlayer={!isMultiplayer}
       />
 
       <StatsOverlay
