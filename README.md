@@ -222,7 +222,6 @@ Final scores are shown after the timer runs out or all tiles are claimed. The wi
 
 ---
 
-> **Note:** To add screenshots, create a `docs/screenshots/` folder in the repository and upload the images with the filenames above.
 
 ---
 
