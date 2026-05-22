@@ -3303,3 +3303,42 @@ details[open] .chevron {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+
+.eye-toggle-btn {
+  background: var(--vq-deep) !important; /* Force browser to apply pure black background */
+  border: none;
+  border-radius: 8px; /* Matches standard mobile inputs */
+  color: #ffffff;
+  height: 44px; /* Optimal mobile touch-target size */
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevents the button from shrinking on small screens */
+  padding: 0;
+}
+
+/* Hover and Focus States */
+.eye-toggle-btn:hover:not(:disabled),
+.eye-toggle-btn:focus-visible {
+  background: #111111 !important; /* Slightly lighter black on hover */
+  color: var(--vq-aquamarine); /* Optional: switches icon color on hover (e.g., lime green accent) */
+  transform: scale(1.05); /* Subtle bounce pop */
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15); /* Soft outer glow */
+  outline: none;
+}
+
+/* Active Click State */
+.eye-toggle-btn:active:not(:disabled) {
+  transform: scale(0.95); /* Shrinks slightly when physically pressed */
+}
+
+/* Submitting / Disabled State Override */
+.eye-toggle-btn:disabled {
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+
