@@ -234,10 +234,6 @@ const hasCheckedStorage = useRef(false);
     }
   }, [game?.status, gameId, lobbyId, router]);
 
-  useEffect(() => {
-    console.log("GAME STATUS:", game?.status);
-  }, [game?.status]);
-
   // --- 2b. Timer-based fallback redirect ---
   // If the Pusher ENDED event is silently dropped (parse error, stale connection,
   // zombie socket after many games), this fires ~5 s after the game's expected end
@@ -597,6 +593,7 @@ if (!loaded || !isAuthenticated || !token || token.trim() === "" || !gameId) ret
   
   const applyGameDetails = (details: GameDetails) => {
     if (cancelled) return;
+    console.log("PUSHER UPDATE:", details.status);
     latestGameRef.current = details;
     setGame(details);
     setConnectionState("live");
