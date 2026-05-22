@@ -281,7 +281,7 @@ export default function MenuPage() {
           <div className="overlay-backdrop" onClick={closeOverlay}>
             <div className="overlay-card" onClick={(e) => e.stopPropagation()}>
               <h2 className="overlay-title">Join Lobby</h2>
-              {overlayError && <div className="overlay-error-bubble">{overlayError}</div>}
+              {overlayError && <div className="error-template">{overlayError}</div>}
               <input
                 className="overlay-input"
                 placeholder="CODE"
