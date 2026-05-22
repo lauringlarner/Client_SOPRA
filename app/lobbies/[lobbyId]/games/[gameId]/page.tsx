@@ -26,7 +26,7 @@ import {
 import {
   clearLastSubmissionWord,
 } from "@/utils/submissionFeedback";
-import { playCountdown, getSoundEnabled, setSoundEnabled, successClick, errorClick, playBackground, stopBackground, stopAllSounds } from "@/utils/sounds";
+import { playCountdown, getSoundEnabled, setSoundEnabled, successClick, errorClick, playBackground, pauseBackground, stopAllSounds, unmuteAll } from "@/utils/sounds";
 import {
   getStoredLobbyTeam,
   getStoredSinglePlayerMode,
@@ -159,13 +159,13 @@ export default function GameBoardPage() {
     setSoundEnabled(next);
     setSoundEnabledState(next);
     if (!next) stopAllSounds();
-    else playBackground();
+    else unmuteAll();
   };
 
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
     playBackground();
-    return () => stopBackground();
+    return () => pauseBackground();
   }, [loaded, isAuthenticated]);
 
   // --- 1. Background Scroll Lock ---
@@ -445,7 +445,7 @@ export default function GameBoardPage() {
   }, [game, remainingSeconds]);
 
   useEffect(() => {
-    if (remainingSeconds <= 20 && remainingSeconds > 0 && game?.status !== "ENDED" && !countdownPlayedRef.current) {
+    if (remainingSeconds <= 10 && remainingSeconds > 0 && game?.status !== "ENDED" && !countdownPlayedRef.current) {
       countdownPlayedRef.current = true;
       playCountdown();
     }
@@ -775,7 +775,7 @@ if (!game) {
                           key={key}
                           type="button"
                           className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName, isSinglePlayerGame)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}                          disabled={isClaimed || isProcessing}
-                          onClick={() => { if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
+                          onClick={() => { playBackground(); if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
                             <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>
