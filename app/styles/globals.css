@@ -810,6 +810,13 @@ textarea {
   animation: vq-shake 0.4s ease-in-out;
 }
 
+@media (prefers-color-scheme: dark) {
+  .overlay-error-bubble {
+    background-color: #c96a52; 
+    color: #ffe6df;           
+  }
+}
+
 /* Schüttel-Effekt bei falschem Code */
 @keyframes vq-shake {
   0%, 100% { transform: translateX(0); }
