@@ -48,7 +48,6 @@ export default function LoginPage() {
     const username = credentials.username as string;
     const password = credentials.password as string;
 
-    // Validation checks
     if (username.trim().length === 0) {
       setError("Username cannot be empty.");
       setIsSubmitting(false);
@@ -119,7 +118,7 @@ export default function LoginPage() {
 
           <label className="field-group">
             <span className="field-label">Password</span>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", width: "100%" }}>
               <input
                 name="password"
                 className="field-input"
@@ -129,25 +128,18 @@ export default function LoginPage() {
                 disabled={isSubmitting}
                 minLength={8}
                 maxLength={30}
+                autoComplete="current-password"
                 onChange={() => validateField("password")}
-                style={{ paddingRight: "3.5rem" }}
+                style={{ flex: 1 }}
               />
               <button
                 type="button"
+                className="eye-toggle-btn"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 style={{
-                  position: "absolute",
-                  right: "0.75rem",
-                  background: "transparent",
-                  border: "none",
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                  color: "#ffffff",
-                  padding: "0.25rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  cursor: isSubmitting ? "not-allowed" : "pointer"
                 }}
               >
                 {showPassword ? (

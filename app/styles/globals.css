@@ -3303,3 +3303,58 @@ details[open] .chevron {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+
+.eye-toggle-btn {
+  background: var(--vq-deep) !important; /* Force browser to apply pure black background */
+  border: none;
+  border-radius: 8px; /* Matches standard mobile inputs */
+  color: #ffffff;
+  height: 44px; /* Optimal mobile touch-target size */
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevents the button from shrinking on small screens */
+  padding: 0;
+}
+
+/* Hover and Focus States */
+.eye-toggle-btn:hover:not(:disabled),
+.eye-toggle-btn:focus-visible {
+ 
+  color: var(--vq-aquamarine); /* Optional: switches icon color on hover */
+  transform: scale(1.05); /* Subtle bounce pop */
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.15); /* Soft outer glow */
+  
+  /* Add the white border outline here */
+  outline: 1px solid #ffffff;
+  outline-offset: -1px; /* Keeps the outline neatly inside or right on the edge */
+}
+
+/* Active Click State */
+.eye-toggle-btn:active:not(:disabled) {
+  transform: scale(0.95); /* Shrinks slightly when physically pressed */
+}
+
+/* Submitting / Disabled State Override */
+.eye-toggle-btn:disabled {
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+
+
+/* Removes the background color specifically for the profile overlay version */
+.eye-toggle-btn.profile-hide-button {
+  background: transparent !important;
+  color: #000000; /* Adjust color if needed so the icon is visible against a light background */
+}
+
+/* Optional: Ensure the hover state background stays transparent too */
+.eye-toggle-btn.profile-hide-button:hover:not(:disabled),
+.eye-toggle-btn.profile-hide-button:focus-visible {
+  background: transparent !important;
+}
+
