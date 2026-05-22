@@ -593,7 +593,6 @@ if (!loaded || !isAuthenticated || !token || token.trim() === "" || !gameId) ret
   
   const applyGameDetails = (details: GameDetails) => {
     if (cancelled) return;
-    console.log("PUSHER UPDATE:", details.status);
     latestGameRef.current = details;
     setGame(details);
     setConnectionState("live");
