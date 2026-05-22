@@ -118,6 +118,7 @@ function CameraContent() {
       redirectTimerRef.current = setTimeout(() => {
         if (!isRedirecting.current) {
           isRedirecting.current = true;
+          sessionStorage.setItem("returning_from_camera", "true");
           router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
         }
       }, 2000);
@@ -264,6 +265,7 @@ function CameraContent() {
       await api.post<void>(`/games/${gameId}/submission`, formData, token);
 
       setLastSubmissionWord(tileWord);
+      sessionStorage.setItem("returning_from_camera", "true");
       router.replace(`/lobbies/${lobbyId}/games/${gameId}`);
     } catch (error) {
       if (isGameEndedError(error)) {
@@ -278,6 +280,7 @@ function CameraContent() {
 
   const handleCancel = () => {
     stopCameraStream();
+    sessionStorage.setItem("returning_from_camera", "true");
     router.back();
   };
 

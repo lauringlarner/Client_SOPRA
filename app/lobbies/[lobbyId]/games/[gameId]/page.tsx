@@ -99,6 +99,13 @@ export default function GameBoardPage() {
   const [chatPreviewContentWidth, setChatPreviewContentWidth] = useState(0);
   const [isSendingChat, setIsSendingChat] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
+
+  // --- Loadingscreen ---
+
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [minimumTimeElapsed, setMinimumTimeElapsed] = useState(false);
+
+
   
   // --- Refs ---
   const topActionsRef = useRef<HTMLDivElement>(null);
@@ -161,6 +168,42 @@ export default function GameBoardPage() {
     if (!next) stopAllSounds();
     else unmuteAll();
   };
+
+
+
+
+
+
+const hasCheckedStorage = useRef(false);
+  const wasReturning = useRef(false);
+
+  useEffect(() => {
+    // 1. Only read and delete from sessionStorage ONCE during the strict mode cycle
+    if (!hasCheckedStorage.current) {
+      wasReturning.current = sessionStorage.getItem("returning_from_camera") === "true";
+      if (wasReturning.current) {
+        sessionStorage.removeItem("returning_from_camera");
+      }
+      hasCheckedStorage.current = true;
+    }
+
+    // 2. Base our logic on the safely cached ref
+    if (wasReturning.current) {
+      setIsInitialLoading(false);
+      setMinimumTimeElapsed(true);
+    } else {
+      setIsInitialLoading(true);
+      setMinimumTimeElapsed(false);
+
+      const timer = setTimeout(() => {
+        setMinimumTimeElapsed(true);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+    const shouldShowLoadingScreen = isInitialLoading && (!minimumTimeElapsed || !game);
 
   useEffect(() => {
     if (!loaded || !isAuthenticated) return;
@@ -633,13 +676,40 @@ if (!game) {
 
   if (!loaded || !isAuthenticated) return <div className="app-shell" />;
 
+
+
   const isSinglePlayerGame = game?.isSinglePlayer ?? storedSinglePlayerMode;
   const teamScores: TeamScoreViewModel[] = game && myTeamName
     ? buildTeamScores(myTeamName, game.score_1, game.score_2, isSinglePlayerGame)
     : [];
 
+if (shouldShowLoadingScreen) {
+  const loadingText = "Game Board Loading...";
+  return (
+    <div className="app-shell phone-frame screen-gradient">
+      <div className="board-loading-container">
+        <div className="loading-content-box">
+          <div className="big-loading-circle"></div>
+          <h2 className="loading-text-wave" aria-label={loadingText}>
+            {loadingText.split("").map((char, index) => (
+              <span 
+                key={index} 
+                style={{ "--char-index": index } as React.CSSProperties}
+                className={char === " " ? "wave-space" : ""}
+              >
+                {char}
+              </span>
+            ))}
+          </h2>
+        </div>
+      </div>
+    </div>
+  );
+}
+
   return (
     <div className="app-shell">
+
       {showBingoBanner && (
         <div className="bingo-overlay">
           BINGO!
@@ -775,7 +845,8 @@ if (!game) {
                           key={key}
                           type="button"
                           className={`bingo-field-button ${getTileStateClass(tile.status, myTeamName, isSinglePlayerGame)} ${isSuccessShaking ? "is-success-shake" : ""} ${isBingoGlow ? "is-bingo-tile is-animating-bingo" : ""}`}                          disabled={isClaimed || isProcessing}
-                          onClick={() => { playBackground(); if (soundEnabled) tileSound.current?.play().catch(() => {}); router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
+                          onClick={() => { playBackground(); if (soundEnabled) tileSound.current?.play().catch(() => {}); sessionStorage.setItem("returning_from_camera", "true");
+                          router.push(`/lobbies/${lobbyId}/games/${gameId}/submission?tileWord=${encodeURIComponent(tile.word)}`); }}
                         >
                           {isProcessing ? (
                             <div className={`loader ${getTileLoaderClass(tile.status, myTeamName)}`}></div>

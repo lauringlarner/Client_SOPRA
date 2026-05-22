@@ -3184,3 +3184,93 @@ details[open] .chevron {
   margin-top: 10px;
   margin-bottom: 15px;
 }
+
+
+/* loading screen game*/
+
+.board-loading-container {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-content-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+}
+
+.loading-text {
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.loading-subtext {
+  color: rgba(255, 255, 255, 0.6); /* Soft contrast against the screen-gradient backdrop */
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.loading-text-wave {
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 1px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Base style for every moving letter */
+.loading-text-wave span {
+  display: inline-block;
+  animation: textWaveKeyframe 1.4s ease-in-out infinite;
+  /* Multiplies the character slot position by an offset to time the wave perfectly */
+  animation-delay: calc(0.06s * var(--char-index));
+}
+
+/* Ensures spaces keep their exact structural width and do not collapse */
+.loading-text-wave .wave-space {
+  width: 0.45rem;
+}
+
+/* Big Spinning Circle Indicator Layout unchanged */
+.big-loading-circle {
+  width: 80px;
+  height: 80px;
+  border: 6px solid rgba(255, 255, 255, 0.1);
+  border-top: 6px solid #95D6A2;
+  border-radius: 50%;
+  animation: spinBigCircle 1.0s linear infinite;
+}
+
+/* Keyframes controlling the physical bounce path */
+@keyframes textWaveKeyframe {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-10px); /* Adjust this value to make the wave higher or shallower */
+    color: #95D6A2;               /* Subtly highlights the letter with your theme color as it peaks */
+  }
+  60% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes spinBigCircle {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
