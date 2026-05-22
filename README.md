@@ -254,4 +254,4 @@ Template and course infrastructure provided by [HASEL UZH](https://github.com/HA
 
 ## License
 
-To be determined.
+This project is licensed under the **MIT LICENSE**. See the [LICENSE](LICENSE) file for details.
