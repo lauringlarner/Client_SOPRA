@@ -64,9 +64,13 @@ export function errorClick() {
 let backgroundAudio: HTMLAudioElement | null = null;
 
 export function stopAllSounds() {
-  [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio, backgroundAudio].forEach((audio) => {
+  [uiClickAudio, cameraClickAudio, successAudio, errorAudio, countdownAudio].forEach((audio) => {
     if (audio) audio.volume = 0;
   });
+  if (backgroundAudio) {
+    backgroundAudio.volume = 0;
+    backgroundAudio.pause();
+  }
 }
 
 export function unmuteAll() {
