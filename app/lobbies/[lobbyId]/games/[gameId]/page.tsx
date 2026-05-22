@@ -170,14 +170,7 @@ export default function GameBoardPage() {
   };
 
 
-const isReturningFromSubmission = useMemo(() => {
-  if (typeof window === "undefined") return false;
 
-  const ref = document.referrer || "";
-  if (ref.includes("/submission")) return true;
-
-  return false;
-}, []);
 
 
 
