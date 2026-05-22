@@ -1,11 +1,5 @@
 "use client";
 
-
-// Add or remove emojis here to customize the rain animation
-const RAIN_EMOJIS = ["📸", "🌲", "🚗", "🕶️", "🎧", "🚃", " 🚲", "💻", "🕐", "🚪", "🪑", "🚀", "🪖", "⚽️" , "⛱️", "🏤" ,"☁️"];
-// How many emojis to show at once
-const RAIN_COUNT = 5;
-
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthSession } from "@/hooks/useAuthSession";
@@ -53,29 +47,17 @@ function getFriendlyRegisterError(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-const randomEmoji = () => RAIN_EMOJIS[Math.floor(Math.random() * RAIN_EMOJIS.length)];
-
-const initRainItems = () =>
-  Array.from({ length: RAIN_COUNT }, (_, i) => ({
-    emoji: randomEmoji(),
-    left: Math.floor(Math.random() * 90),
-    duration: 14 + Math.random() * 8,
-    delay: (i / RAIN_COUNT) * 20,
-  }));
-
 export default function RegisterPage() {
   const router = useRouter();
   const { loaded, isAuthenticated, setSession } = useAuthSession();
-  const [rainItems, setRainItems] = useState(initRainItems);
+  
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Validation States for Dynamic Helper Text
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
-  // Block special characters and spaces only for username
   const handleUsernameBeforeInput = (event: React.FormEvent<HTMLInputElement>) => {
     const char = (event.nativeEvent as InputEvent).data;
     if (char) {
@@ -104,7 +86,7 @@ export default function RegisterPage() {
       }
     } else if (name === "password") {
       setPasswordError(
-        value.length > 0 ? validateNewPassword(value) ?? "" : "",
+        value.length > 0 ? validateNewPassword(value) ?? "" : ""
       );
     }
   };
@@ -120,7 +102,6 @@ export default function RegisterPage() {
     const inputUsername = userData.username as string;
     const password = userData.password as string;
 
-    // Additional validations
     if (inputUsername.trim().length === 0) {
       setError("Username cannot be empty.");
       setIsSubmitting(false);
@@ -139,7 +120,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Username injection regex
     const usernameInjectionRegex = /[;$"'\\/<>,. ]/;
     if (usernameInjectionRegex.test(inputUsername)) {
       setError("Special characters are not allowed in the username.");
@@ -167,7 +147,6 @@ export default function RegisterPage() {
 
       setSession(loginData.token, loginData.id, loginData.username);
       router.push("/menu");
-      
     } catch (err: unknown) {
       setError(getFriendlyRegisterError(err));
     } finally {
@@ -190,17 +169,8 @@ export default function RegisterPage() {
     <div className="app-shell">
       <main className="phone-frame screen-gradient auth-layout">
         <div className="bingo-rain-container">
-          {rainItems.map((item, i) => (
-            <span
-              key={i}
-              className="rain-item"
-              style={{
-                left: `${item.left}%`,
-                animationDuration: `${item.duration}s`,
-                animationDelay: `${item.delay}s`,
-              }}
-              onAnimationIteration={() => setRainItems(prev => prev.map((r, j) => j === i ? { ...r, emoji: randomEmoji() } : r))}
-            >{item.emoji}</span>
+          {[...Array(12)].map((_, i) => (
+            <span key={i} className="rain-item">VisionQuest</span>
           ))}
         </div>
         <h1 className="auth-title">Create Your Account</h1>
@@ -228,7 +198,7 @@ export default function RegisterPage() {
               title="Username must start with a letter and contain only alphanumeric characters without spaces"
             />
             {usernameError && (
-              <span style={{ fontSize: "0.85rem", color: "#f40303cd", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
+              <span style={{ fontSize: "0.85rem", color: "#e50909d6", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
                 {usernameError}
               </span>
             )}
@@ -236,7 +206,7 @@ export default function RegisterPage() {
 
           <label className="field-group">
             <span className="field-label">Password</span>
-            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", width: "100%" }}>
               <input
                 name="password"
                 className="field-input"
@@ -247,27 +217,19 @@ export default function RegisterPage() {
                 minLength={8}
                 maxLength={30}
                 onChange={(e) => validateField("password", e.target.value)}
-                style={{ paddingRight: "3.5rem" }}
+                style={{ flex: 1 }}
               />
               <button
                 type="button"
+                className="eye-toggle-btn"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 style={{
-                  position: "absolute",
-                  right: "0.75rem",
-                  background: "transparent",
-                  border: "none",
-                  cursor: isSubmitting ? "not-allowed" : "pointer",
-                  color: "#ffffff",
-                  padding: "0.25rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  cursor: isSubmitting ? "not-allowed" : "pointer"
                 }}
               >
-              {showPassword ? (
+                {showPassword ? (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -275,7 +237,7 @@ export default function RegisterPage() {
               </button>
             </div>
             {passwordError && (
-              <span style={{ fontSize: "0.85rem", color: "#d80d09", marginTop: "0.25rem", display: "block", fontWeight: 700 }}>
+              <span style={{ fontSize: "0.85rem", color: "#e50909d6", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
                 {passwordError}
               </span>
             )}
