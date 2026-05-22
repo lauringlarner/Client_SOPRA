@@ -727,9 +727,27 @@ textarea {
 
 
 .rules-tile-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.rules-tile-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
+  align-items: center;
+}
+
+.rules-tile-row.is-solo {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.rules-tile-row.is-solo .solo-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .rules-tile-item {
@@ -1566,6 +1584,11 @@ textarea {
 
 .bingo-field-button.is-claimed-enemy {
   background-color: #fb8600f2!important;
+  border-color: #ffffff !important;
+}
+
+.bingo-field-button.is-claimed-singlePlayer {
+  background-color: #97C459 !important;
   border-color: #ffffff !important;
 }
 
