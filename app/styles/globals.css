@@ -814,8 +814,8 @@ textarea {
 /*Error message for join code*/
 
 .overlay-error-bubble {
-  background: #F0997B;
-  color: #9c4326c4;
+  background: #f40303cd;
+  color: #f2f2ef;
   padding: 10px 14px;
   border-radius: var(--vq-radius);
   font-size: 0.85rem;
