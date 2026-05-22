@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import confetti from "canvas-confetti";
-import { createGameClient } from "@/api/gameService";
+import { createGameClient, resetPusherConnection } from "@/api/gameService";
 import { createLobbyClient } from "@/api/lobbyService";
 import { FittedTileText } from "@/components/FittedTileText";
 import { GameRulesOverlay, GameModeDTO } from "@/components/GameRulesOverlay";
@@ -227,11 +227,45 @@ const hasCheckedStorage = useRef(false);
     if (game?.status === "ENDED" && lobbyId && gameId) {
       clearLastSubmissionWord();
       const timer = setTimeout(() => {
+        resetPusherConnection();
         router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
       }, 800);
       return () => clearTimeout(timer);
     }
   }, [game?.status, gameId, lobbyId, router]);
+
+  // --- 2b. Timer-based fallback redirect ---
+  // If the Pusher ENDED event is silently dropped (parse error, stale connection,
+  // zombie socket after many games), this fires ~5 s after the game's expected end
+  // time, re-fetches from the API to confirm, then redirects.
+  useEffect(() => {
+    if (!game || game.status === "ENDED" || !gameId || !lobbyId) return;
+
+    const gameEndMs = new Date(game.startedAt).getTime() + game.gameDuration * 60 * 1000;
+    const msUntilFallback = Math.max(5000, gameEndMs - Date.now() + 5000);
+
+    const fallbackTimer = setTimeout(async () => {
+      if (latestGameRef.current?.status === "ENDED") return;
+
+      try {
+        const freshGame = await gameClient.getGame(gameId);
+        if (freshGame.status === "ENDED") {
+          clearLastSubmissionWord();
+          resetPusherConnection();
+          router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+        }
+      } catch {
+        // Can't reach API but game clock has expired – redirect anyway.
+        if (Date.now() > gameEndMs + 5000) {
+          clearLastSubmissionWord();
+          resetPusherConnection();
+          router.replace(`/lobbies/${lobbyId}/games/${gameId}/leaderboard`);
+        }
+      }
+    }, msUntilFallback);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [game?.startedAt, game?.gameDuration, game?.status, gameId, gameClient, lobbyId, router]);
 
   // --- 3. Chat Logic & Smart Scrolling ---
   const appendChatMessage = useCallback((message: ChatMessageGetDTO) => {

@@ -53,6 +53,22 @@ export function createGameClient(options: CreateGameClientOptions): GameClient {
 let pusher: Pusher | null = null;
 const channelCache = new Map<string, CachedChannel>();
 
+// Call this when navigating away from a completed game so the next game starts
+// with a fresh WebSocket connection. Long-lived connections (300+ games) can
+// enter a zombie state where they appear connected but stop delivering events.
+export function resetPusherConnection(): void {
+  try {
+    channelCache.forEach((_entry, name) => {
+      pusher?.unsubscribe(name);
+    });
+    channelCache.clear();
+    pusher?.disconnect();
+  } catch {
+    // best-effort cleanup
+  }
+  pusher = null;
+}
+
 function getPusher() {
   if (!pusher) {
     // deno-lint-ignore no-process-globals
@@ -274,7 +290,9 @@ function normalizeTileStatus(value: unknown): GameTileStatus {
   ) {
     return value;
   }
-  throw createApplicationError("The tile status is missing from the response.", 500);
+  // Unknown status (e.g. a new backend value sent at game-end): treat as UNCLAIMED so the
+  // ENDED event still parses and the redirect fires instead of the event being silently dropped.
+  return "UNCLAIMED";
 }
 
 function normalizeStringList(
