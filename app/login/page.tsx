@@ -150,7 +150,7 @@ export default function LoginPage() {
               </button>
             </div>
             {passwordError && (
-              <span style={{ fontSize: "0.85rem", color: "#e50909d6", marginTop: "0.25rem", display: "block", fontWeight: 700, textShadow: "0 0 3px rgba(255,255,255,0.9)" }}>
+              <span className="error-template">
                 {passwordError}
               </span>
             )}
