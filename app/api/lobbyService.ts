@@ -275,7 +275,7 @@ export function normalizeLobbyDetails(value: unknown): LobbyDetails {
 }
 
 function normalizeLobbyListType(value: unknown): LobbyListType {
-  if (value === "outside" || value === "inside" || value === "all") return value;
+  if (value === "outside" || value === "inside" || value === "all" || value === "demo") return value;
   return "all";
 }
 

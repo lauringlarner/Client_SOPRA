@@ -1,6 +1,6 @@
 export type LobbySelectableTeam = "Team1" | "Team2";
 
-export type LobbyListType = "all" | "outside" | "inside";
+export type LobbyListType = "all" | "outside" | "inside" | "demo";
 
 export type SinglPlayereMode = 0 | 1;
 
